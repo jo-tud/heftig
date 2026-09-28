@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% from "_macros.html" import time, csrf_field %}
+{% block title %}{{ _("Trash") }}{% endblock %}
+{% block content %}
+<nav class="crumbs"><a href="/settings">← {{ _("Settings") }}</a></nav>
+<h1>{{ _("Trash") }}</h1>
+{% if message %}<p class="notice info" role="status">{{ message }}</p>{% endif %}
+<p class="hint">{{ _("Deleted documents stay here for %(days)s days and can be restored; after that, the original and the data are removed permanently.", days=days) }}</p>
+{% if groups %}
+<form method="post" action="/trash/action">
+  {{ csrf_field(csrf) }}
+  <ul class="plain trash-list">
+  {% for g in groups %}
+    {% if g.batch %}
+    <li>
+      <div class="trash-row"><span><strong>{% if g.batch.startswith('auto-') %}{{ _("Automatically resolved duplicates") }}{% else %}{{ _("Bulk delete") }}{% endif %}: {{ ngettext("%(num)d document", "%(num)d documents", g['items'] | length) }}</strong>
+        <span class="muted small">{% if g.reason %}{{ g.reason | reason }} · {% endif %}{{ time(g.trashed_at) }} · {{ _("deleted permanently on %(date)s", date=g.purge_at | date) }}</span></span>
+        <button name="target" value="batch:{{ g.batch }}" formaction="/trash/action?action=restore">{{ _("Restore all") }}</button></div>
+      <details><summary class="small">{{ _("Show documents") }}</summary><ul class="small">{% for it in g['items'] %}<li>{{ it.title }}</li>{% endfor %}</ul></details>
+    </li>
+    {% else %}{% set it = g['items'][0] %}
+    <li><div class="trash-row"><span>{{ it.title }}
+        <span class="muted small">{% if it.reason %}{{ it.reason | reason }} · {% endif %}{{ time(g.trashed_at) }} · {{ _("deleted permanently on %(date)s", date=g.purge_at | date) }}</span></span>
+      <span class="buttons"><button name="target" value="doc:{{ it.id }}" formaction="/trash/action?action=restore">{{ _("Restore") }}</button>
+        <button name="target" value="purge:{{ it.id }}" formaction="/trash/action?action=purge" class="secondary" data-confirm-click="{{ _("Delete “%(title)s” permanently? The original will be removed.", title=it.title) }}">{{ _("Delete permanently") }}</button></span></div></li>
+    {% endif %}
+  {% endfor %}
+  </ul>
+  <p><button name="target" value="all" formaction="/trash/action?action=empty" class="danger" data-confirm-click="{{ _("Empty the trash? %(num)s documents and their originals will be removed permanently.", num=total) }}">{{ _("Empty trash (%(num)s)", num=total) }}</button></p>
+</form>
+{% else %}
+<p class="muted">{{ _("The trash is empty.") }}</p>
+{% endif %}
+{% endblock %}

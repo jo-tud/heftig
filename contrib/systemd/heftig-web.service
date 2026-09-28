@@ -1,0 +1,19 @@
+# systemd user unit – native installation without containers.
+#   cp contrib/systemd/heftig-*.service ~/.config/systemd/user/
+#   systemctl --user daemon-reload && systemctl --user enable --now heftig-web heftig-worker
+#   loginctl enable-linger $USER    # optional: keep running without an open session
+[Unit]
+Description=Heftig document archive (web)
+After=network-online.target
+
+[Service]
+# Adjust the paths: the environment file holds the HEFTIG_* settings (see .env.example).
+EnvironmentFile=%h/.config/heftig/heftig.env
+ExecStart=%h/.local/bin/heftig serve
+Restart=on-failure
+NoNewPrivileges=true
+PrivateTmp=true
+UMask=0077
+
+[Install]
+WantedBy=default.target

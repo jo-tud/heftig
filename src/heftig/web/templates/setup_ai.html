@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% from "_setup.html" import head, locked_note %}
+{% block title %}{{ _("AI") }}{% endblock %}
+{% block content %}
+<section class="setup">
+{{ head(wizard, steps, step, _("AI: reading and sorting"), message, error) }}
+<p>{{ _("Heftig works without AI: text recognition and sorting then run on this computer, with simple rules. An AI model gives much better titles, dates, senders and document types – from a cloud service or from a model on your own computer.") }}</p>
+{{ locked_note(locked) }}
+<form method="post" class="setup-form" id="ai-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf }}">
+  <fieldset {% if locked %}disabled{% endif %}>
+    <legend>{{ _("Which AI should Heftig use?") }}</legend>
+    <label class="choice"><input type="radio" name="mode" value="offline" {% if form.mode == 'offline' %}checked{% endif %}>
+      <span><strong>{{ _("None – everything stays on this computer") }}</strong><br><span class="hint">{{ _("Free. Text recognition with Tesseract, sorting with rules. You can switch on AI later.") }}</span></span></label>
+    <label class="choice"><input type="radio" name="mode" value="anthropic" {% if form.mode == 'anthropic' %}checked{% endif %}>
+      <span><strong>Anthropic (Claude)</strong><br><span class="hint">{{ _("What Heftig was developed and tested with. Sorting costs about 2 cents per document with Claude Sonnet.") }}</span></span></label>
+    <label class="choice"><input type="radio" name="mode" value="openai" {% if form.mode == 'openai' %}checked{% endif %}>
+      <span><strong>OpenAI</strong><br><span class="hint">{{ _("Needs an API key from platform.openai.com.") }}</span></span></label>
+    <label class="choice"><input type="radio" name="mode" value="local" {% if form.mode == 'local' %}checked{% endif %}>
+      <span><strong>{{ _("A model on your own computer or network") }}</strong><br><span class="hint">{{ _("Ollama, LM Studio, vLLM, llama.cpp or any other OpenAI-compatible server. Free and private, but needs a capable machine.") }}</span></span></label>
+  </fieldset>
+
+  <fieldset class="ai-details" {% if locked %}disabled{% endif %}>
+    <legend>{{ _("Connection") }}</legend>
+    <label data-for="local">{{ _("Server address") }} <input name="base_url" value="{{ form.base_url }}" placeholder="{{ default_url }}" spellcheck="false"></label>
+    <p class="hint" data-for="local">{% trans %}Ollama on this computer: <code>http://host.docker.internal:11434/v1</code>. Give the model enough context: <code>OLLAMA_CONTEXT_LENGTH=16384</code>.{% endtrans %}</p>
+    <label data-for="anthropic openai local">{{ _("API key") }}
+      <input name="api_key" type="password" autocomplete="off" spellcheck="false" placeholder="{{ _('stored – enter a new one to replace it') if has_key else '' }}"></label>
+    <p class="hint" data-for="anthropic">{% trans %}Create one at <a href="https://console.anthropic.com/settings/keys" rel="noopener" target="_blank">console.anthropic.com</a>. Set a monthly spending limit there.{% endtrans %}</p>
+    <p class="hint" data-for="local">{{ _("Most local servers need no key.") }}</p>
+    <label data-for="anthropic openai local">{{ _("Model") }}
+      <input name="model" value="{{ form.model }}" list="model-list" spellcheck="false" autocomplete="off"></label>
+    <datalist id="model-list"></datalist>
+    <p class="hint" data-for="anthropic openai local"><button type="button" class="linklike" id="load-models">{{ _("Show available models") }}</button> <span id="models-status" role="status"></span></p>
+    <label class="choice" data-for="anthropic openai local"><input type="checkbox" name="ocr_ai" value="1" {% if form.ocr_ai %}checked{% endif %}>
+      <span>{{ _("Also read scans and photos with the AI") }}<br><span class="hint">{{ _("Clearly better text for poor scans and handwriting. Sends page images; with a cloud service it costs more (about 2 cents per page). Without it, Tesseract reads them on this computer.") }}</span></span></label>
+    <label class="choice" data-for="anthropic openai local"><input type="checkbox" name="consent" value="1" {% if form.consent %}checked{% endif %}>
+      <span>{{ _("I agree that the text of my documents (and page images, if switched on) is sent to this service.") }}<br><span class="hint">{{ _("Not needed for a server on your own computer or network.") }}</span></span></label>
+  </fieldset>
+  <p class="buttons"><button type="submit" class="primary">{{ _("Save and test") if not wizard else _("Save and continue") }}</button>
+  {% if wizard %}<a href="{{ next_url }}">{{ _("Skip") }}</a>{% endif %}</p>
+</form>
+</section>
+<script src="/static/setup.js?v={{ asset_v }}" defer></script>
+{% endblock %}

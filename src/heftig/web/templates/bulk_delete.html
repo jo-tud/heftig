@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field %}
+{% block title %}{{ _("Delete results") }}{% endblock %}
+{% block content %}
+<nav class="crumbs"><a href="{{ back }}">← {{ _("Back to search") }}</a></nav>
+<h1>{{ ngettext("Move %(num)d document to the trash?", "Move %(num)d documents to the trash?", n) }}</h1>
+{% if message %}<p class="notice warn" role="status">{{ message }}</p>{% endif %}
+<p>{{ _("Search:") }} <strong>{{ label }}</strong></p>
+{% if too_many %}<p class="notice warn">{{ _("More than %(limit)s results – please narrow the search.", limit=limit) }}</p>
+{% else %}
+<section class="card">
+  <ol class="bulk-list small">
+    {% for it in items %}<li><a href="/documents/{{ it.id }}" target="_blank" rel="noopener">{{ it.title }}</a>
+      <span class="muted">{{ it.correspondent or '' }}{% if it.document_date %} · {{ it.document_date | date }}{% endif %}</span></li>{% endfor %}
+  </ol>
+</section>
+<form method="post" action="/bulk-delete" class="card danger bulk-confirm">
+  {{ csrf_field(csrf) }}
+  <input type="hidden" name="query" value="{{ query }}"><input type="hidden" name="fingerprint" value="{{ fingerprint }}">
+  <p>{{ _("The documents go to the <a href=\"/trash\">trash</a>, where they can all be restored with one click for %(days)s days.", days=days) }}</p>
+  <label>{{ _("To confirm, type the number:") }} <strong>{{ n }}</strong>
+    <input name="count" inputmode="numeric" autocomplete="off" required pattern="[0-9]+" aria-describedby="bulk-help"></label>
+  <p id="bulk-help" class="hint">{{ _("If the results change before you click (e.g. because of new documents), nothing is deleted.") }}</p>
+  <p class="buttons"><button class="danger">{{ ngettext("Move %(num)d document to the trash", "Move %(num)d documents to the trash", n) }}</button> <a href="{{ back }}" class="button">{{ _("Cancel") }}</a></p>
+</form>
+{% endif %}
+{% endblock %}

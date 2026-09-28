@@ -1,0 +1,2 @@
+# vendored third-party files: keep byte-identical (checksums in vendor/README.txt)
+src/heftig/web/static/vendor/** -text

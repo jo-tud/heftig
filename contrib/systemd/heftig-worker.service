@@ -1,0 +1,16 @@
+[Unit]
+Description=Heftig document archive (worker: scanner folder, e-mail, OCR, classification)
+After=network-online.target
+
+[Service]
+EnvironmentFile=%h/.config/heftig/heftig.env
+ExecStart=%h/.local/bin/heftig worker
+Restart=on-failure
+TimeoutStopSec=60
+NoNewPrivileges=true
+PrivateTmp=true
+UMask=0077
+Nice=5
+
+[Install]
+WantedBy=default.target

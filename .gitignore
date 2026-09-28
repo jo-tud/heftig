@@ -1,0 +1,24 @@
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+dist/
+build/
+*.egg-info/
+.env
+/archive/
+/consume/
+/folder/
+/exports/
+/backups/
+.smoke/
+.env.*
+!.env.example
+# local secrets and overrides suggested in the docs, databases and mail copies
+/secrets/
+compose.override.yaml
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.eml

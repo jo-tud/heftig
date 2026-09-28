@@ -1,0 +1,331 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_badge, time, csrf_field, provider_line %}
+{% block title %}{{ m.title or m.original_filename }}{% endblock %}
+{% block content %}
+{% set rv %}{% if review %}<input type="hidden" name="review" value="1">{% endif %}{% endset %}
+<script src="/static/viewer.js?v={{ asset_v }}" defer></script>
+<script type="application/json" id="pv-values">{{ m.custom_fields.values() | map(attribute='value') | map('string') | list | tojson }}</script>
+{% if review %}
+<div class="reviewbar" role="region" aria-label="{{ _("Review") }}">
+  <span class="rb-count">{% trans n=review.remaining %}Review · <strong>{{ n }}</strong> left{% endtrans %}</span>
+  <button type="submit" form="meta-form" name="then" value="review_next" class="primary" title="{{ _("Save changes, mark as reviewed and go to the next one") }}">{{ _("Reviewed → next") }}</button>
+  <a class="button" href="/review/next?after={{ m.id }}">{{ _("Skip") }}</a>
+  <a class="small" href="/inbox">{{ _("Stop") }}</a>
+  {% if m.suggestions %}<span class="small muted rb-note">{{ ngettext("%(num)d open suggestion – dismissed unless accepted", "%(num)d open suggestions – those not accepted are dismissed", m.suggestions | length) }}</span>{% endif %}
+</div>
+{% else %}
+<nav class="crumbs"><a href="/" data-back>{{ _("← Documents") }}</a></nav>
+{% endif %}
+<header class="doc-head">
+  <div class="doc-head-top">
+    <h1>{{ m.title or m.original_filename }}</h1>
+    <details class="menu">
+      <summary class="button" aria-label="{{ _("More actions") }}">{{ _("More …") }}</summary>
+      <div class="menu-list" role="menu">
+        <a role="menuitem" href="/documents/{{ m.id }}/original" download>{{ _("Download original") }}</a>
+        <a role="menuitem" href="/combine?ids={{ m.id }}" title="{{ _("e.g. separately scanned pages of a letter, or the signed version") }}">{{ _("Combine with another document …") }}</a>
+        {% if not m.paper and not pos %}<form method="post" action="/documents/{{ m.id }}/action">{{ csrf_field(csrf) }}{{ rv }}
+          <button role="menuitem" name="action" value="file" class="linklike">{{ _("Mark as filed") }}</button></form>{% endif %}
+        <form method="post" action="/documents/{{ m.id }}/action">{{ csrf_field(csrf) }}{{ rv }}<input type="hidden" name="back" value="{{ back }}">
+          <button role="menuitem" name="action" value="delete" class="linklike danger-text" title="{{ ngettext("Goes to the trash (can be restored for %(num)s day)", "Goes to the trash (can be restored for %(num)s days)", trash_days) }}">{{ _("Move to trash") }}</button></form>
+      </div>
+    </details>
+  </div>
+  <p class="meta">
+    {{ status_badge(m.status) }}
+    <span>{% if m.page_count %}{{ ngettext("%(num)d page", "%(num)d pages", m.page_count) }}{% else %}{{ _("? pages") }}{% endif %}</span>
+    <span>{{ SOURCE_LABELS.get(m.source, m.source) }}</span>
+    {% if m.text_status != 'ok' %}<span>{{ _("Text: %(status)s", status=TEXT_STATUS.get(m.text_status, m.text_status)) }}</span>{% endif %}
+  </p>
+</header>
+
+{% for d in duplicates %}
+  {% set other = d.b if d.a.id == m.id else d.a %}
+  <p class="notice warn" role="status">{% trans url="/documents/" ~ other.id, title=other.title or other.original_filename, reasons=d.reasons | map('reason') | join(', '), compare="/duplicates/" ~ d.a.id ~ "/" ~ d.b.id %}Possible duplicate of <a href="{{ url }}">{{ title }}</a> ({{ reasons }}) – <a href="{{ compare }}">compare</a>{% endtrans %}</p>
+{% endfor %}
+{% if m.ai_pending %}{% set ns_ai = namespace(tasks=[]) %}{% for x in m.ai_pending %}{% set ns_ai.tasks = ns_ai.tasks + [{'extract': _("Text recognition"), 'classify': pgettext("processing step", "Classification")}.get(x, x)] %}{% endfor %}<p class="notice info" role="status">{{ _("Processed offline for now (%(tasks)s) – the AI processing will be caught up automatically. Your corrections are kept.", tasks=ns_ai.tasks | join(', ')) }}</p>{% endif %}
+{% if saved %}<p class="notice ok" role="status">{{ _("Saved. Changed fields are now locked and won't be overwritten when reprocessing.") }}</p>{% endif %}
+{% if message %}<p class="notice info" role="status">{{ message }}</p>{% endif %}
+
+{% if m.review_reasons or m.suggestions %}
+<section class="card review" aria-labelledby="review-h">
+  <h2 id="review-h">{{ _("Please review") }}</h2>
+  {% if m.review_reasons %}<ul>{% for r in m.review_reasons %}<li>{{ r | reason }}</li>{% endfor %}</ul>{% endif %}
+  {% if m.suggestions %}
+  <form method="post" action="/documents/{{ m.id }}/action">
+    {{ csrf_field(csrf) }}{{ rv }}<input type="hidden" name="revision" value="{{ m.revision }}">
+    <table class="suggestions">
+      <thead><tr><th>{{ _("Field") }}</th><th>{{ _("Suggestion") }}</th><th>{{ _("Reason") }}</th><th></th></tr></thead>
+      <tbody>
+      {% for s in m.suggestions %}
+        <tr>
+          <td>{{ FIELD_LABELS.get(s.field, s.field) }}</td>
+          <td><strong>{% if s.value is iterable and s.value is not string %}{{ s.value | join(', ') }}{% else %}{{ s.value }}{% endif %}</strong>
+            {% if s.confidence is not none %}<span class="muted">({{ _("%(pct)s%%", pct='%.0f' % (s.confidence * 100)) }})</span>{% endif %}</td>
+          <td>{{ s.reason | reason }}</td>
+          <td class="nowrap">
+            <button name="action" value="accept_{{ loop.index0 }}">{{ _("Accept") }}</button>
+            <button name="action" value="dismiss_{{ loop.index0 }}" class="secondary">{{ _("Dismiss") }}</button>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </form>
+  {% endif %}
+  <form method="post" action="/documents/{{ m.id }}/action" class="inline">
+    {{ csrf_field(csrf) }}{{ rv }}<input type="hidden" name="revision" value="{{ m.revision }}">{% if not review %}<button name="action" value="reviewed">{{ _("All reviewed") }}</button>{% endif %}
+    {% if budget_pages and not m.ocr_all_pages %}
+    <button name="action" value="ocr_all_pages" title="{{ ngettext("Reads the remaining %(num)d page with the AI instead of locally", "Reads the remaining %(num)d pages with the AI instead of locally", budget_pages) }}">{{ _("Recognize all pages with AI (approx. $%(cost)s)", cost='%.2f' % (budget_pages * 0.02)) }}</button>
+    {% endif %}
+  </form>
+</section>
+{% endif %}
+
+<div class="doc-grid">
+  <section class="preview card viewer-card" id="viewer-card" aria-label="{{ _("Document view") }}">
+    <div class="viewer-bar" role="toolbar" aria-label="{{ _("View") }}">
+      {% set vp_cur %}<b id="vp-cur">1</b>{% endset %}
+      <span class="viewer-pos" aria-live="polite">{{ _("Page %(cur)s / %(total)s", cur=vp_cur, total=page_sizes | length) }}</span>
+      <span class="viewer-tools">
+        <button type="button" data-zoom="out" title="{{ _("Zoom out (−)") }}" aria-label="{{ _("Zoom out") }}">−</button>
+        <button type="button" data-zoom="fit" title="{{ _("Page width (0)") }}" id="vp-zoom">{{ _("%(pct)s%%", pct=100) }}</button>
+        <button type="button" data-zoom="in" title="{{ _("Zoom in (+)") }}" aria-label="{{ _("Zoom in") }}">+</button>
+        <button type="button" data-fullscreen title="{{ _("Full screen (F)") }}" aria-label="{{ _("Full screen") }}">⛶</button>
+        <a class="button" href="/documents/{{ m.id }}/original?inline=1" target="_blank" rel="noopener" title="{{ _("Open the original in the browser") }}">{{ _("Original") }}</a>
+      </span>
+    </div>
+    {% if q %}
+    <p class="hitbar" role="status">
+      {% if hit_pages %}{{ _("“%(q)s” on", q=q) }}
+        {% for h in hit_pages %}<a href="#page-{{ h.page }}" class="goto-page">{{ _("page %(num)s", num=h.page) }}</a>{% if h.count > 1 %} <span class="muted">({{ h.count }}×)</span>{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}
+        <button type="button" class="linklike small" data-hl-toggle aria-pressed="true">{{ _("Hide highlights") }}</button>
+      {% else %}<span class="muted">{{ _("“%(q)s” is not in the text – the match comes from the title, sender, tags, fields or notes.", q=q) }}</span>{% endif %}
+    </p>
+    {% endif %}
+    <div class="pv-media viewer-wrap">
+      <div class="viewer" id="viewer" tabindex="0" aria-label="{{ _("Pages of the document") }}"{% if hit_pages %} data-q="{{ q }}" data-hit-pages="{{ hit_pages | map(attribute='page') | join(',') }}"{% endif %}>
+        {% for w, h in page_sizes %}
+        <figure class="vpage" id="page-{{ loop.index }}" data-page="{{ loop.index }}" data-ar="{{ '%.4f' % (w / h) }}">
+          <img alt="{{ _("Page %(num)s", num=loop.index) }}" draggable="false" loading="{{ 'eager' if loop.index <= 2 else 'lazy' }}" decoding="async"
+               src="/documents/{{ m.id }}/pages/{{ loop.index }}.webp?w=960"
+               srcset="/documents/{{ m.id }}/pages/{{ loop.index }}.webp?w=480 480w, /documents/{{ m.id }}/pages/{{ loop.index }}.webp?w=960 960w, /documents/{{ m.id }}/pages/{{ loop.index }}.webp?w=1440 1440w, /documents/{{ m.id }}/pages/{{ loop.index }}.webp?w=2048 2048w"
+               sizes="(max-width: 800px) 100vw, 55vw">
+          <figcaption>{{ loop.index }}</figcaption>
+        </figure>
+        {% endfor %}
+      </div>
+      <button type="button" class="pv-reveal">{{ _("Private – tap to show") }}</button>
+      <button type="button" class="pv-hide" title="{{ _("Blur again") }}">{{ _("Hide") }}</button>
+    </div>
+    <p class="muted small viewer-foot">{{ _("Double-tap to zoom.") }}</p>
+  </section>
+
+  <section class="card" aria-labelledby="meta-h">
+    <h2 id="meta-h">{{ _("Metadata") }}</h2>
+    <form method="post" action="/documents/{{ m.id }}/edit" class="meta-form" id="meta-form">
+      {{ csrf_field(csrf) }}{{ rv }}<input type="hidden" name="revision" value="{{ m.revision }}">
+      {% macro lockbox(field) -%}
+        {% if m.field_locks.get(field) %}<label class="lock" title="{{ _("Locked: reprocessing won't overwrite this field. Uncheck to leave it to the AI again.") }}">
+          <input type="checkbox" name="lock_{{ field }}" checked aria-label="{{ _("%(field)s locked", field=FIELD_LABELS.get(field, field)) }}"> 🔒</label>{% endif %}
+      {%- endmacro %}
+      <div class="field"><label for="f-title">{{ _("Title") }}</label>{{ lockbox('title') }}
+        <input id="f-title" name="title" value="{{ m.title }}" maxlength="200"></div>
+      <div class="field"><label for="f-date">{{ _("Document date") }}</label>{{ lockbox('document_date') }}
+        <input id="f-date" name="document_date" type="date" value="{{ m.document_date or '' }}">
+        <p class="hint {% if m.document_date_status == 'ai_uncertain' %}warn{% endif %}">
+          {{ DATE_STATUS.get(m.document_date_status, m.document_date_status) }}{% if m.document_date_reason %} – {{ m.document_date_reason | reason }}{% endif %}.
+          {{ _("Independently of that: received %(when)s.", when=time(m.received_at)) }}</p></div>
+      <div class="field"><label for="f-corr">{{ pgettext("document field", "Sender") }}</label>{{ lockbox('correspondent') }}
+        <input id="f-corr" name="correspondent" value="{{ m.correspondent or '' }}" list="dl-corr" autocomplete="off"></div>
+      <div class="field"><label for="f-type">{{ _("Document type") }}</label>{{ lockbox('document_type') }}
+        <input id="f-type" name="document_type" value="{{ m.document_type or '' }}" list="dl-type" autocomplete="off"></div>
+      <div class="field"><label for="f-tags">{{ _("Tags (comma-separated)") }}</label>{{ lockbox('tags') }}
+        <input id="f-tags" name="tags" value="{{ m.tags | join(', ') }}" list="dl-tags" autocomplete="off">
+        {% set tags_added = m.tag_overrides.added | join(', ') %}{% set tags_removed = m.tag_overrides.removed | join(', ') %}
+        {% if tags_added and tags_removed %}<p class="hint">{{ _("Manually added: %(added)s · removed: %(removed)s – kept when reprocessing.", added=tags_added, removed=tags_removed) }}</p>
+        {% elif tags_added %}<p class="hint">{{ _("Manually added: %(added)s – kept when reprocessing.", added=tags_added) }}</p>
+        {% elif tags_removed %}<p class="hint">{{ _("Manually removed: %(removed)s – kept when reprocessing.", removed=tags_removed) }}</p>{% endif %}</div>
+      <div class="field"><label for="f-sum">{{ _("Summary") }}</label>{{ lockbox('summary') }}
+        <textarea id="f-sum" name="summary" rows="3" class="pv-input">{{ m.summary }}</textarea></div>
+      <fieldset class="field"><legend>{{ _("Custom fields") }}</legend>{{ lockbox('custom_fields') }}
+        {% set cf_types = {'string': _("Text"), 'number': pgettext("field type", "Number"), 'monetary': _("Amount"), 'date': _("Date")} %}
+        <table class="cf">
+          <thead><tr><th>{{ _("Name") }}</th><th>{{ _("Type") }}</th><th>{{ _("Value") }}</th><th>{{ _("Currency") }}</th></tr></thead>
+          <tbody>
+          {% set items = m.custom_fields.items() | list %}
+          {% for key, cf in items %}
+            <tr><td><input name="cf_key_{{ loop.index0 }}" value="{{ key }}" aria-label="{{ _("Field name") }}"></td>
+              <td><select name="cf_type_{{ loop.index0 }}" aria-label="{{ _("Type") }}">{% for t in ['string','number','monetary','date'] %}<option value="{{ t }}" {% if cf.type == t %}selected{% endif %}>{{ cf_types[t] }}</option>{% endfor %}</select></td>
+              <td><input name="cf_value_{{ loop.index0 }}" value="{{ cf.value }}" aria-label="{{ _("Value") }}" class="pv-input"></td>
+              <td><input name="cf_currency_{{ loop.index0 }}" value="{{ cf.currency or '' }}" size="3" maxlength="3" aria-label="{{ _("Currency") }}"></td></tr>
+          {% endfor %}
+            <tr><td><input name="cf_key_{{ items | length }}" placeholder="{{ _("new, e.g. contract number") }}" aria-label="{{ _("New field name") }}"></td>
+              <td><select name="cf_type_{{ items | length }}" aria-label="{{ _("Type") }}">{% for t in ['string','number','monetary','date'] %}<option value="{{ t }}">{{ cf_types[t] }}</option>{% endfor %}</select></td>
+              <td><input name="cf_value_{{ items | length }}" aria-label="{{ _("Value") }}"></td>
+              <td><input name="cf_currency_{{ items | length }}" size="3" maxlength="3" aria-label="{{ _("Currency") }}"></td></tr>
+          </tbody>
+        </table>
+      </fieldset>
+      <p class="hint">{{ _("Changed fields are locked (🔒) and won't be overwritten when reprocessing.") }}</p>
+      <button type="submit" class="primary">{{ _("Save") }}</button>
+    </form>
+    <datalist id="dl-corr">{% for t in terms.correspondent %}<option value="{{ t.name }}">{% endfor %}</datalist>
+    <datalist id="dl-type">{% for t in terms.document_type %}<option value="{{ t.name }}">{% endfor %}</datalist>
+    <datalist id="dl-tags">{% for t in terms.tag %}<option value="{{ t.name }}">{% endfor %}</datalist>
+  </section>
+</div>
+
+{% if m.paper or pos or m.paper_location or m.paper_discarded_at %}
+<section class="card" aria-labelledby="filing-h">
+    <h2 id="filing-h">{{ _("Paper filing") }}</h2>
+    {% if m.scan_session %}<p class="muted small">{% trans url="/?session=" ~ m.scan_session.id ~ "&sort=received", name=m.scan_session.name %}Scanned in batch <a href="{{ url }}">“{{ name }}”</a>{% endtrans %}{% if m.keep_original is not none %} · {{ _("Original kept") if m.keep_original else _("Original not needed") }}{% if m.keep_original_reason %} ({{ m.keep_original_reason | reason }}){% endif %}{% endif %}</p>{% endif %}
+    {% if pos %}
+      <p>{% trans section=pos.section, when=time(m.filed_at), n=pos.position_from_top, total=pos.total_in_section %}Filed in section <strong>{{ section }}</strong> on {{ when }} – position <strong>{{ n }}</strong> of {{ total }} (counted from the top, newest on top).{% endtrans %}</p>
+      <ol class="stack">
+        {% for n in pos.above %}<li class="muted"><a href="/documents/{{ n.id }}">{{ n.title or n.original_filename }}</a></li>{% endfor %}
+        <li class="current"><strong>{{ m.title or m.original_filename }}</strong> {{ _("← this document") }}</li>
+        {% for n in pos.below %}<li class="muted"><a href="/documents/{{ n.id }}">{{ n.title or n.original_filename }}</a></li>{% endfor %}
+      </ol>
+      <form method="post" action="/documents/{{ m.id }}/action">{{ csrf_field(csrf) }}{{ rv }}
+        <button name="action" value="unfile" class="secondary">{{ _("Undo filing") }}</button></form>
+    {% elif m.paper_location %}
+      <p>{% trans loc=m.paper_location %}The paper is in <strong>{{ loc }}</strong>.{% endtrans %}</p>
+      <form method="post" action="/documents/{{ m.id }}/action">{{ csrf_field(csrf) }}{{ rv }}
+        <button name="action" value="paper_reset" class="secondary">{{ _("Revert") }}</button></form>
+    {% elif m.paper_discarded_at %}
+      <p>{{ _("Paper discarded on %(when)s.", when=time(m.paper_discarded_at)) }}</p>
+      <form method="post" action="/documents/{{ m.id }}/action">{{ csrf_field(csrf) }}{{ rv }}
+        <button name="action" value="paper_reset" class="secondary">{{ _("Revert") }}</button></form>
+    {% elif m.paper %}
+      <p class="notice warn">{{ _("Paper document – where is the paper?") }}</p>
+      <form method="post" action="/documents/{{ m.id }}/action" class="buttons">{{ csrf_field(csrf) }}{{ rv }}
+        <button name="action" value="file" class="primary">{{ _("Filed just now") }}</button>
+        <button name="action" value="paper_discarded" class="secondary">{{ _("Discarded") }}</button>
+      </form>
+      <details><summary class="small">{{ _("In another binder …") }}</summary>
+        <form method="post" action="/documents/{{ m.id }}/action" class="inline-form">{{ csrf_field(csrf) }}{{ rv }}
+          <input name="location" required maxlength="200" placeholder="{{ _("e.g. Insurance binder") }}" aria-label="{{ _("Binder") }}">
+          <button name="action" value="paper_folder">{{ _("Save") }}</button></form></details>
+      <p class="hint">{{ _("“Filed”: Heftig remembers the order – the sheet filed last is on top of the current section.") }}</p>
+    {% endif %}
+  </section>
+{% endif %}
+
+<section class="card notes" aria-labelledby="notes-h">
+  <h2 id="notes-h">{{ _("Notes & attachments") }}</h2>
+  {% for n in m.notes %}
+  <article class="note">
+    <p class="note-meta small muted">{{ time(n.at) }}{% if n.updated_at %} · {{ _("edited %(when)s", when=time(n.updated_at)) }}{% endif %}</p>
+    <div class="note-text" data-pv>{{ n.text }}</div>
+    <details class="note-edit"><summary class="small">{{ _("Edit") }}</summary>
+      <form method="post" action="/documents/{{ m.id }}/notes">{{ csrf_field(csrf) }}{{ rv }}
+        <input type="hidden" name="note_id" value="{{ n.id }}">
+        <textarea name="text" rows="4" aria-label="{{ _("Edit note") }}">{{ n.text }}</textarea>
+        <p class="buttons"><button name="action" value="save" class="primary">{{ _("Save") }}</button>
+          <button name="action" value="delete" class="secondary" formnovalidate>{{ _("Delete") }}</button></p>
+      </form>
+    </details>
+  </article>
+  {% endfor %}
+  <form method="post" action="/documents/{{ m.id }}/notes" class="note-add">{{ csrf_field(csrf) }}{{ rv }}
+    <label class="sr-only" for="note-new">{{ _("New note") }}</label>
+    <textarea id="note-new" name="text" rows="3" placeholder="{{ _("Your own note, e.g. “Objection filed on …”, “paid by bank transfer”") }}" required></textarea>
+    <button name="action" value="add" class="primary">{{ _("Add note") }}</button>
+  </form>
+
+  <h3>{{ _("Attachments") }}</h3>
+  {% if m.attachments %}
+  <ul class="plain attachments">
+    {% for att in m.attachments %}
+    <li>
+      <a href="/documents/{{ m.id }}/attachments/{{ att.id }}">📎 {{ att.filename }}</a>
+      <span class="small muted">{{ '%.0f' % (att.size_bytes / 1024) }} KB · {{ time(att.added_at) }}</span>
+      {% if att.mime_type in ('application/pdf', 'image/jpeg', 'image/png') %}<a class="small" href="/documents/{{ m.id }}/attachments/{{ att.id }}?inline=1" target="_blank" rel="noopener">{{ _("view") }}</a>{% endif %}
+      {% if att.description %}<br><span class="small" data-pv>{{ att.description }}</span>{% endif %}
+      <form method="post" action="/documents/{{ m.id }}/notes" class="inline" data-confirm="{{ _("Permanently delete attachment “%(name)s”?", name=att.filename) }}">{{ csrf_field(csrf) }}{{ rv }}
+        <input type="hidden" name="attachment_id" value="{{ att.id }}">
+        <button name="action" value="delete_attachment" class="linklike small">{{ _("delete") }}</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}<p class="muted small">{{ _("No attachments yet.") }}</p>{% endif %}
+  <form method="post" action="/documents/{{ m.id }}/notes" enctype="multipart/form-data" class="attach-add">{{ csrf_field(csrf) }}{{ rv }}
+    <input type="file" name="files" multiple aria-label="{{ _("Attach files") }}" required>
+    <input name="description" placeholder="{{ _("Comment (optional)") }}" maxlength="500" aria-label="{{ _("Comment on the attachment") }}">
+    <button name="action" value="attach">{{ _("Attach") }}</button>
+  </form>
+  <p class="hint">{{ _("Attachments are stored unchanged with the document (any file type, max. %(mb)s MB) and offered for download; notes and file names are searchable.", mb=request.app.state.archive.settings.max_upload_mb) }}</p>
+</section>
+
+{% if similar %}
+<section class="card similar" aria-labelledby="sim-h">
+  <h2 id="sim-h">{{ _("Similar documents") }}</h2>
+  <ul class="plain sim-list">
+    {% for it in similar %}<li><a href="/documents/{{ it.id }}">{{ it.title }}</a>
+      <span class="muted small">{% if it.correspondent %}{{ it.correspondent }} · {% endif %}{% if it.document_type %}{{ it.document_type }} · {% endif %}{{ it.document_date | date if it.document_date else _("no date") }}{% if it.why %} · {{ it.why | join(', ') }}{% endif %}</span></li>{% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+<details class="card tech" id="tech">
+  <summary><h2>{{ _("Technical details") }}</h2> <span class="small muted">{{ _("recognized text, processing, history, origin") }}</span></summary>
+  <h3 id="text-h">{{ _("Recognized text") }}</h3>
+  {% set text_methods = {'embedded': _("embedded PDF text"), 'ocr': _("OCR"), 'none': _("no text"), 'user': _("manual")} %}
+  {% for pg in text_pages %}
+  <details {% if loop.first %}open{% endif %}>
+    <summary><a href="#page-{{ pg.page }}" class="goto-page" title="{{ _("Show the page in the document") }}">{{ _("Page %(num)s", num=pg.page) }}</a> · {{ text_methods.get(pg.method, pg.method) }}{% if pg.provider %} ({{ pg.provider | reason }}){% endif %} · {{ ngettext("%(num)d character", "%(num)d characters", pg.chars) }}
+      {% if pg.error %}<span class="badge st-failed">{{ _("Error") }}</span>{% endif %}</summary>
+    {% if pg.error %}<p class="notice error small">{{ pg.error | reason }}</p>{% endif %}
+    <pre class="text" data-pv>{{ pg.text }}</pre>
+  </details>
+  {% else %}
+  <p class="muted">{{ _("No text yet – processing is running or pending.") }}</p>
+  {% endfor %}
+  <p class="actions"><a href="/api/documents/{{ m.id }}/text" class="button">{{ _("Text as .txt") }}</a></p>
+
+  <h3 id="proc-h">{{ _("Processing & AI") }}</h3>
+    <p class="small">{{ _("OCR: %(provider)s", provider=provider_line(providers.ocr)) }}<br>{{ _("Classification: %(provider)s", provider=provider_line(providers.classify)) }}</p>
+    {% if providers.ocr.cloud or providers.classify.cloud %}<p class="notice warn small">{{ _("Reprocessing sends page images or text to the cloud provider named above.") }}</p>{% endif %}
+    <form method="post" action="/documents/{{ m.id }}/action" class="buttons">{{ csrf_field(csrf) }}{{ rv }}
+      <button name="action" value="reprocess_extract">{{ _("Recognize text again") }}</button>
+      <button name="action" value="reprocess_classify">{{ _("Classify again") }}</button>
+      <button name="action" value="reprocess_all">{{ _("Both") }}</button>
+    </form>
+    <p class="hint">{{ _("Locked fields and manual tag decisions are kept. The original is never changed.") }}</p>
+    {% if d.jobs %}
+    <h4>{{ _("Jobs") }}</h4>
+    <ul class="plain small">{% for j in d.jobs[:5] %}<li>#{{ j.id }} {{ status_badge(j.status) }} {{ STAGE_LABELS.get(j.stage, j.stage or '') }} {% if j.error %}<span class="muted">– {{ j.error | reason }}</span>{% endif %}</li>{% endfor %}</ul>
+    {% endif %}
+    <h4>{{ _("History") }}</h4>
+    {% set history_tasks = {'extract': _("Text"), 'classify': pgettext("processing step", "Classification"), 'edit': _("Editing"), 'filing': _("Filing"), 'import': _("Import"), 'merge': _("Merge")} %}
+    <ul class="plain small history">
+      {% for h in m.processing_history | reverse %}
+        <li>{{ time(h.at) }} · <strong>{{ history_tasks.get(h.task, h.task) }}</strong>
+          {{ h.status | reason }}{% if h.provider %} · {{ h.provider | reason }}{% endif %}{% if h.model %} ({{ h.model }}){% endif %}{% if h.target and h.target not in ('lokal', 'local') %} → {{ h.target }}{% endif %}
+          {% if h.fields %} · {% for f in h.fields %}{{ FIELD_LABELS.get(f, f) }}{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}
+          {% if h.error %}<br><span class="muted">{{ h.error | reason }}</span>{% endif %}</li>
+      {% endfor %}
+    </ul>
+
+  <h3 id="prov-h">{{ _("Origin") }}</h3>
+  <dl class="kv">
+    <dt>{{ _("Received in the archive") }}</dt><dd>{{ time(m.received_at) }} {{ _("(no. %(num)s)", num=m.ingest_sequence) }}</dd>
+    <dt>{{ _("Source") }}</dt><dd>{{ SOURCE_LABELS.get(m.source, m.source) }}</dd>
+    <dt>{{ _("File name") }}</dt><dd>{{ m.original_filename }}</dd>
+    <dt>{{ _("Type / size") }}</dt><dd>{{ m.mime_type }} · {{ '%.1f' % (m.size_bytes / 1024) }} KB</dd>
+    {% for k, v in m.source_details.items() if v is not none and k not in ('combined_from', 'action') %}<dt>{{ k }}</dt><dd>{{ v }}</dd>{% endfor %}
+    {% if m.source_details.combined_from %}<dt>{{ _("Combined from") }}</dt><dd>{% set ns = namespace(p=1) %}
+      {% for c in m.source_details.combined_from %}{% if c.pages > 1 %}{{ _("p. %(first)s–%(last)s: “%(title)s”", first=ns.p, last=ns.p + c.pages - 1, title=c.title) }}{% else %}{{ _("p. %(first)s: “%(title)s”", first=ns.p, title=c.title) }}{% endif %}{% set ns.p = ns.p + c.pages %}{% if not loop.last %}<br>{% endif %}{% endfor %}</dd>{% endif %}
+    <dt>ID</dt><dd><code>{{ m.id }}</code></dd>
+    <dt>SHA-256</dt><dd><code class="hash">{{ m.sha256 }}</code> {{ _("– original, byte for byte as received") }}</dd>
+  </dl>
+  {% if m.ingest_events | length > 1 %}
+  <h4>{{ _("Same file received again") }}</h4>
+  <ul class="plain small">{% for e in m.ingest_events %}<li>{{ time(e.at) }} · {{ SOURCE_LABELS.get(e.source, e.source) }} · {{ e.original_filename }} · {{ RESULT_LABELS.get(e.result, e.result) }}</li>{% endfor %}</ul>
+  {% endif %}
+
+</details>
+
+{% endblock %}

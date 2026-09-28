@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field %}
+{% block title %}{{ _("Combine documents") }}{% endblock %}
+{% block content %}
+<nav class="crumbs"><a href="/documents/{{ chosen[0].id }}">← {{ chosen[0].title or chosen[0].original_filename }}</a></nav>
+<h1>{{ _("Combine documents") }}</h1>
+{% if message %}<p class="notice warn" role="status">{{ message }}</p>{% endif %}
+
+<form method="post" action="/combine" class="card combine-order">
+  {{ csrf_field(csrf) }}
+  <ol class="combine-list">
+    {% for r in chosen %}
+    <li>
+      <input type="hidden" name="ids" value="{{ r.id }}">
+      <span class="thumb"><img src="/documents/{{ r.id }}/preview.webp?w=54&amp;t={{ THUMB_VERSION }}" srcset="/documents/{{ r.id }}/preview.webp?w=54&amp;t={{ THUMB_VERSION }} 1x, /documents/{{ r.id }}/preview.webp?w=108&amp;t={{ THUMB_VERSION }} 2x, /documents/{{ r.id }}/preview.webp?w=162&amp;t={{ THUMB_VERSION }} 3x" alt="" loading="lazy" width="54" height="75"></span>
+      <span class="cl-main"><a href="/documents/{{ r.id }}" target="_blank" rel="noopener">{{ r.title or r.original_filename }}</a>
+        {% set prange %}{{ r.first_page }}{% if (r.page_count or 1) > 1 %}–{{ r.first_page + r.page_count - 1 }}{% endif %}{% endset %}
+        <span class="muted small">{{ _("p. %(pages)s", pages=prange) }}
+          {%- if r.correspondent %} · {{ r.correspondent }}{% endif %}{% if r.document_date %} · {{ r.document_date | date }}{% endif %}</span></span>
+      <span class="cl-tools">
+        {% if r.up %}<a href="{{ r.up }}" class="button" title="{{ _("Move up") }}" aria-label="{{ _("Move up") }}">↑</a>{% endif %}
+        {% if r.remove %}<a href="{{ r.remove }}" class="button secondary" title="{{ _("Remove") }}" aria-label="{{ _("Remove") }}">✕</a>{% endif %}
+      </span>
+    </li>
+    {% endfor %}
+  </ol>
+  {% if chosen | length > 1 %}
+    {% if problem %}<p class="notice warn">{{ problem }}</p>{% else %}
+    <p class="buttons"><button class="primary">{{ _("Combine (%(num)s pages)", num=pages) }}</button></p>
+    <p class="hint">{{ _("A new document with all pages in this order. Title and locked fields come from the first, notes, attachments and filing location from all; the recognized text is kept, only the classification runs again. The individual documents go to the <a href=\"/trash\">trash</a> – this can be undone.") }}</p>
+    {% endif %}
+  {% else %}
+    <p class="muted">{{ _("Add a second document below.") }}</p>
+  {% endif %}
+</form>
+
+<section class="card">
+  <h2>{{ _("Add") }}</h2>
+  <form method="get" action="/combine" class="inline-form">
+    {% for r in chosen %}<input type="hidden" name="ids" value="{{ r.id }}">{% endfor %}
+    <input name="q" value="{{ q }}" placeholder="{{ _("Search …") }}" aria-label="{{ _("Search for a document") }}" maxlength="200">
+    <button>{{ _("Search") }}</button>
+  </form>
+  {% if not q %}<p class="muted small">{{ _("Suggestions: received just before and after, similar content.") }}</p>{% endif %}
+  <ul class="plain combine-cands">
+    {% for r in candidates %}
+    <li><a href="{{ r.add }}" class="button" title="{{ _("Add") }}" aria-label="{{ _("Add") }}">+</a>
+      <a href="/documents/{{ r.id }}" target="_blank" rel="noopener">{{ r.title or r.original_filename }}</a>
+      <span class="muted small">{{ ngettext("%(num)d p.", "%(num)d pp.", r.page_count or 1) }}{% if r.correspondent %} · {{ r.correspondent }}{% endif %}{% if r.document_date %} · {{ r.document_date | date }}{% endif %}</span></li>
+    {% else %}<li class="muted">{{ _("Nothing found.") }}</li>{% endfor %}
+  </ul>
+</section>
+{% endblock %}

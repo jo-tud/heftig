@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field %}
+{% block title %}{{ _("Suggestions in bulk") }}{% endblock %}
+{% block content %}
+<nav class="crumbs"><a href="/inbox">← {{ _("Inbox") }}</a></nav>
+<h1>{{ _("Suggestions in bulk") }}</h1>
+{% if message %}<p class="notice ok" role="status">{{ message }}</p>{% endif %}
+{% if groups %}
+<p class="hint">{{ _("The AI was unsure here. Identical suggestions are grouped – one decision applies to all checked documents. Accepted values are locked as if set by hand.") }}</p>
+{% for g in groups %}
+<form method="post" action="/suggestions/action" class="card sgroup">
+  {{ csrf_field(csrf) }}<input type="hidden" name="field" value="{{ g.field }}"><input type="hidden" name="value" value="{{ g.value }}">
+  <div class="sgroup-head">
+    <span class="tnum">{{ g.count }}</span>
+    <span class="sgroup-what"><span class="muted">{{ g.field_label }}</span> <strong>{{ g.label }}</strong>
+      <span class="small muted">{{ g.reason | reason }}{% if g.confidence is not none %} · {{ _("Ø %(pct)s%%", pct=(g.confidence * 100) | number(0)) }}{% endif %}
+        {% if g.alternatives %} · {{ _("Alternatives: %(values)s", values=g.alternatives | join(', ')) }}{% endif %}</span></span>
+    <span class="buttons">
+      <button name="action" value="accept" class="primary">{{ _("Accept") }}</button>
+      <button name="action" value="dismiss" class="secondary">{{ _("Dismiss") }}</button>
+    </span>
+  </div>
+  <details{% if g.count <= 3 %} open{% endif %}><summary class="small">{{ ngettext("%(num)d document – deselect individual ones", "%(num)d documents – deselect individual ones", g.count) }}</summary>
+    <ul class="plain small">{% for d in g.docs %}
+      <li><label class="inline"><input type="checkbox" name="doc" value="{{ d.id }}" checked> <a href="/documents/{{ d.id }}?review=1" target="_blank" rel="noopener">{{ d.title }}</a></label>
+        {% if d.current %}<span class="muted">{{ _("currently: %(value)s", value=d.current) }}</span>{% endif %}
+        {% if d.others %}<span class="muted">· {{ _("also suggested: %(values)s", values=d.others | join(', ')) }}</span>{% endif %}</li>
+    {% endfor %}</ul>
+  </details>
+</form>
+{% endfor %}
+{% else %}
+<p class="muted">{{ _("No open suggestions.") }}</p>
+{% endif %}
+{% endblock %}

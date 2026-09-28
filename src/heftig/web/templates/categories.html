@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field %}
+{% block title %}{{ _("Categories") }}{% endblock %}
+{% block content %}
+{% macro ctx(t) -%}<input type="hidden" name="term_id" value="{{ t.id }}"><input type="hidden" name="kind" value="{{ kind }}"><input type="hidden" name="back_q" value="{{ q }}"><input type="hidden" name="back_sort" value="{{ sort }}">{%- endmacro %}
+<nav class="crumbs"><a href="/settings">← {{ _("Settings") }}</a></nav>
+<h1>{{ _("Categories") }}</h1>
+{% if message %}<p class="notice info" role="status">{{ message }}</p>{% endif %}
+
+<nav class="tabs" aria-label="{{ _("Category type") }}">
+  {% for k, label in kinds %}<a href="/categories?kind={{ k }}"{% if k == kind %} aria-current="page"{% endif %}>{{ label }} <span class="muted">{{ counts[k] }}</span></a>{% endfor %}
+</nav>
+
+<section class="card">
+  <form method="get" action="/categories" class="cat-tools" role="search">
+    <input type="hidden" name="kind" value="{{ kind }}">
+    <input type="search" name="q" value="{{ q }}" placeholder="{{ _("Filter …") }}" aria-label="{{ _("Filter") }}" data-filter="#cat-list" autocomplete="off">
+    <select name="sort" aria-label="{{ _("Sort order") }}" data-autosubmit>
+      <option value="name"{% if sort == 'name' %} selected{% endif %}>{{ _("by name") }}</option>
+      <option value="count"{% if sort == 'count' %} selected{% endif %}>{{ _("by number of documents") }}</option>
+      <option value="rare"{% if sort == 'rare' %} selected{% endif %}>{{ _("least used first") }}</option>
+    </select>
+    <noscript><button>{{ _("Show") }}</button></noscript>
+  </form>
+  <p class="hint">{{ _("Merging moves all documents over; the old name stays as an alias and is recognized in search and classification.") }}</p>
+
+  <ul class="plain cat-list" id="cat-list">
+  {% for t in terms %}
+    <li data-name="{{ (t.name ~ ' ' ~ (t.aliases | join(' '))) | lower }}" id="t{{ t.id }}">
+      <div class="cat-row">
+        <span class="cat-name">{{ t.name }}{% if t.origin == 'ai' %} <span class="badge" title="{{ _("created by the AI") }}">{{ _("AI") }}</span>{% endif %}
+          {% if t.aliases %}<span class="small muted">· {{ _("also: %(aliases)s", aliases=t.aliases | join(', ')) }}</span>{% endif %}</span>
+        <a class="cat-count small" href="/?{{ param }}={{ t.name | urlencode }}" title="{{ _("Show documents") }}">{{ ngettext("%(num)d doc.", "%(num)d docs.", t.doc_count) }}</a>
+      </div>
+      <details class="cat-edit"{% if open == t.id %} open{% endif %}><summary class="small">{{ _("Edit") }}</summary>
+        <div class="cat-forms">
+          <form method="post" action="/categories/action" class="inline-form">{{ csrf_field(csrf) }}{{ ctx(t) }}
+            <input name="name" value="{{ t.name }}" required aria-label="{{ _("New name") }}"><button name="action" value="term_rename">{{ _("Rename") }}</button></form>
+          <form method="post" action="/categories/action" class="inline-form" data-confirm="{{ ngettext("Merge “%(name)s”? %(num)d document will be moved over.", "Merge “%(name)s”? All %(num)d documents will be moved over.", t.doc_count, name=t.name) }}">{{ csrf_field(csrf) }}{{ ctx(t) }}
+            <input name="into" list="dl-terms" required placeholder="{{ _("Merge with …") }}" aria-label="{{ _("Merge with") }}"><button name="action" value="term_merge">{{ pgettext("categories", "Merge") }}</button></form>
+          <form method="post" action="/categories/action" class="inline-form">{{ csrf_field(csrf) }}{{ ctx(t) }}
+            <input name="alias" required placeholder="{{ _("another spelling") }}" aria-label="{{ _("Alias") }}"><button name="action" value="alias_add">+ {{ _("Alias") }}</button></form>
+          {% for al in t.aliases %}<form method="post" action="/categories/action" class="inline">{{ csrf_field(csrf) }}{{ ctx(t) }}<input type="hidden" name="alias" value="{{ al }}">
+            <span class="tag">{{ al }} <button class="linklike" name="action" value="alias_remove" title="{{ _("Remove alias") }}" aria-label="{{ _("Remove alias %(alias)s", alias=al) }}">×</button></span></form>{% endfor %}
+          <form method="post" action="/categories/action" class="inline" data-confirm="{{ ngettext("Delete “%(name)s”? It will be removed from %(num)d document.", "Delete “%(name)s”? It will be removed from %(num)d documents.", t.doc_count, name=t.name) }}">{{ csrf_field(csrf) }}{{ ctx(t) }}
+            <button name="action" value="term_delete" class="linklike danger-text">{{ _("Delete") }}</button></form>
+        </div>
+      </details>
+    </li>
+  {% else %}
+    <li class="muted">{{ _("No entries.") }}</li>
+  {% endfor %}
+  </ul>
+  <p class="muted small" id="cat-none" hidden>{{ _("Nothing found.") }}</p>
+  <datalist id="dl-terms">{% for t in all_terms %}<option value="{{ t.name }}">{% endfor %}</datalist>
+
+  <form method="post" action="/categories/action" class="inline-form cat-new">{{ csrf_field(csrf) }}
+    <input type="hidden" name="kind" value="{{ kind }}">
+    <input name="name" placeholder="{{ _("New entry") }}" required aria-label="{{ _("New entry") }}">
+    <button name="action" value="term_create">{{ _("Create") }}</button></form>
+</section>
+{% endblock %}

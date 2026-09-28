@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% from "_macros.html" import time, csrf_field, provider_line %}
+{% block title %}{{ _("Settings") }}{% endblock %}
+{% block content %}
+<div class="page-head"><h1>{{ _("Settings") }}</h1>
+  <form method="post" action="/logout" class="logout">
+    <input type="hidden" name="csrf_token" value="{{ csrf }}">
+    <span class="small muted">{{ _("Signed in as %(user)s", user=user.username) }}</span> <button type="submit">{{ _("Sign out") }}</button>
+  </form></div>
+{% if message %}<p class="notice info" role="status">{{ message }}</p>{% endif %}
+{% if new_token %}<p class="notice ok">{{ _("New API token:") }} <code class="hash">{{ new_token }}</code></p>{% endif %}
+
+<section class="card" aria-labelledby="prov-h">
+  <h2 id="prov-h">{{ _("AI and OCR providers") }}</h2>
+  <table>
+    <thead><tr><th>{{ _("Task") }}</th><th>{{ _("Provider · model → target") }}</th><th>{{ _("Key") }}</th></tr></thead>
+    <tbody>
+    {% for task, p in providers.items() %}
+      <tr><td>{{ _("Text recognition (OCR)") if task == 'ocr' else pgettext("settings task", "Classification") }}</td>
+        <td>{{ provider_line(p) }}{% if p.blocked %}<br><span class="small error-text">{{ p.blocked }}</span>{% endif %}</td>
+        <td>{% if p.api_key_configured is none %}–{% elif p.api_key_configured %}{{ _("set") }}{% else %}<span class="error-text">{{ _("missing") }}</span>{% endif %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="buttons"><a class="button" href="/settings/ai">{{ _("Change AI") }}</a> <a class="button" href="/settings/mail">{{ _("E-mail import") }}</a> <a class="button" href="/settings/scanner">{{ _("Scanner and phone") }}</a></p>
+  <p class="hint">{{ _("Cloud OCR and cloud classification are separate and off until you switch them on.") }}
+    {{ _("Keys are never shown, logged or exported.") }}</p>
+</section>
+
+<section class="card" aria-labelledby="trash-h">
+  <h2 id="trash-h">{{ _("Trash") }}</h2>
+  <p>{{ ngettext("Deleted documents can be restored for %(num)d day.", "Deleted documents can be restored for %(num)d days.", s.trash_retention_days) }} <a href="/trash">{{ _("Open trash") }}</a></p>
+</section>
+
+<section class="card" aria-labelledby="titles-h">
+  <h2 id="titles-h">{{ _("Consistent titles") }}</h2>
+  <p>{{ _("Get consistent titles suggested for similar documents (e.g. all account statements following the same pattern) and apply them after review.") }} <a href="/titles">{{ _("Go to overview") }}</a></p>
+</section>
+
+<section class="card" aria-labelledby="tax-h">
+  <h2 id="tax-h">{{ _("Categories") }}</h2>
+  <p>{{ ngettext("%(num)d sender", "%(num)d senders", terms.correspondent | length) }} · {{ ngettext("%(num)d document type", "%(num)d document types", terms.document_type | length) }} · {{ ngettext("%(num)d tag", "%(num)d tags", terms.tag | length) }}</p>
+  <p><a class="button" href="/categories">{{ _("Edit, merge, clean up") }}</a></p>
+</section>
+
+<section class="card" aria-labelledby="in-h">
+  <h2 id="in-h">{{ _("Scanner folder and email") }}</h2>
+  <dl class="kv">
+    <dt>{{ _("Incoming folder") }}</dt><dd><code>{{ s.consume_path }}</code> · {{ _("checked every %(num)s s", num=s.consume_poll_seconds) }} · {{ _("Status: %(status)s", status=(status.consume_status or '–') | reason) }}</dd>
+    <dt>{{ _("Local incoming folder") }}</dt><dd>{% if s.folder_path %}<code>{{ s.folder_path }}</code> · {{ _("digital files (source “Folder”, no paper filing)") }} · {{ _("Status: %(status)s", status=(status.folder_status or '–') | reason) }}{% else %}{{ _("not set up") }} (<code>HEFTIG_FOLDER_DIR</code>){% endif %}</dd>
+    <dt>{{ _("After import") }}</dt><dd>{{ _("delete source file") if s.consume_after == 'delete' else _("move to subfolder") }}</dd>
+    <dt>{{ _("Automatically marked as filed") }}</dt><dd>{{ s.auto_file_sources or _("no") }}</dd>
+    <dt>IMAP</dt><dd>{% if s.imap_host %}{{ _("%(user)s @ %(host)s:%(port)s (TLS), folder %(mailbox)s, every %(minutes)s min", user=s.imap_user, host=s.imap_host, port=s.imap_port, mailbox=s.imap_mailbox, minutes=s.imap_poll_seconds // 60) }}{% else %}{{ _("not set up") }}{% endif %}</dd>
+    {% for st in status.imap %}<dt>{{ _("Last check") }}</dt><dd>{{ time(st.last_poll_at) }} · UID {{ st.last_uid }}{% if st.last_error %} · <span class="error-text">{{ st.last_error | reason }}</span>{% endif %}</dd>{% endfor %}
+  </dl>
+  <p class="hint">{% trans %}Configured with environment variables, instructions in <code>docs/scanner-imap.md</code>.{% endtrans %} {% trans %}Save multi-page letters as <em>one</em> PDF file on the scanner.{% endtrans %}</p>
+</section>
+
+<section class="card" aria-labelledby="exp-h">
+  <h2 id="exp-h">{{ _("Export, backup, index") }}</h2>
+  <dl class="kv">
+    <dt>{{ _("Documents") }}</dt><dd>{{ status.documents }}</dd>
+    <dt>{{ _("Last export") }}</dt><dd>{{ time(status.last_export_at) or '–' }} {{ status.last_export_path or '' }}</dd>
+    <dt>{{ _("Last backup") }}</dt><dd>{{ time(status.last_backup_at) or '–' }}</dd>
+    <dt>{{ _("Last DB snapshot") }}</dt><dd>{{ time(status.last_db_snapshot_at) or '–' }}</dd>
+  </dl>
+  <form method="post" action="/settings/action" class="buttons">{{ csrf_field(csrf) }}
+    <label><input type="checkbox" name="zip"> {{ _("as ZIP") }}</label>
+    <button name="action" value="export">{{ _("Create export") }}</button>
+    <button name="action" value="snapshot">{{ _("DB snapshot for backup software") }}</button>
+    <button name="action" value="reindex">{{ _("Rebuild search index") }}</button>
+  </form>
+  <p class="hint">{% trans %}Exports go to <code>archive/exports/</code> (open format, without passwords/tokens).{% endtrans %} {% trans %}Full backup: <code>heftig backup TARGET</code>, see <code>docs/operations.md</code>.{% endtrans %}</p>
+</section>
+
+<section class="card" aria-labelledby="all-h">
+  <h2 id="all-h">{{ _("Reprocess all documents") }}</h2>
+  <p class="small">OCR: {{ provider_line(providers.ocr) }} · {{ _("Classification:") }} {{ provider_line(providers.classify) }}</p>
+  <form method="post" action="/inbox/action" class="buttons" data-confirm="{{ _("Really reprocess all documents? This can take a while and sends data to the cloud provider (cost).") if providers.ocr.cloud or providers.classify.cloud else _("Really reprocess all documents? This can take a while.") }}">
+    {{ csrf_field(csrf) }}
+    <button name="action" value="reprocess_all_extract">{{ _("Redo text recognition for all documents") }}</button>
+    <button name="action" value="reprocess_all_classify">{{ _("Reclassify all") }}</button>
+  </form>
+  <p class="hint">{{ _("Locked fields and manual tag decisions are kept.") }}</p>
+</section>
+
+<section class="card" aria-labelledby="tok-h">
+  <h2 id="tok-h">{{ _("API tokens") }}</h2>
+  <table>
+    <thead><tr><th>{{ _("Name") }}</th><th>{{ _("Starts with") }}</th><th>{{ _("Permissions") }}</th><th>{{ _("Created") }}</th><th>{{ _("Last used") }}</th><th></th></tr></thead>
+    <tbody>
+    {% for t in tokens %}
+      <tr><td>{{ t.name }}</td><td><code>{{ t.token_prefix }}…</code></td><td>{{ _("read only") if t.scope == 'read' else _("full") }}</td><td>{{ time(t.created_at) }}</td><td>{{ time(t.last_used_at) or '–' }}</td>
+        <td>{% if t.revoked_at %}{{ _("revoked") }}{% else %}<form method="post" action="/settings/action">{{ csrf_field(csrf) }}<input type="hidden" name="token_id" value="{{ t.id }}"><button name="action" value="token_revoke" class="secondary">{{ _("Revoke") }}</button></form>{% endif %}</td></tr>
+    {% else %}<tr><td colspan="6" class="muted">{{ _("No tokens.") }}</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  <form method="post" action="/settings/action" class="inline-form">{{ csrf_field(csrf) }}
+    <input name="name" placeholder="{{ _("Name, e.g. Claude") }}" required aria-label="{{ _("Token name") }}">
+    <label class="inline"><input type="checkbox" name="read_only" value="1" checked> {{ _("read only") }}</label>
+    <button name="action" value="token_create">{{ _("Create token") }}</button></form>
+  <p class="hint">{% trans %}“Read only” is enough for the connection to Claude (<code>heftig mcp</code>, see <code>docs/mcp.md</code>): the token can search and read, but not change or delete anything.{% endtrans %}</p>
+  <p class="hint">{{ _("API documentation:") }} <a href="/api/docs">/api/docs</a></p>
+</section>
+
+<section class="card small">
+  <h2>{{ _("Note") }}</h2>
+  <p>{{ _("Heftig is not a tamper-proof or legally certified archive.") }} {{ _("Originals are kept byte for byte and checked with SHA-256; retention obligations come with additional requirements.") }}</p>
+</section>
+{% endblock %}

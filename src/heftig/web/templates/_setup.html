@@ -1,0 +1,23 @@
+{% macro steps_bar(steps, step) -%}
+<ol class="setup-steps" aria-label="{{ _('Setup steps') }}">
+  <li class="done">{{ _("Account") }}</li>
+  {% set names = {"ai": _("AI"), "mail": _("E-mail"), "scanner": _("Scanner")} %}
+  {% set ns = namespace(seen=false) %}
+  {% for name, url in steps %}
+    {% if name == step %}{% set ns.seen = true %}<li aria-current="step">{{ names[name] }}</li>
+    {% elif not ns.seen %}<li class="done"><a href="{{ url }}?setup=1">{{ names[name] }}</a></li>
+    {% else %}<li>{{ names[name] }}</li>{% endif %}
+  {% endfor %}
+</ol>
+{%- endmacro %}
+
+{% macro head(wizard, steps, step, title, message, error) -%}
+{% if wizard %}{{ steps_bar(steps, step) }}{% else %}<nav class="crumbs"><a href="/settings">← {{ _("Settings") }}</a></nav>{% endif %}
+<h1>{{ title }}</h1>
+{% if message %}<p class="notice ok" role="status">{{ message }}</p>{% endif %}
+{% if error %}<p class="notice error" role="alert">{{ error }}</p>{% endif %}
+{%- endmacro %}
+
+{% macro locked_note(locked) -%}
+{% if locked %}<p class="notice warn">{{ _("Some of these settings come from the server's environment variables (.env) and can only be changed there.") }}</p>{% endif %}
+{%- endmacro %}

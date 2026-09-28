@@ -1,0 +1,823 @@
+{
+  "$defs": {
+    "Attachment": {
+      "additionalProperties": false,
+      "description": "An additional file belonging to a document. Stored byte-identical next to the originals,\ncontent-addressed: originals/attachments/<sha256[:2]>/<sha256>.<ext> (shared if the same file\nis attached to several documents).",
+      "properties": {
+        "id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "filename": {
+          "title": "Filename",
+          "type": "string"
+        },
+        "mime_type": {
+          "title": "Mime Type",
+          "type": "string"
+        },
+        "size_bytes": {
+          "title": "Size Bytes",
+          "type": "integer"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "relpath": {
+          "title": "Relpath",
+          "type": "string"
+        },
+        "added_at": {
+          "title": "Added At",
+          "type": "string"
+        },
+        "description": {
+          "default": "",
+          "maxLength": 500,
+          "title": "Description",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "filename",
+        "mime_type",
+        "size_bytes",
+        "sha256",
+        "relpath",
+        "added_at"
+      ],
+      "title": "Attachment",
+      "type": "object"
+    },
+    "CustomField": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "enum": [
+            "string",
+            "number",
+            "monetary",
+            "date",
+            "boolean"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Value"
+        },
+        "currency": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Z]{3}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Currency"
+        }
+      },
+      "required": [
+        "type",
+        "value"
+      ],
+      "title": "CustomField",
+      "type": "object"
+    },
+    "HistoryEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "task": {
+          "enum": [
+            "extract",
+            "classify",
+            "edit",
+            "filing",
+            "import",
+            "merge",
+            "note",
+            "attachment"
+          ],
+          "title": "Task",
+          "type": "string"
+        },
+        "at": {
+          "title": "At",
+          "type": "string"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string"
+        },
+        "provider": {
+          "default": "",
+          "title": "Provider",
+          "type": "string"
+        },
+        "model": {
+          "default": "",
+          "title": "Model",
+          "type": "string"
+        },
+        "target": {
+          "default": "",
+          "title": "Target",
+          "type": "string"
+        },
+        "adapter_version": {
+          "default": "",
+          "title": "Adapter Version",
+          "type": "string"
+        },
+        "prompt_version": {
+          "default": "",
+          "title": "Prompt Version",
+          "type": "string"
+        },
+        "fields": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Fields",
+          "type": "array"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Error"
+        },
+        "by": {
+          "anyOf": [
+            {
+              "enum": [
+                "ai",
+                "user",
+                "import",
+                "rule"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "system",
+              "type": "string"
+            }
+          ],
+          "default": "system",
+          "title": "By"
+        }
+      },
+      "required": [
+        "task",
+        "at",
+        "status"
+      ],
+      "title": "HistoryEntry",
+      "type": "object"
+    },
+    "IngestEvent": {
+      "additionalProperties": false,
+      "description": "One arrival of this file. A duplicate upload adds an event instead of a new original.",
+      "properties": {
+        "at": {
+          "title": "At",
+          "type": "string"
+        },
+        "source": {
+          "enum": [
+            "scanner",
+            "folder",
+            "web",
+            "api",
+            "email",
+            "import"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "source_details": {
+          "additionalProperties": true,
+          "title": "Source Details",
+          "type": "object"
+        },
+        "original_filename": {
+          "default": "",
+          "title": "Original Filename",
+          "type": "string"
+        },
+        "result": {
+          "enum": [
+            "created",
+            "duplicate",
+            "imported"
+          ],
+          "title": "Result",
+          "type": "string"
+        }
+      },
+      "required": [
+        "at",
+        "source",
+        "result"
+      ],
+      "title": "IngestEvent",
+      "type": "object"
+    },
+    "Note": {
+      "additionalProperties": false,
+      "description": "A user comment on a document. Never changed by processing or AI.",
+      "properties": {
+        "id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "at": {
+          "title": "At",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 20000,
+          "title": "Text",
+          "type": "string"
+        },
+        "updated_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Updated At"
+        }
+      },
+      "required": [
+        "id",
+        "at",
+        "text"
+      ],
+      "title": "Note",
+      "type": "object"
+    },
+    "ScanSessionRef": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "mode": {
+          "enum": [
+            "folder",
+            "refile",
+            "sort"
+          ],
+          "title": "Mode",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "mode"
+      ],
+      "title": "ScanSessionRef",
+      "type": "object"
+    },
+    "Suggestion": {
+      "additionalProperties": false,
+      "description": "An AI proposal that was not applied automatically (locked, uncertain or ambiguous).",
+      "properties": {
+        "field": {
+          "title": "Field",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "confidence": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confidence"
+        }
+      },
+      "required": [
+        "field",
+        "value",
+        "reason"
+      ],
+      "title": "Suggestion",
+      "type": "object"
+    },
+    "TagOverrides": {
+      "additionalProperties": false,
+      "properties": {
+        "added": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Added",
+          "type": "array"
+        },
+        "removed": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Removed",
+          "type": "array"
+        }
+      },
+      "title": "TagOverrides",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "id": {
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Sha256",
+      "type": "string"
+    },
+    "original_filename": {
+      "title": "Original Filename",
+      "type": "string"
+    },
+    "original_relpath": {
+      "title": "Original Relpath",
+      "type": "string"
+    },
+    "mime_type": {
+      "title": "Mime Type",
+      "type": "string"
+    },
+    "size_bytes": {
+      "title": "Size Bytes",
+      "type": "integer"
+    },
+    "page_count": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Page Count"
+    },
+    "source": {
+      "enum": [
+        "scanner",
+        "folder",
+        "web",
+        "api",
+        "email",
+        "import"
+      ],
+      "title": "Source",
+      "type": "string"
+    },
+    "source_details": {
+      "additionalProperties": true,
+      "title": "Source Details",
+      "type": "object"
+    },
+    "received_at": {
+      "title": "Received At",
+      "type": "string"
+    },
+    "ingest_sequence": {
+      "title": "Ingest Sequence",
+      "type": "integer"
+    },
+    "paper": {
+      "default": false,
+      "title": "Paper",
+      "type": "boolean"
+    },
+    "document_date": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Document Date"
+    },
+    "document_date_status": {
+      "default": "unknown",
+      "enum": [
+        "unknown",
+        "ai",
+        "ai_uncertain",
+        "user",
+        "import",
+        "none_found"
+      ],
+      "title": "Document Date Status",
+      "type": "string"
+    },
+    "document_date_reason": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Document Date Reason"
+    },
+    "filed_at": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Filed At"
+    },
+    "filing_sequence": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Filing Sequence"
+    },
+    "filing_section": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Filing Section"
+    },
+    "title": {
+      "default": "",
+      "title": "Title",
+      "type": "string"
+    },
+    "correspondent": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Correspondent"
+    },
+    "document_type": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Document Type"
+    },
+    "tags": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Tags",
+      "type": "array"
+    },
+    "summary": {
+      "default": "",
+      "title": "Summary",
+      "type": "string"
+    },
+    "custom_fields": {
+      "additionalProperties": {
+        "$ref": "#/$defs/CustomField"
+      },
+      "title": "Custom Fields",
+      "type": "object"
+    },
+    "field_locks": {
+      "additionalProperties": {
+        "type": "boolean"
+      },
+      "title": "Field Locks",
+      "type": "object"
+    },
+    "field_sources": {
+      "additionalProperties": {
+        "enum": [
+          "ai",
+          "user",
+          "import",
+          "rule"
+        ],
+        "type": "string"
+      },
+      "title": "Field Sources",
+      "type": "object"
+    },
+    "tag_overrides": {
+      "$ref": "#/$defs/TagOverrides"
+    },
+    "suggestions": {
+      "items": {
+        "$ref": "#/$defs/Suggestion"
+      },
+      "title": "Suggestions",
+      "type": "array"
+    },
+    "status": {
+      "default": "queued",
+      "enum": [
+        "queued",
+        "processing",
+        "done",
+        "needs_review",
+        "failed"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "text_status": {
+      "default": "pending",
+      "enum": [
+        "pending",
+        "ok",
+        "partial",
+        "failed",
+        "empty"
+      ],
+      "title": "Text Status",
+      "type": "string"
+    },
+    "review_reasons": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Review Reasons",
+      "type": "array"
+    },
+    "ingest_events": {
+      "items": {
+        "$ref": "#/$defs/IngestEvent"
+      },
+      "title": "Ingest Events",
+      "type": "array"
+    },
+    "not_duplicate_of": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Not Duplicate Of",
+      "type": "array"
+    },
+    "ai_pending": {
+      "items": {
+        "enum": [
+          "extract",
+          "classify"
+        ],
+        "type": "string"
+      },
+      "title": "Ai Pending",
+      "type": "array"
+    },
+    "ocr_all_pages": {
+      "default": false,
+      "title": "Ocr All Pages",
+      "type": "boolean"
+    },
+    "scan_session": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ScanSessionRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "paper_location": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Paper Location"
+    },
+    "paper_discarded_at": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Paper Discarded At"
+    },
+    "keep_original": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Keep Original"
+    },
+    "keep_original_reason": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Keep Original Reason"
+    },
+    "keep_original_source": {
+      "anyOf": [
+        {
+          "enum": [
+            "ai",
+            "rule",
+            "user"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Keep Original Source"
+    },
+    "trashed_at": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Trashed At"
+    },
+    "trash_reason": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Trash Reason"
+    },
+    "trash_batch": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Trash Batch"
+    },
+    "notes": {
+      "items": {
+        "$ref": "#/$defs/Note"
+      },
+      "title": "Notes",
+      "type": "array"
+    },
+    "attachments": {
+      "items": {
+        "$ref": "#/$defs/Attachment"
+      },
+      "title": "Attachments",
+      "type": "array"
+    },
+    "processing_history": {
+      "items": {
+        "$ref": "#/$defs/HistoryEntry"
+      },
+      "title": "Processing History",
+      "type": "array"
+    },
+    "revision": {
+      "default": 1,
+      "title": "Revision",
+      "type": "integer"
+    },
+    "updated_at": {
+      "title": "Updated At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "sha256",
+    "original_filename",
+    "original_relpath",
+    "mime_type",
+    "size_bytes",
+    "source",
+    "received_at",
+    "ingest_sequence",
+    "updated_at"
+  ],
+  "title": "DocumentMetadata",
+  "type": "object"
+}

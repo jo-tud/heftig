@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="{{ lang() }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>{% block title %}Heftig{% endblock %} · Heftig</title>
+  <link rel="stylesheet" href="/static/app.css?v={{ asset_v }}">
+  <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/static/icon-192.png">
+  <meta name="theme-color" content="#2f5d50">
+  <script src="/static/i18n.js?v={{ asset_v }}"></script>
+  <script src="/static/privacy-init.js?v={{ asset_v }}"></script>
+  <script src="/static/app.js?v={{ asset_v }}" defer></script>
+  <script src="/static/privacy.js?v={{ asset_v }}" defer></script>
+</head>
+<body data-csrf="{{ csrf }}">
+{% set _jsm = js_messages() %}{% if _jsm %}<script type="application/json" id="i18n-messages">{{ _jsm | tojson }}</script>{% endif %}
+<a class="skip" href="#main">{{ _("Skip to content") }}</a>
+{% if user %}
+<header class="topbar">
+  <a class="brand" href="/" aria-label="{{ _("Heftig – home") }}"><span class="logo" aria-hidden="true">▤</span> Heftig</a>
+  <nav class="mainnav" aria-label="{{ _("Main navigation") }}">
+    <a href="/" {% if nav == 'documents' %}aria-current="page"{% endif %}><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l5 5v13H7z M14 3v5h5 M10 13h6 M10 17h6"/></svg><span>{{ _("Documents") }}</span></a>
+    <a href="/inbox" {% if nav == 'inbox' %}aria-current="page"{% endif %}><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13l2.5-8h11L20 13v6H4z M4 13h5l1 2h4l1-2h5"/></svg><span>{{ _("Inbox") }}</span>{% if inbox_count %}<span class="badge-count" aria-label="{{ _("%(num)s open", num=inbox_count) }}">{{ inbox_count if inbox_count < 1000 else '999+' }}</span>{% endif %}</a>
+    <a href="/upload" {% if nav in ('upload', 'scan') %}aria-current="page"{% endif %}><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14 M5 12h14"/></svg><span>{{ _("Add") }}</span></a>
+  </nav>
+  <div class="utility">
+    <button id="privacy-toggle" type="button" class="privacy-toggle" aria-pressed="true">{{ _("Private: on") }}</button>
+    <a href="/settings" class="settings-link" title="{{ _("Settings") }}" {% if nav == 'settings' %}aria-current="page"{% endif %}><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span class="label">{{ _("Settings") }}</span></a>
+  </div>
+</header>
+{% endif %}
+<main id="main" tabindex="-1">
+{% if undo and user %}
+<form method="post" action="/trash/action" class="undo-bar" role="status">
+  <input type="hidden" name="csrf_token" value="{{ csrf }}"><input type="hidden" name="target" value="{{ undo }}">
+  <span>{{ undo_label or _("Moved to the trash.") }}</span>
+  <button name="action" value="restore" class="primary">{{ _("Undo") }}</button>
+  <a href="/trash" class="small">{{ _("Trash") }}</a>
+</form>
+{% endif %}
+{% block content %}{% endblock %}
+</main>
+</body>
+</html>

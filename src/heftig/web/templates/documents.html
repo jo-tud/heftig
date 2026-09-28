@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_badge, time, csrf_field %}
+{% block title %}{{ _("Documents") }}{% endblock %}
+{% block content %}
+<script src="/static/search.js?v={{ asset_v }}" defer></script>
+<script type="application/json" id="saved-data">{{ saved_searches | tojson }}</script>
+<form class="search" method="get" action="/" role="search" id="search-form">
+  {% for k, val in v.keep %}<input type="hidden" name="{{ k }}" value="{{ val }}">{% endfor %}
+  <div class="searchbar">
+    <div class="combo">
+      <label class="sr-only" for="q">{{ pgettext("search box", "Search") }}</label>
+      <input id="q" name="q" type="search" value="{{ params.q }}" autocomplete="off" enterkeyhint="search"
+             placeholder="{{ _("Search: sender, keyword, number, “March 2025” … (key /)") }}"
+             role="combobox" aria-expanded="false" aria-controls="suggest" aria-autocomplete="list">
+      <div id="suggest" class="suggest" role="listbox" aria-label="{{ _("Suggestions") }}" hidden></div>
+    </div>
+    <button type="submit" class="primary">{{ _("Search") }}</button>
+    {% if ai_available %}<button type="submit" formaction="/ai-search" class="ai-btn" title="{{ _("Search in your own words – the AI turns them into filters (Ctrl+Enter)") }}">{{ _("✦ AI") }}</button>{% endif %}
+  </div>
+</form>
+
+<div class="search-layout">
+<aside class="facets" id="facets" aria-label="{{ _("Filters") }}" tabindex="-1">
+  <div class="sheet-head">
+    <strong>{{ _("Filters") }}</strong>
+    {% if v.active %}<a href="{{ v.without_filters }}" class="small">{{ _("Remove all") }}</a>{% endif %}
+    <button type="button" class="sheet-close" data-sheet-close aria-label="{{ _("Close filters") }}">×</button>
+  </div>
+
+  <section class="facet" aria-labelledby="f-date">
+    <h2 id="f-date">{{ _("Date range") }} <span class="muted small">({{ _("Document date") }})</span></h2>
+    <div class="presets">
+      {% for pr in v.timeline.presets %}<a class="pill{% if pr.on %} on{% endif %}" href="{% if pr.on %}{{ v.timeline.reset }}{% else %}{{ pr.href }}{% endif %}"{% if pr.on %} aria-current="true"{% endif %}>{{ pr.label }}</a>{% endfor %}
+    </div>
+    {% if v.timeline.bars %}
+    <div class="timeline{% if v.timeline.year %} months{% endif %}" role="list" aria-label="{% if v.timeline.year %}{{ _("Documents per month %(year)s", year=v.timeline.year) }}{% else %}{{ _("Documents per year") }}{% endif %}">
+      {% for b in v.timeline.bars %}<a role="listitem" class="bar h{{ (b.h * 10) | round | int }}{% if b.on %} on{% endif %}{% if not b.count %} zero{% endif %}" href="{{ b.href }}" title="{{ b.title }}: {{ ngettext("%(num)d document", "%(num)d documents", b.count) }}"><span class="fill"></span><span class="lbl">{{ b.label }}</span><span class="sr-only">{{ b.title }}: {{ b.count }}</span></a>{% endfor %}
+    </div>
+    {% endif %}
+    <p class="small facet-links">
+      {% if v.timeline.up %}<a href="{{ v.timeline.up.href }}">← {{ v.timeline.up.label }}</a>{% endif %}
+      {% if v.timeline.active %}<a href="{{ v.timeline.reset }}">{{ _("Remove date range") }}</a>{% endif %}
+      {% if v.undated %}<span class="muted">{{ _("%(num)s without a date", num=v.undated) }}</span>{% endif %}
+    </p>
+    <details class="range">
+      <summary>{{ _("From – to") }}</summary>
+      <form method="get" action="/" class="range-form">
+        {% for k, val in v.qitems if k not in ('date_from', 'date_to') %}<input type="hidden" name="{{ k }}" value="{{ val }}">{% endfor %}
+        <input type="date" name="date_from" value="{{ params.date_from if params.date_from and params.date_from|length == 10 else '' }}" aria-label="{{ _("Document date from") }}">
+        <input type="date" name="date_to" value="{{ params.date_to if params.date_to and params.date_to|length == 10 else '' }}" aria-label="{{ _("Document date to") }}">
+        <button type="submit">OK</button>
+      </form>
+    </details>
+  </section>
+
+  {% for title, g in v.groups %}
+  {% if g['values'] %}
+  <section class="facet" aria-labelledby="f-{{ g.key }}">
+    <h2 id="f-{{ g.key }}">{{ title }}</h2>
+    <ul class="facet-list">
+      {% for x in g['values'][:8] %}<li><a class="fv{% if x.on %} on{% endif %}" href="{{ x.href }}"{% if x.on %} aria-current="true"{% endif %}><span class="fv-l">{{ x.label }}</span><span class="fv-n">{{ x.count }}</span></a></li>{% endfor %}
+    </ul>
+    {% if g.more %}<details class="more"><summary>{{ _("%(num)s more", num=g.more) }}</summary><ul class="facet-list">
+      {% for x in g['values'][8:] %}<li><a class="fv{% if x.on %} on{% endif %}" href="{{ x.href }}"><span class="fv-l">{{ x.label }}</span><span class="fv-n">{{ x.count }}</span></a></li>{% endfor %}
+    </ul></details>{% endif %}
+  </section>
+  {% endif %}
+  {% endfor %}
+
+  {% if v.tags['values'] %}
+  <section class="facet" aria-labelledby="f-tag">
+    <h2 id="f-tag">{{ _("Tags") }}</h2>
+    {% if v.tags['values']|length > 12 %}<input type="search" class="tag-filter" placeholder="{{ _("Filter tags…") }}" aria-label="{{ _("Filter tags") }}" hidden>{% endif %}
+    <div class="tag-cloud" role="list">
+      {% for x in v.tags['values'] %}<a role="listitem" class="tv{% if x.on %} on{% endif %}" href="{{ x.href }}"{% if x.on %} aria-current="true"{% endif %} data-name="{{ x.label | lower }}">{{ x.label }} <span class="fv-n">{{ x.count }}</span></a>{% endfor %}
+    </div>
+    {% if v.tag_mode.show %}
+    <p class="segmented small" role="group" aria-label="{{ _("How tags are combined") }}">
+      <a href="{{ v.tag_mode.all }}" class="{% if v.tag_mode.value == 'all' %}on{% endif %}">{{ _("all tags") }}</a><a href="{{ v.tag_mode.any }}" class="{% if v.tag_mode.value == 'any' %}on{% endif %}">{{ _("at least one") }}</a>
+    </p>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  {% if v.sources['values']|length > 1 or v.sources['values'] and v.sources['values'][0].on %}
+  <section class="facet" aria-labelledby="f-source">
+    <h2 id="f-source">{{ _("Source") }}</h2>
+    <ul class="facet-list">
+      {% for x in v.sources['values'] %}<li><a class="fv{% if x.on %} on{% endif %}" href="{{ x.href }}"><span class="fv-l">{{ x.label }}</span><span class="fv-n">{{ x.count }}</span></a></li>{% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  <details class="facet advanced"{% if params.status or params.filed or params.filing_section or params.cf_key or params.received_from or params.received_to %} open{% endif %}>
+    <summary>{{ _("More filters") }}</summary>
+    {% set adv = ('status', 'filed', 'filing_section', 'cf_key', 'cf_min', 'cf_max', 'received_from', 'received_to') %}
+    <form method="get" action="/">
+      {% for k, val in v.qitems if k not in adv %}<input type="hidden" name="{{ k }}" value="{{ val }}">{% endfor %}
+      <label>{{ _("Status") }}
+        <select name="status"><option value="">{{ _("– all –") }}</option>
+          {% for k, lbl in STATUS_LABELS.items() %}<option value="{{ k }}" {% if k in params.status %}selected{% endif %}>{{ lbl }}</option>{% endfor %}
+        </select></label>
+      <label>{{ _("Paper filed") }}
+        <select name="filed"><option value="">{{ _("– any –") }}</option>
+          <option value="yes" {% if params.filed == 'yes' %}selected{% endif %}>{{ _("yes") }}</option>
+          <option value="no" {% if params.filed == 'no' %}selected{% endif %}>{{ _("no (paper, not filed yet)") }}</option>
+        </select></label>
+      {% if sections %}<label>{{ _("Filing section") }}
+        <select name="filing_section"><option value="">{{ _("– all –") }}</option>
+          {% for s in sections %}<option {% if s == params.filing_section %}selected{% endif %}>{{ s }}</option>{% endfor %}
+        </select></label>{% endif %}
+      {% if cf_keys %}<fieldset class="row"><legend>{{ _("Custom field (number)") }}</legend>
+        <select name="cf_key" aria-label="{{ _("Field") }}"><option value="">{{ _("– field –") }}</option>
+          {% for k in cf_keys %}<option {% if k == params.cf_key %}selected{% endif %}>{{ k }}</option>{% endfor %}
+        </select>
+        <input name="cf_min" inputmode="decimal" placeholder="{{ _("min") }}" value="{{ params.cf_min if params.cf_min is not none else '' }}" aria-label="{{ _("Minimum") }}">
+        <input name="cf_max" inputmode="decimal" placeholder="{{ _("max") }}" value="{{ params.cf_max if params.cf_max is not none else '' }}" aria-label="{{ _("Maximum") }}"></fieldset>{% endif %}
+      <fieldset class="row"><legend>{{ _("Received date") }}</legend>
+        <input type="date" name="received_from" value="{{ params.received_from or '' }}" aria-label="{{ _("Received from") }}">
+        <input type="date" name="received_to" value="{{ params.received_to or '' }}" aria-label="{{ _("Received to") }}"></fieldset>
+      <button type="submit">{{ _("Apply") }}</button>
+    </form>
+    <p class="hint">{% trans trimmed %}Also possible in the search box: <code>"exact phrase"</code>, <code>correspondent:Telekom</code>, <code>type:Invoice</code>,
+      <code>tag:Insurance</code>, <code>year:2025</code>, <code>received:2026-09</code>, <code>source:email</code>,
+      date ranges like “March 2025”, “last year”, “since 2023”.{% endtrans %}</p>
+  </details>
+
+  <div class="sheet-foot">
+    <button type="button" class="primary" data-sheet-close>{{ ngettext("Show %(num)d document", "Show %(num)d documents", result.total) }}</button>
+  </div>
+</aside>
+
+<section class="results-col" aria-label="{{ _("Results") }}">
+  {% if message %}<p class="notice ok" role="status">{{ message }}</p>{% endif %}
+
+  <div class="results-top">
+    <button type="button" class="filter-open" data-sheet-open aria-controls="facets">{{ _("Filters") }}{% if chips %} <span class="badge">{{ chips|length }}</span>{% endif %}</button>
+    {% if chips %}
+    <div class="chips" aria-label="{{ _("Active filters") }}">
+      {% for c in chips %}<a class="chip" href="{{ c.href }}" title="{{ _("Remove filter") }}">{{ c.label }} <span aria-hidden="true">×</span><span class="sr-only"> {{ _("remove") }}</span></a>{% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  {% if ai_query %}
+  <p class="notice info ai-note" role="status">{{ _("✦ AI search “%(query)s”", query=ai_query) }}{% if ai_note %}: {{ ai_note }}{% endif %}
+    <span class="small">– {{ _("remove or change the filters below") }} · <a href="/?{{ {'q': ai_query} | urlencode }}">{{ _("search without AI") }}</a></span></p>
+  {% endif %}
+  {% for e in result.errors %}<p class="notice warn" role="status">{{ e }}</p>{% endfor %}
+  {% if result.date_phrase %}
+  <p class="notice info" role="status">{% trans trimmed label=result.date_phrase.label, text=result.date_phrase.text, url=v.literal_href %}Date range recognized: <strong>{{ label }}</strong> (document date) –
+    <a href="{{ url }}">search for “{{ text }}” as text instead</a>{% endtrans %}</p>
+  {% endif %}
+  {% if result.corrections %}
+  <p class="notice info" role="status">{{ _("Searched with corrected terms:") }}
+    {% for a, b in result.corrections %}<del>{{ a }}</del> → <strong>{{ b }}</strong>{% if not loop.last %}, {% endif %}{% endfor %}</p>
+  {% endif %}
+  {% for n in result.notes %}<p class="notice info" role="status">{{ n }}</p>{% endfor %}
+
+  {% if start_page %}
+  <section class="start" aria-label="{{ _("Quick access") }}">
+    {% if saved_searches %}
+    <h2 class="h-small">{{ _("Saved searches") }}</h2>
+    <ul class="saved-list">
+      {% for s in saved_searches %}<li><a class="pill" href="{{ s.href }}">☆ {{ s.name }}</a><form method="post" action="/searches" class="inline" data-confirm="{{ _("Remove saved search “%(name)s”?", name=s.name) }}">{{ csrf_field(csrf) }}<input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="{{ s.id }}"><button type="submit" class="pill-x" aria-label="{{ _("Remove “%(name)s”", name=s.name) }}" title="{{ _("Remove") }}">×</button></form></li>{% endfor %}
+    </ul>
+    {% endif %}
+    <div id="recent" hidden>
+      <h2 class="h-small">{{ _("Recent searches") }} <button type="button" class="linklike small" id="recent-clear">{{ _("Clear history") }}</button></h2>
+      <ul class="saved-list"></ul>
+    </div>
+  </section>
+  {% endif %}
+
+  <div class="resultinfo" data-recent-label="{{ v.label }}" data-recent-query="{{ v.query }}"{% if start_page %} data-start{% endif %}>
+    <span>{% if params.q %}{% trans num=result.total, q=params.q %}<strong>{{ num }}</strong> document for “{{ q }}”{% pluralize %}<strong>{{ num }}</strong> documents for “{{ q }}”{% endtrans %}{% else %}{% trans num=result.total %}<strong>{{ num }}</strong> document{% pluralize %}<strong>{{ num }}</strong> documents{% endtrans %}{% endif %}
+      <span class="muted">({{ '%.0f' % result.took_ms }} ms)</span></span>
+    <form method="get" action="/" class="sort-form">
+      {% for k, val in v.keep_sort %}<input type="hidden" name="{{ k }}" value="{{ val }}">{% endfor %}
+      <label>{{ _("Sort") }}
+        <select name="sort" data-autosubmit>
+          <option value="">{{ _("automatic") }}</option>
+          {% for k, lbl in [('relevance', _('Relevance')), ('received', _('Received (newest)')), ('document_date', _('Document date')), ('title', _('Title'))] %}
+          <option value="{{ k }}" {% if params.sort == k %}selected{% endif %}>{{ lbl }}</option>{% endfor %}
+        </select></label>
+      <noscript><button type="submit">OK</button></noscript>
+    </form>
+    {% if not start_page and result.total %}<a href="/bulk-delete?{{ v.query }}" class="small bulk-link">{{ _("Delete results…") }}</a>{% endif %}
+    {% if not start_page %}
+      {% if saved_current %}<span class="muted small">★ {{ _("saved as “%(name)s”", name=saved_current.name) }}</span>
+      {% else %}
+      <details class="save-search">
+        <summary>☆ {{ _("Save search") }}</summary>
+        <form method="post" action="/searches">
+          {{ csrf_field(csrf) }}<input type="hidden" name="action" value="save"><input type="hidden" name="query" value="{{ v.query }}">
+          <label class="sr-only" for="save-name">{{ _("Name") }}</label>
+          <input id="save-name" name="name" value="{{ v.label }}" maxlength="80" required>
+          <button type="submit" class="primary">{{ _("Save") }}</button>
+        </form>
+      </details>
+      {% endif %}
+    {% endif %}
+  </div>
+
+  <ol class="results" data-pv>
+  {% for it in result.items %}
+    {% set link = '/documents/' ~ it.id ~ ('?q=' ~ (params.q | urlencode) if params.q else '') %}
+    <li class="result">
+      <a class="thumb" href="{{ link }}" tabindex="-1" aria-hidden="true" data-preview="{{ it.id }}">
+        <img src="/documents/{{ it.id }}/preview.webp?w=72&amp;t={{ THUMB_VERSION }}" srcset="/documents/{{ it.id }}/preview.webp?w=72&amp;t={{ THUMB_VERSION }} 1x, /documents/{{ it.id }}/preview.webp?w=144&amp;t={{ THUMB_VERSION }} 2x, /documents/{{ it.id }}/preview.webp?w=216&amp;t={{ THUMB_VERSION }} 3x" alt="" loading="lazy" width="72" height="100">
+      </a>
+      <div class="body">
+        <h2><a href="{{ link }}">{{ it.title }}</a></h2>
+        <p class="meta">
+          {% if it.correspondent %}<span>{{ it.correspondent }}</span>{% endif %}
+          {% if it.document_type %}<span>{{ it.document_type }}</span>{% endif %}
+          <span title="{{ _("Document date") }}">{% if it.document_date %}📄 {{ it.document_date | date }}{% if it.document_date_status == 'ai_uncertain' %} <span class="badge st-needs_review">{{ _("uncertain") }}</span>{% endif %}{% else %}📄 –{% endif %}</span>
+          <span title="{{ _("Received") }}">📥 {{ time(it.received_at) }}</span>
+          <span>{{ SOURCE_LABELS.get(it.source, it.source) }}</span>
+          {% if it.filed %}<span title="{{ _("Paper filed") }}">🗂 {{ it.filing_section }}</span>{% elif it.paper %}<span class="muted">{{ _("Paper not filed") }}</span>{% endif %}
+          {% if it.status != 'done' %}{{ status_badge(it.status) }}{% endif %}
+        </p>
+        {% if it.tags %}<p class="tags">{% for t in it.tags %}<a class="tag" href="/?tag={{ t | urlencode }}">{{ t }}</a>{% endfor %}</p>{% endif %}
+        {% if it.snippet_html %}<p class="snippet">{{ it.snippet_html | safe }}</p>{% endif %}
+        {% if it.reasons %}<p class="reason">{{ _("Matched in: %(fields)s", fields=it.reasons | join(', ')) }}</p>{% endif %}
+      </div>
+    </li>
+  {% else %}
+    <li class="empty">{{ _("No documents found.") }}
+      {% if v.active %}<br><a href="{{ v.without_filters }}">{{ _("Search without filters") }}</a>{% elif not params.q %} <a href="/upload">{{ _("Upload the first document") }}</a>{% endif %}</li>
+  {% endfor %}
+  </ol>
+
+  {% if page_count > 1 %}
+  <nav class="pager" aria-label="{{ _("Pages") }}">
+    {% if result.page > 1 %}<a href="/?{{ base_qs }}&amp;page={{ result.page - 1 }}" rel="prev">← {{ _("previous") }}</a>{% endif %}
+    <span>{{ _("Page %(page)s of %(pages)s", page=result.page, pages=page_count) }}</span>
+    {% if result.page < page_count %}<a href="/?{{ base_qs }}&amp;page={{ result.page + 1 }}" rel="next">{{ _("next") }} →</a>{% endif %}
+  </nav>
+  {% endif %}
+</section>
+</div>
+<div class="sheet-backdrop" data-sheet-close hidden></div>
+{% endblock %}

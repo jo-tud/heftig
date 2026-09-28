@@ -1,0 +1,77 @@
+name: CI
+# Tests and lint on every push and pull request. On main and on release tags v* the container
+# image is then built for x86-64 and ARM (Raspberry Pi 4/5 and similar) and published:
+# ghcr.io/<owner>/heftig:latest (main), :<version> and :<major.minor> (tags) - only if the
+# tests and the container check passed.
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: System packages (offline OCR)
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-deu tesseract-ocr-eng fonts-dejavu-core
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - run: uv sync --all-extras
+      - run: make lint
+      - run: make test
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t heftig:ci .
+      - name: Container starts, is healthy and offers the setup page
+        run: |
+          docker run -d --name h -p 127.0.0.1:8765:8765 heftig:ci heftig run
+          for i in $(seq 1 30); do curl -fs http://127.0.0.1:8765/ready && break; sleep 1; done
+          token=$(docker exec h cat /archive/setup-token)
+          curl -fs "http://127.0.0.1:8765/setup?token=$token" | grep -q 'name="username"' \
+            || { docker logs h; exit 1; }
+
+  image:
+    needs: [test, docker]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/heftig
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+          labels: |
+            org.opencontainers.image.title=Heftig
+            org.opencontainers.image.description=Self-hosted, portable archive for personal documents
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

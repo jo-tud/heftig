@@ -1,0 +1,17 @@
+.git
+.venv
+.pytest_cache
+.ruff_cache
+archive
+consume
+exports
+backups
+.smoke
+.env
+tests
+docs
+**/__pycache__
+folder
+secrets
+compose.override.yaml
+*.sqlite

@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field %}
+{% block title %}{{ _("Unify titles") }}{% endblock %}
+{% block content %}
+<nav class="crumbs"><a href="/settings">← {{ _("Settings") }}</a></nav>
+<h1>{{ _("Unify titles") }}</h1>
+{% if message %}<p class="notice info" role="status">{{ message }}</p>{% endif %}
+
+{% if job %}
+<section class="card" aria-live="polite">
+  <p><strong>{{ _("Creating suggestions …") }}</strong> {{ _("%(pct)s%%", pct=(job.progress * 100) | number(0)) }}
+    {% if job.status == 'failed' %}<span class="error-text">{{ _("Failed: %(error)s", error=job.error | reason) }}</span>{% endif %}</p>
+  <p><a href="/titles">{{ _("Refresh") }}</a></p>
+</section>
+{% elif groups %}
+<form method="post" action="/titles/action" class="card title-review">
+  {{ csrf_field(csrf) }}
+  <p>{{ ngettext("%(num)d suggestion in %(groups)s groups. Accepted titles count as confirmed by you and are not changed by later reprocessing. Uncheck a title to keep it as it is.", "%(num)d suggestions in %(groups)s groups. Accepted titles count as confirmed by you and are not changed by later reprocessing. Uncheck a title to keep it as it is.", total, groups=groups | length) }}</p>
+  <p class="buttons"><button type="submit" name="action" value="accept" class="primary">{{ _("Accept selected") }}</button>
+    <button type="submit" name="action" value="dismiss" class="secondary" formnovalidate>{{ _("Dismiss all") }}</button></p>
+  {% for g in groups %}
+  <fieldset class="tgroup">
+    <legend>{{ g.label or _("No sender/type") }} <span class="muted small">({{ g['items'] | length }})</span></legend>
+    <table>
+      <thead><tr><th class="sr-only">{{ _("Accept") }}</th><th>{{ _("Current") }}</th><th>{{ _("New") }}</th><th>{{ _("Date") }}</th></tr></thead>
+      <tbody>
+      {% for it in g['items'] %}
+        <tr><td><input type="checkbox" name="doc" value="{{ it.doc_id }}" checked aria-label="{{ _("Accept “%(title)s”", title=it.new_title) }}"></td>
+          <td><a href="/documents/{{ it.doc_id }}" class="muted">{{ it.old_title }}</a></td>
+          <td><strong>{{ it.new_title }}</strong></td>
+          <td class="nowrap small">{{ it.document_date | date if it.document_date else '–' }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </fieldset>
+  {% endfor %}
+  <p class="buttons"><button type="submit" name="action" value="accept" class="primary">{{ _("Accept selected") }}</button></p>
+</form>
+{% else %}
+<section class="card">
+  <p>{{ _("The AI names each document on its own – so similar documents sometimes get different titles (“Account statement checking Q4 2020”, “Account statement Q3 2020 checking account”). Here it suggests consistent titles for all documents with the same sender and type. Nothing is changed until you accept the suggestions; titles you locked stay as they are and serve as examples.") }}</p>
+  {% if not ai %}
+  <p class="notice warn">{{ _("This needs an AI provider for classification (see Settings).") }}</p>
+  {% elif est.documents == 0 %}
+  <p class="muted">{{ _("No classified documents yet.") }}</p>
+  {% else %}
+  {% set requests = ngettext("%(num)d request", "%(num)d requests", est.requests) %}
+  <p>{{ _("Only <strong>title, document date, sender and type name</strong> of %(docs)s documents (%(groups)s groups, %(requests)s) are sent to <strong>%(target)s</strong> (%(model)s) – no document content.", docs=est.documents, groups=est.groups, requests=requests, target=ai.target, model=ai.model) }}
+    {% if est.usd is not none %}{{ _("Estimated cost: about $%(usd)s.", usd=est.usd | number) }}{% endif %}</p>
+  <form method="post" action="/titles/action">{{ csrf_field(csrf) }}
+    <button type="submit" name="action" value="generate" class="primary">{{ _("Create suggestions") }}</button></form>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

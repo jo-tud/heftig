@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% from "_setup.html" import head, locked_note %}
+{% block title %}{{ _("Scanner") }}{% endblock %}
+{% block content %}
+<section class="setup">
+{{ head(wizard, steps, step, _("Scanner and phone"), message, error) }}
+<p>{{ _("There are several ways to get paper into Heftig. Use whichever suits you – they all end up in the same inbox.") }}</p>
+
+<div class="card">
+  <h2>{{ _("Phone or tablet") }}</h2>
+  <p>{% trans %}Open Heftig on the phone and use <a href="/scan">Scan</a>: it finds the page edges, straightens the page and collects several pages into one document.{% endtrans %}</p>
+  <p class="hint">{{ _("The camera only works over HTTPS. The simplest way is Tailscale (free for personal use), see “HTTPS” in docs/operations.md.") }}</p>
+</div>
+
+<div class="card">
+  <h2>{{ _("Scanner: send by e-mail") }}</h2>
+  {% if s.imap_host %}
+  <p>{% trans address=s.imap_user %}Most network scanners can send scans by e-mail. Set <strong>{{ address }}</strong> as the destination and add the scanner's sender address to the allowed senders.{% endtrans %}</p>
+  {% else %}
+  <p>{% trans %}Most network scanners can send scans by e-mail. Set up <a href="/settings/mail">e-mail import</a> first, then use that address as the scanner's destination.{% endtrans %}</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>{{ _("Scanner: save to a folder") }}</h2>
+  <p>{{ _("Heftig imports every PDF or image that appears in its scanner folder and then removes it from there:") }}</p>
+  <p><code class="hash">{{ host_dir or consume_dir }}</code></p>
+  <p class="hint">{{ _("Scanners save to a shared network folder (SMB). Share this folder with your network, or use a scanner app on the computer that saves into it. Files that are still being written are waited for.") }}</p>
+</div>
+
+<form method="post" class="setup-form card">
+  <input type="hidden" name="csrf_token" value="{{ csrf }}">
+  <h2>{{ _("Paper filing") }}</h2>
+  {{ locked_note(locked) }}
+  <label class="choice"><input type="checkbox" name="auto_file" value="1" {% if 'scanner' in s.auto_file_source_set %}checked{% endif %} {% if locked %}disabled{% endif %}>
+    <span>{{ _("I file every scanned letter right away") }}<br><span class="hint">{{ _("Scans from the scanner folder are marked as filed on arrival; Heftig shows where each one lies in the binder (month sections, newest on top). Without it, the inbox asks you to file them.") }}</span></span></label>
+  <p class="buttons"><button type="submit" class="primary">{{ _("Save") if not wizard else _("Finish") }}</button></p>
+</form>
+</section>
+{% endblock %}

@@ -1,0 +1,15 @@
+{% macro status_badge(status) -%}
+<span class="badge st-{{ status }}">{{ STATUS_LABELS.get(status, status) }}</span>
+{%- endmacro %}
+
+{% macro time(value) -%}
+{% if value %}<time datetime="{{ value }}">{{ value | dt }}</time>{% endif %}
+{%- endmacro %}
+
+{% macro csrf_field(csrf) -%}
+<input type="hidden" name="csrf_token" value="{{ csrf }}">
+{%- endmacro %}
+
+{% macro provider_line(p) -%}
+{{ p.provider }}{% if p.model %} · {{ p.model }}{% endif %} → {{ p.target }}{% if p.cloud %} <span class="badge cloud">Cloud</span>{% endif %}{% if p.blocked %} <span class="badge st-failed">{{ _("blocked") }}</span>{% endif %}
+{%- endmacro %}

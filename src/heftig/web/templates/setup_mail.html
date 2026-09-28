@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% from "_setup.html" import head, locked_note %}
+{% block title %}{{ _("E-mail") }}{% endblock %}
+{% block content %}
+<section class="setup">
+{{ head(wizard, steps, step, _("Documents by e-mail"), message, error) }}
+<p>{{ _("Heftig can collect the attachments (PDFs, photos) of e-mails from a mailbox: forward an invoice, or let your scanner send its scans there. Best is an address used only for this, e.g. a new free mailbox or an alias.") }}</p>
+{{ locked_note(locked) }}
+<form method="post" class="setup-form" id="mail-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf }}">
+  <script type="application/json" id="imap-presets">{{ presets_json | safe }}</script>
+  <fieldset {% if locked %}disabled{% endif %}>
+    <legend>{{ _("Mailbox") }}</legend>
+    <label>{{ _("E-mail address (user name)") }} <input name="imap_user" value="{{ form.imap_user }}" autocomplete="off" spellcheck="false"></label>
+    <label>{{ _("Password") }} <input name="imap_password" type="password" autocomplete="off" placeholder="{{ _('stored – enter a new one to replace it') if has_password else '' }}"></label>
+    <p class="hint" id="app-password" hidden>{{ _("This provider needs an app password (created in its security settings), not your normal password.") }}</p>
+    <p class="hint" id="bridge" hidden>{{ _("Proton Mail needs the Proton Mail Bridge running on this computer.") }}</p>
+    <details {% if form.imap_host %}open{% endif %}><summary>{{ _("Server (filled in automatically for common providers)") }}</summary>
+      <label>{{ _("IMAP server") }} <input name="imap_host" value="{{ form.imap_host }}" spellcheck="false" placeholder="imap.example.org"></label>
+      <label>{{ _("Port") }} <input name="imap_port" value="{{ form.imap_port or 993 }}" inputmode="numeric"></label>
+      <label>{{ _("Folder to collect from") }} <input name="imap_mailbox" value="{{ form.imap_mailbox or 'INBOX' }}" spellcheck="false"></label>
+    </details>
+  </fieldset>
+  <fieldset {% if locked %}disabled{% endif %}>
+    <legend>{{ _("Who may send documents?") }}</legend>
+    <label>{{ _("Allowed senders, one per line (an address, or @domain for all of a domain)") }}
+      <textarea name="imap_allowed_senders" rows="3" spellcheck="false" placeholder="me@example.org&#10;@my-scanner.example">{{ form.imap_allowed_senders }}</textarea></label>
+    <p class="hint">{{ _("Recommended: your own addresses and your scanner's. E-mails from others are not imported. Empty: everyone who knows the address.") }}</p>
+  </fieldset>
+  <fieldset {% if locked %}disabled{% endif %}>
+    <legend>{{ _("After import") }}</legend>
+    <label class="choice"><input type="radio" name="after" value="seen" {% if form.after == 'seen' %}checked{% endif %}> <span>{{ _("Mark the e-mail as read") }}</span></label>
+    <label class="choice"><input type="radio" name="after" value="move" {% if form.after == 'move' %}checked{% endif %}> <span>{{ _("Move it to the folder") }} <input name="imap_move_to" value="{{ form.imap_move_to }}" spellcheck="false" aria-label="{{ _('Folder') }}"></span></label>
+    <label class="choice"><input type="radio" name="after" value="delete" {% if form.after == 'delete' %}checked{% endif %}> <span>{{ _("Delete it (only for a mailbox used just for Heftig)") }}</span></label>
+  </fieldset>
+  <p class="buttons"><button type="submit" class="primary" name="action" value="save">{{ _("Save and test") if not wizard else _("Save and continue") }}</button>
+  {% if s.imap_host and not wizard %}<button type="submit" name="action" value="off">{{ _("Turn off e-mail import") }}</button>{% endif %}
+  {% if wizard %}<a href="{{ next_url }}">{{ _("Skip") }}</a>{% endif %}</p>
+</form>
+</section>
+<script src="/static/setup.js?v={{ asset_v }}" defer></script>
+{% endblock %}

@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field %}
+{% block title %}{{ _("Compare duplicates") }}{% endblock %}
+{% block content %}
+<script src="/static/compare.js?v={{ asset_v }}" defer></script>
+<nav class="crumbs"><a href="/inbox">← {{ _("Inbox") }}</a>{% if position %} · {{ _("Pair %(pos)s of %(total)s", pos=position, total=total) }}{% endif %}</nav>
+{% if message %}<p class="notice info" role="status">{{ message }}</p>{% endif %}
+{% if not pair %}<p class="notice info">{{ _("This pair is no longer marked as a possible duplicate.") }}</p>{% endif %}
+
+<form method="post" action="/duplicates/action" class="decide" id="decide">
+  {{ csrf_field(csrf) }}
+  <input type="hidden" name="a" value="{{ sides[0].m.id }}"><input type="hidden" name="b" value="{{ sides[1].m.id }}">
+  <input type="hidden" name="first" value="{{ sides[keep if keep is not none else 0].m.id }}">
+  <div class="decide-buttons">
+    <button name="action" value="delete_b" data-key="ArrowLeft" class="{{ 'primary' if keep == 0 else '' }}"
+      title="{{ _("Move the right document to the trash (key ←)") }}">{{ _("◀ <span class=\"long\">Keep </span>left") }}</button>
+    <button name="action" value="keep" data-key="b" title="{{ _("Not a duplicate (key B)") }}">{{ _("<span class=\"long\">Keep </span>both") }}</button>
+    <button name="action" value="delete_a" data-key="ArrowRight" class="{{ 'primary' if keep == 1 else '' }}"
+      title="{{ _("Move the left document to the trash (key →)") }}">{{ _("<span class=\"long\">Keep </span>right ▶") }}</button>
+    <button name="action" value="combine" data-key="z" class="wide-only" title="{{ _("Combine both into one document, right first – e.g. signed and unsigned version (key Z)") if keep == 1 else _("Combine both into one document, left first – e.g. signed and unsigned version (key Z)") }}">{{ _("Combine") }}</button>
+    {% if total > 1 %}<a class="button secondary wide-only" data-key="n" href="/duplicates/next?after={{ skip_after }}" title="{{ _("Decide later (key N)") }}">{{ _("Skip") }}</a>{% endif %}
+  </div>
+</form>
+<div class="decide-more">
+  <p class="buttons narrow-only">
+    <button form="decide" name="action" value="combine">{{ _("Combine") }}</button>
+    {% if total > 1 %}<a class="button secondary" href="/duplicates/next?after={{ skip_after }}">{{ _("Skip") }}</a>{% endif %}
+  </p>
+  <p class="small decide-note">
+    {% if keep is not none %}<strong>{{ _("Recommendation: keep left") if keep == 0 else _("Recommendation: keep right") }}</strong> – {{ why }}.{% endif %}
+    {% for s in sides %}{% if s.user_data and keep != loop.index0 %} <span class="warn-text">{{ _("Left has %(data)s – deleting it moves them to the trash as well.", data=s.user_data | join(', ')) if loop.first else _("Right has %(data)s – deleting it moves them to the trash as well.", data=s.user_data | join(', ')) }}</span>{% endif %}{% endfor %}
+    <span class="muted keys">{{ _("Keys: ← · B · Z · → · N") }}</span>
+  </p>
+</div>
+
+<section class="card compare-summary">
+  <p class="diffline">
+    <strong>{{ _("Pages:") }}</strong>
+    {% for pg in diff.pages %}<span class="dp dp-{{ pg.status }}">{{ _("p. %(pages)s", pages=pg.page) }}
+      {%- if pg.status == 'same' %} {{ _("same") }}{% elif pg.status == 'missing' %} {{ _("only left") if pg.more_ink == 'a' else _("only right") }}
+      {%- elif pg.status == 'unaligned' %} {{ _("not comparable") }}{% else %} {{ _("difference") }}{% if pg.more_ink %} {{ _("(more on the left)") if pg.more_ink == 'a' else _("(more on the right)") }}{% endif %}{% endif %}</span>{% endfor %}
+    {% if not diff.comparable %}<span class="muted small">– {{ _("e.g. photo vs. PDF: please compare yourself") }}</span>{% endif %}
+  </p>
+  <p class="diffline"><strong>{{ _("Text:") }}</strong>
+    {% if tdiff.identical %}{{ _("identical") }}{% else %}{{ ngettext("%(num)d difference", "%(num)d differences", tdiff.changes | length + tdiff.more) }} · {{ _("%(pct)s%% same", pct=(tdiff.similarity * 100) | number(0)) }}{% endif %}</p>
+  {% if differing %}
+  <table class="facts">
+    <thead><tr><th></th><th>{{ _("Left") }}</th><th>{{ _("Right") }}</th></tr></thead>
+    <tbody>{% for label, l, r in differing %}{% set pv = 'pv' if label == _("Custom fields") else '' %}<tr><th>{{ label }}</th><td class="{{ pv }}">{{ l }}</td><td class="{{ pv }}">{{ r }}</td></tr>{% endfor %}</tbody>
+  </table>
+  {% endif %}
+  {% if same %}<p class="muted small">{{ _("Same: %(fields)s", fields=same | join(', ')) }}</p>{% endif %}
+  {% if not tdiff.identical %}
+  <details class="tdiff"{% if tdiff.changes | length <= 8 %} open{% endif %}><summary>{{ _("Text differences") }}</summary>
+    <ul>{% for c in tdiff.changes %}<li><span class="muted">…{{ c.before[-80:] }}</span>
+      {% if c.a %}<del title="{{ _("only left") }}">{{ c.a[:300] }}</del>{% endif %}{% if c.b %}<ins title="{{ _("only right") }}">{{ c.b[:300] }}</ins>{% endif %}</li>{% endfor %}</ul>
+    {% if tdiff.more %}<p class="muted small">{{ _("… and %(num)s more", num=tdiff.more) }}</p>{% endif %}
+  </details>
+  {% endif %}
+</section>
+
+<section class="card compare-pages" aria-label="{{ _("Pages side by side") }}">
+  <div class="viewer-bar" role="toolbar" aria-label="{{ _("View") }}">
+    <span class="viewer-tools">
+      <button type="button" data-czoom="out" aria-label="{{ _("Zoom out") }}">−</button>
+      <button type="button" data-czoom="fit" id="cz-label">100 %</button>
+      <button type="button" data-czoom="in" aria-label="{{ _("Zoom in") }}">+</button>
+      <label class="small inline"><input type="checkbox" id="cz-marks" checked> {{ _("Mark differences") }}</label>
+    </span>
+    <span class="muted small">{{ _("Both sides scroll together") }}</span>
+  </div>
+  <div class="compare-grid">
+    {% for s in sides %}{% set side = 'a' if loop.first else 'b' %}
+    <div class="compare-col">
+      <h2 class="small"><a href="/documents/{{ s.m.id }}" target="_blank" rel="noopener">{{ _("Left: %(title)s", title=s.m.title or s.m.original_filename) if loop.first else _("Right: %(title)s", title=s.m.title or s.m.original_filename) }}</a></h2>
+      <div class="pv-media viewer-wrap">
+        <div class="viewer cviewer" tabindex="0">
+          {% for w, h in s.sizes %}{% set pg = diff.pages[loop.index0] if loop.index0 < diff.pages | length else none %}
+          <figure class="vpage" data-page="{{ loop.index }}" data-ar="{{ '%.4f' % (w / h) }}">
+            <img alt="{{ _("Page %(num)s", num=loop.index) }}" draggable="false" loading="lazy" decoding="async" src="/documents/{{ s.m.id }}/pages/{{ loop.index }}.webp?w=960"
+                 srcset="/documents/{{ s.m.id }}/pages/{{ loop.index }}.webp?w=960 960w, /documents/{{ s.m.id }}/pages/{{ loop.index }}.webp?w=1440 1440w, /documents/{{ s.m.id }}/pages/{{ loop.index }}.webp?w=2048 2048w"
+                 sizes="(max-width: 800px) 50vw, 45vw">
+            {% if pg and pg.status == 'different' %}{% for bx in (pg.boxes_a if side == 'a' else pg.boxes_b) %}<span class="dbox" data-box="{{ bx | join(',') }}"></span>{% endfor %}{% endif %}
+            <figcaption>{{ loop.index }}</figcaption>
+          </figure>
+          {% endfor %}
+        </div>
+        <button type="button" class="pv-reveal">{{ _("Private – tap to show") }}</button>
+      <button type="button" class="pv-hide" title="{{ _("Blur again") }}">{{ _("Hide") }}</button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

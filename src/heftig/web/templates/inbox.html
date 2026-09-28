@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_badge, time, csrf_field, provider_line %}
+{% block title %}{{ _("Inbox") }}{% endblock %}
+{% block content %}
+<h1>{{ _("Inbox") }}</h1>
+{% if message %}<p class="notice ok" role="status">{{ message }}</p>{% endif %}
+
+{% if session %}
+<section class="card session" id="session" aria-labelledby="session-h">
+  <form method="post" action="/sessions/action">
+  {{ csrf_field(csrf) }}<input type="hidden" name="session" value="{{ session.id }}">
+  <h2 id="session-h">{% if not session.ended_at %}<span class="live" aria-hidden="true"></span>{% endif %}{{ _("Batch “%(name)s”", name=session.name) }}
+    <span class="muted small">· {{ _("Paper: %(mode)s", mode=session.mode_label) }}</span></h2>
+  <p><a href="/?session={{ session.id }}&amp;sort=received">{{ ngettext("%(num)d document", "%(num)d documents", session.total) }}</a>
+    {% if session.busy %} · {{ _("%(num)s in progress", num=session.busy) }}{% endif %}
+    {% if session.review %} · <a href="/?session={{ session.id }}&amp;status=needs_review">{{ _("%(num)s to review", num=session.review) }}</a>{% endif %}
+    {% if not session.ended_at %}<span class="muted small"> · {{ _("new scans are added automatically") }}</span>{% endif %}</p>
+
+  {% for d in session.pending %}<input type="hidden" name="shown" value="{{ d.id }}">{% endfor %}
+  {% if session.mode == 'refile' and session.pending %}
+    <p><button name="action" value="file_all" class="primary">{{ _("All %(num)s filed in scan order", num=session.pending | length) }}</button></p>
+  {% elif session.mode == 'sort' and session.pending %}
+    {% if session.busy %}
+    <p class="muted">{{ _("The sorting suggestion appears once everything is processed.") }}</p>
+    {% else %}
+    <p><strong>{{ _("Keep original (%(num)s)", num=session.keep | length) }}</strong> <span class="muted small">– {{ _("No. = position in the scanned batch") }}</span></p>
+    {% if session.keep %}<ol class="sort-list">{% for d in session.keep %}
+      <li><span class="nr">{{ d.n }}</span> <a href="/documents/{{ d.id }}">{{ d.title }}</a>{% if d.why %} <span class="muted small">{{ d.why | reason }}</span>{% endif %}
+        <button name="action" value="discard:{{ d.id }}" class="linklike small">{{ _("don’t keep") }}</button></li>
+    {% endfor %}</ol>{% else %}<p class="muted small">{{ _("None – everything can go.") }}</p>{% endif %}
+    <details><summary>{{ _("Can be discarded (%(num)s)", num=session.discard | length) }}</summary>
+      <ol class="sort-list">{% for d in session.discard %}
+      <li><span class="nr">{{ d.n }}</span> <a href="/documents/{{ d.id }}">{{ d.title }}</a>
+        <button name="action" value="keep:{{ d.id }}" class="linklike small">{{ _("keep") }}</button></li>
+      {% endfor %}</ol></details>
+    <p><button name="action" value="apply_sort" class="primary" data-confirm-click="{{ _("Mark %(discard)s papers as discarded and %(keep)s originals as filed?", discard=session.discard | length, keep=session.keep | length) }}">{{ _("File %(keep)s · %(discard)s discarded", keep=session.keep | length, discard=session.discard | length) }}</button></p>
+    {% endif %}
+  {% endif %}
+
+  <p class="buttons">
+    {% if not session.ended_at %}<button name="action" value="end">{{ _("End batch") }}</button>
+    {% else %}<button name="action" value="close" class="secondary">{{ _("Hide card") }}</button>{% endif %}
+  </p>
+  </form>
+</section>
+{% endif %}
+
+{% set bad_worker = not status.worker_alive %}
+{% set bad_folder = status.consume_status not in (None, 'ok') %}
+{% if snapshot_warning or bad_worker or bad_folder or status.ai_unreachable_since or status.ai_pending %}
+<div class="notices">
+  {% if bad_worker %}<p class="notice error" role="status">{{ _("The background service (worker) is not running – new documents are not being processed.") }}</p>{% endif %}
+  {% if bad_folder %}<p class="notice warn" role="status">{{ _("Scanner folder: %(status)s", status=status.consume_status | reason) }}</p>{% endif %}
+  {% if snapshot_warning %}<p class="notice warn" role="status">{{ snapshot_warning }} {{ _("Is the background service running, and is there enough free space?") }}</p>{% endif %}
+  {% if status.ai_unreachable_since or status.ai_pending %}<p class="notice warn" role="status">
+    {% if status.ai_unreachable_since %}{{ _("AI provider unreachable since %(time)s.", time=time(status.ai_unreachable_since)) }} {% endif %}
+    {% if status.ai_pending %}{{ ngettext("%(num)d document processed locally for now – AI processing will catch up automatically.", "%(num)d documents processed locally for now – AI processing will catch up automatically.", status.ai_pending) }}{% endif %}</p>{% endif %}
+</div>
+{% endif %}
+
+<section class="card tasks" aria-labelledby="tasks-h">
+  <h2 id="tasks-h">{{ _("To do") }}</h2>
+  {% set any_task = review_total or duplicates or unfiled or title_proposals or quarantine or problems %}
+  <ul class="tasklist">
+    {% if review_total %}<li><span class="tnum">{{ review_total }}</span> <span class="tlabel">{{ ngettext("document to review", "documents to review", review_total) }}</span>
+      <a class="button primary" href="/review/next">{{ _("Go through") }}</a></li>{% endif %}
+    {% if suggestion_groups %}<li><span class="tnum">{{ suggestion_groups }}</span> <span class="tlabel">{{ _("identical suggestions on several documents") }}</span>
+      <a class="button" href="/suggestions">{{ _("In bulk") }}</a></li>{% endif %}
+    {% if duplicates %}<li><span class="tnum">{{ duplicates | length }}</span> <span class="tlabel">{{ ngettext("possible duplicate", "possible duplicates", duplicates | length) }}</span>
+      <a class="button{% if not review_total %} primary{% endif %}" href="/duplicates/next">{{ _("Go through") }}</a></li>{% endif %}
+    {% if unfiled %}<li><span class="tnum">{{ unfiled | length }}</span> <span class="tlabel">{{ ngettext("paper to file", "papers to file", unfiled | length) }}</span>
+      <a class="button" href="#unf-h">{{ _("List") }}</a></li>{% endif %}
+    {% if title_proposals %}<li><span class="tnum">{{ title_proposals }}</span> <span class="tlabel">{{ _("title suggestions") }}</span>
+      <a class="button" href="/titles">{{ _("Open") }}</a></li>{% endif %}
+    {% if problems %}<li><span class="tnum bad">{{ problems | length }}</span> <span class="tlabel">{{ _("failed jobs") }}</span>
+      <a class="button" href="#fail-h">{{ _("Open") }}</a></li>{% endif %}
+    {% if quarantine %}<li><span class="tnum bad">{{ quarantine | length }}</span> <span class="tlabel">{{ ngettext("file in quarantine", "files in quarantine", quarantine | length) }}</span>
+      <a class="button" href="#q-h">{{ _("Open") }}</a></li>{% endif %}
+    {% if not any_task %}<li class="done"><span class="tlabel">{{ _("All done.") }}</span></li>{% endif %}
+  </ul>
+  <p class="small muted working" id="working"{% if not (counts.queued or counts.processing) %} hidden{% endif %}>
+    {{ _("Processing:") }} <span data-count="processing">{{ counts.processing }}</span> · {{ _("waiting:") }} <span data-count="queued">{{ counts.queued }}</span>
+    {% if auto_resolved %} · {{ ngettext("%(num)d identical duplicate resolved automatically (7 days, <a href=\"/trash\">trash</a>)", "%(num)d identical duplicates resolved automatically (7 days, <a href=\"/trash\">trash</a>)", auto_resolved) }}{% endif %}</p>
+  {% if active %}
+  <details class="jobs-detail"><summary class="small">{{ _("Show jobs") }}</summary>
+    <ul class="plain jobs small" id="active-jobs">
+    {% for j in active %}
+      <li data-job="{{ j.id }}">{% if j.doc_id %}<a href="/documents/{{ j.doc_id }}">{{ j.title or j.original_filename }}</a>{% else %}{{ j.kind }}{% endif %}
+        <span class="stage">{{ STAGE_LABELS.get(j.stage, j.stage or '') }}</span>
+        <progress max="1" value="{{ j.progress }}"></progress></li>
+    {% endfor %}
+    </ul></details>
+  {% endif %}
+</section>
+
+<form method="post" action="/inbox/action">
+{{ csrf_field(csrf) }}
+{% if unfiled %}
+<section class="card" aria-labelledby="unf-h">
+  <h2 id="unf-h">{{ _("Paper still to file") }}</h2>
+  <p class="hint">{{ _("The last sheet filed goes on top of the current section.") }}</p>
+  <ul class="plain">
+  {% for d in unfiled %}
+    <li><a href="/documents/{{ d.id }}">{{ d.title or d.original_filename }}</a> <span class="small muted">· {{ _("received %(time)s", time=time(d.received_at)) }}</span>
+      <button name="action" value="file_{{ d.id }}">{{ _("Filed now") }}</button></li>
+  {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+{% if problems %}
+<section class="card" aria-labelledby="fail-h">
+  <h2 id="fail-h">{{ _("Failed jobs") }}</h2>
+  <ul class="plain">
+  {% for j in problems %}
+    <li>{% if j.doc_id %}<a href="/documents/{{ j.doc_id }}">{{ j.title or j.original_filename }}</a>{% else %}{{ j.kind }}{% endif %}
+      · {{ ngettext("%(num)s attempt", "%(num)s attempts", j.attempts or 0) }} · <span class="error-text">{{ j.error | reason }}</span>
+      <button name="action" value="retry_{{ j.id }}">{{ _("Retry") }}</button></li>
+  {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+{% if review %}
+<details class="card" aria-labelledby="rev-h">
+  <summary id="rev-h">{{ _("Documents to review (%(num)s)", num=review_total) }}</summary>
+  <ul class="plain">
+  {% for d in review %}
+    <li><label><input type="checkbox" name="doc" value="{{ d.id }}"> <a href="/documents/{{ d.id }}?review=1">{{ d.title or d.original_filename }}</a></label>
+      <span class="small muted">{{ d.review_reasons | map('reason') | join(' · ') }}</span></li>
+  {% endfor %}
+  </ul>
+  {% if review_total > review | length %}<p class="small"><a href="/?status=needs_review">{{ _("All %(num)s in search", num=review_total) }}</a></p>{% endif %}
+  <p class="buttons"><span class="small">{{ _("Reprocess selection:") }}</span>
+    <label><input type="checkbox" name="stage" value="extract"> {{ _("Text") }}</label>
+    <label><input type="checkbox" name="stage" value="classify" checked> {{ _("Classification") }}</label>
+    <button name="action" value="reprocess_selected">{{ _("Start") }}</button></p>
+</details>
+{% endif %}
+</form>
+
+{% if duplicates %}
+<details class="card" aria-labelledby="dup-h">
+  <summary id="dup-h">{{ _("Possible duplicates (%(num)s)", num=duplicates | length) }}</summary>
+  <ul class="plain">
+  {% for d in duplicates %}
+    <li class="dup-row">
+      <a href="/documents/{{ d.a.id }}">{{ d.a.title or d.a.original_filename }}</a>
+      <span class="muted">↔</span>
+      <a href="/documents/{{ d.b.id }}">{{ d.b.title or d.b.original_filename }}</a>
+      <br><span class="small muted">{{ d.reasons | map('reason') | join(' · ') }}</span>
+      <a class="button" href="/duplicates/{{ d.a.id }}/{{ d.b.id }}">{{ _("Compare") }}</a>
+    </li>
+  {% endfor %}
+  </ul>
+</details>
+{% endif %}
+
+{% if quarantine %}
+<section class="card" aria-labelledby="q-h">
+  <h2 id="q-h">{{ _("Quarantine") }}</h2>
+  <p class="hint">{{ _("These files from the scanner folder could not be imported. They are unchanged in <code>quarantine/</code>. Please rescan incomplete scans and hide them here.") }}</p>
+  <ul class="plain small">{% for q in quarantine %}<li>{{ time(q.at) }} · <strong>{{ q.original_name }}</strong> – {{ q.reason | reason }}{% if q.kept_in %} – {{ _("kept in the scanner folder at <code>%(path)s</code>", path=q.kept_in) }}{% endif %}
+    <form method="post" action="/quarantine/action" class="inline">{{ csrf_field(csrf) }}<input type="hidden" name="file" value="{{ q.file }}">
+      {% if not q.kept_in %}<button name="action" value="retry" class="linklike small">{{ _("Retry") }}</button> · {% endif %}<button name="action" value="hide" class="linklike small">{{ _("Hide from list") }}</button></form></li>{% endfor %}</ul>
+</section>
+{% endif %}
+
+<details class="card" aria-labelledby="ev-h">
+  <summary id="ev-h">{{ _("Recently received") }}</summary>
+  <table class="events">
+    <thead><tr><th>{{ _("Time") }}</th><th>{{ _("Source") }}</th><th>{{ _("File") }}</th><th>{{ _("Result") }}</th></tr></thead>
+    <tbody>
+    {% for e in events %}
+      <tr class="res-{{ e.result }}">
+        <td class="nowrap">{{ time(e.created_at) }}</td>
+        <td>{{ SOURCE_LABELS.get(e.source, e.source) }}{% if e.source_details.subject %}<br><span class="small muted">{{ e.source_details.subject }}</span>{% endif %}</td>
+        <td>{% if e.doc_id and e.result not in ('deleted',) %}<a href="/documents/{{ e.doc_id }}">{{ e.filename }}</a>{% else %}{{ e.filename }}{% endif %}</td>
+        <td>{{ RESULT_LABELS.get(e.result, e.result) }}{% if e.message %}<br><span class="small">{{ e.message | reason }}</span>{% endif %}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="4" class="muted">{{ _("Nothing received yet.") }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</details>
+
+{% set ac = status.ai_costs %}
+{% if ac.since %}
+<p class="small muted costs" title="{{ _("Estimated from list prices and the reported tokens, recorded since %(since)s. The exact bill is with the provider.", since=ac.since | dt) }}">
+  {% if ac.total.unpriced < ac.total.calls %}{{ _("AI cost today $%(today)s · 7 days $%(week)s · total $%(total)s", today=ac.today.usd | number, week=ac.week.usd | number, total=ac.total.usd | number) }}{% endif %}
+  {% if ac.total.unpriced %}{{ ngettext("%(num)d AI call without a known price (e.g. a local model).", "%(num)d AI calls without a known price (e.g. a local model).", ac.total.unpriced) }}{% endif %}</p>
+{% endif %}
+
+{% if not session %}
+<section class="card session-start-card" aria-labelledby="session-h">
+  <details>
+    <summary id="session-h">{{ _("Scanning an old binder?") }} <strong>{{ _("Start a batch") }}</strong></summary>
+    <form method="post" action="/sessions/action" class="session-start">
+      {{ csrf_field(csrf) }}
+      <label>{{ _("Binder") }} <input name="name" required maxlength="80" placeholder="{{ _("e.g. Insurance") }}"></label>
+      <fieldset><legend>{{ _("Afterwards, the paper goes …") }}</legend>
+        <label><input type="radio" name="mode" value="folder" checked> {{ _("back into the binder") }} <span class="muted small">– {{ _("Heftig remembers the binder") }}</span></label>
+        <label><input type="radio" name="mode" value="refile"> {{ _("into the Heftig filing") }} <span class="muted small">– {{ _("filed with one click at the end") }}</span></label>
+        <label><input type="radio" name="mode" value="sort"> {{ _("away, except what matters") }} <span class="muted small">– {{ _("Heftig suggests what to keep") }}</span></label>
+      </fieldset>
+      <button name="action" value="start" class="primary">{{ _("Start") }}</button>
+      <p class="hint">{{ _("All paper scans (scanner, phone, upload as paper) belong to this batch until you end it; it ends by itself after 8 hours without a new scan.") }}</p>
+    </form>
+  </details>
+</section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field %}
+{% block title %}{{ _("Add") }}{% endblock %}
+{% block content %}
+<h1>{{ _("Add") }}</h1>
+<div class="add-ways">
+  <section class="card" aria-labelledby="cam-h">
+    <h2 id="cam-h">{{ _("Paper with your phone") }}</h2>
+    <p><a class="button primary" href="/scan">{{ _("Scan with the camera") }}</a></p>
+    <p class="hint">{{ _("The outline is detected and the sheet is cropped; several pages become one PDF.") }}</p>
+  </section>
+<form id="upload-form" class="card upload" method="post" action="/upload" enctype="multipart/form-data" aria-labelledby="up-h">
+  <h2 id="up-h">{{ _("Upload files") }}</h2>
+  {{ csrf_field(csrf) }}
+  <fieldset class="kind">
+    <legend>{{ _("What are you uploading?") }}</legend>
+    <label><input type="radio" name="kind" value="digital" checked> {{ _("Digital document (PDF, photo of a file …)") }}</label>
+    <label><input type="radio" name="kind" value="paper"> {{ _("Scan/photo of a paper document (marked for filing)") }}</label>
+  </fieldset>
+  <label id="dropzone" class="dropzone" for="files">
+    <span class="big">{{ _("Drag files here") }}</span>
+    <span>{{ _("or tap/click to choose – also the camera on a phone") }}</span>
+    <span class="muted small">{{ _("PDF, JPEG, PNG, TIFF · max. %(mb)s MB per file", mb=request.app.state.archive.settings.max_upload_mb) }}</span>
+    <input id="files" name="files" type="file" multiple accept="application/pdf,image/jpeg,image/png,image/tiff">
+  </label>
+  <noscript><button type="submit" class="primary">{{ _("Upload") }}</button></noscript>
+  <ul id="upload-list" class="upload-list" aria-live="polite"></ul>
+</form>
+</div>
+
+{% if results %}
+<section class="card">
+  <h2>{{ _("Result") }}</h2>
+  <ul class="upload-list">
+  {% for r in results %}
+    <li class="res-{{ r.status }}"><strong>{{ r.filename }}</strong> – {{ RESULT_LABELS.get(r.status, r.status) }}
+      {% if r.message %}<br><span class="small">{{ r.message | reason }}</span>{% endif %}
+      {% if r.document_id %}<br><a href="/documents/{{ r.document_id }}">{{ _("Open document") }}</a>{% endif %}</li>
+  {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+<section class="card small">
+  <h2>{{ _("Multi-page paper documents") }}</h2>
+  <p>{% trans %}A letter with several pages should arrive as <strong>one</strong> file.{% endtrans %}
+    {{ _("Set the scanner or scan app to “multi-page PDF” (often “PDF, all pages in one file” or “batch”).") }}
+    {{ _("If pages arrive one by one, they show up as separate documents – on the document page, “Combine with another document …” turns them into one.") }}</p>
+  <h2>{{ _("Other ways in") }}</h2>
+  <ul>
+    <li><strong>{{ _("Scanner:") }}</strong> {{ _("puts files into the incoming folder – they are picked up automatically, even after a restart.") }}</li>
+    <li><strong>{{ _("Email:") }}</strong> {{ _("forward documents as attachments to the configured archive mailbox.") }}</li>
+    <li><strong>API:</strong> {% trans %}<code>POST /api/documents</code> with an API token (see settings).{% endtrans %}</li>
+  </ul>
+</section>
+{% endblock %}

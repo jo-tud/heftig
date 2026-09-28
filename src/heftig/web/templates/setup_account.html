@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}{{ _("Set up Heftig") }}{% endblock %}
+{% block content %}
+<section class="card narrow setup">
+  <h1><span class="logo" aria-hidden="true">▤</span> {{ _("Welcome to Heftig") }}</h1>
+  {% if error %}<p class="notice error" role="alert">{{ error }}</p>{% endif %}
+  {% if not token_ok and not error %}
+  <p>{{ _("To make sure it is you setting up this archive, enter the setup code.") }}</p>
+  <p class="hint">{% trans %}The installer showed it together with the address of this page. It is also in the file <code>setup-token</code> in Heftig's archive folder, and in Heftig's log.{% endtrans %}</p>
+  {% endif %}
+  <form method="post" action="/setup" class="setup-form" id="account-form">
+    {% if token_ok %}<input type="hidden" name="token" value="{{ token }}">
+    {% else %}<label>{{ _("Setup code") }} <input name="token" value="{{ token }}" required autocomplete="off" spellcheck="false"></label>{% endif %}
+    <label>{{ _("Language") }}
+      <select name="language">
+        {% for code, name in LANGUAGES.items() %}<option value="{{ code }}" {% if (form.language or lang()) == code %}selected{% endif %}>{{ name }}</option>{% endfor %}
+      </select></label>
+    <p class="hint">{{ _("Also the language of titles and summaries written by the AI.") }}</p>
+    <label>{{ _("User name") }} <input name="username" value="{{ form.username or '' }}" autocomplete="username" required maxlength="100"></label>
+    <label>{{ _("Password") }} <input name="password" type="password" autocomplete="new-password" required minlength="12"></label>
+    <label>{{ _("Password again") }} <input name="password2" type="password" autocomplete="new-password" required minlength="12"></label>
+    <p class="hint">{{ _("At least 12 characters. Heftig has one account; it can sign in on several devices.") }}</p>
+    <button type="submit" class="primary">{{ _("Create account") }}</button>
+  </form>
+</section>
+<script src="/static/setup.js?v={{ asset_v }}" defer></script>
+{% endblock %}

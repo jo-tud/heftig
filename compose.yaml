@@ -1,0 +1,64 @@
+# Heftig – Docker Compose / Podman Compose
+#
+#   cp .env.example .env            # optional: settings can also be made in the browser
+#   docker compose up -d
+#   open http://127.0.0.1:8765/setup  (the setup code is in ./archive/setup-token)
+#
+# Everything persistent lives in ./archive (bind mount). The scanner folder is mounted
+# separately so it can live on a network share; ./folder takes digital files.
+
+x-heftig: &heftig
+  build: .
+  image: heftig:latest
+  env_file:
+    - path: .env
+      required: false
+  environment:
+    HEFTIG_ARCHIVE_DIR: /archive
+    HEFTIG_CONSUME_DIR: /consume
+    HEFTIG_FOLDER_DIR: /folder
+  volumes:
+    - ${HEFTIG_ARCHIVE_HOST_DIR:-./archive}:/archive:z
+    - ${HEFTIG_CONSUME_HOST_DIR:-./consume}:/consume:z
+    # local folder for digital files (e-mail attachments you saved, downloads, ...)
+    - ${HEFTIG_FOLDER_HOST_DIR:-./folder}:/folder:z
+  # "always" so that podman-restart.service (Podman) or the Docker daemon starts it after reboot
+  restart: always
+  # extra_hosts lets the container reach a local LLM server on the host (Ollama, LM Studio)
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+
+# API keys and the IMAP password better as files than as variables in .env (variables show up
+# in "docker inspect" and in /proc of the container). Create ./secrets/ (it is in .gitignore),
+# put one key per file (chmod 600) and enable this block in BOTH services, e.g. via a
+# compose.override.yaml:
+#
+#   services:
+#     web:
+#       secrets: [anthropic_api_key]
+#       environment:
+#         HEFTIG_CLASSIFY_API_KEY_FILE: /run/secrets/anthropic_api_key
+#         HEFTIG_OCR_API_KEY_FILE: /run/secrets/anthropic_api_key
+#     worker:
+#       secrets: [anthropic_api_key, imap_password]
+#       environment:
+#         HEFTIG_CLASSIFY_API_KEY_FILE: /run/secrets/anthropic_api_key
+#         HEFTIG_OCR_API_KEY_FILE: /run/secrets/anthropic_api_key
+#         HEFTIG_IMAP_PASSWORD_FILE: /run/secrets/imap_password
+#   secrets:
+#     anthropic_api_key: {file: ./secrets/anthropic_api_key.txt}
+#     imap_password: {file: ./secrets/imap_password.txt}
+
+services:
+  web:
+    <<: *heftig
+    command: ["heftig", "serve"]
+    ports:
+      # only reachable from this machine; see docs/operations.md for LAN access
+      - "${HEFTIG_PUBLISH:-127.0.0.1:8765}:8765"
+
+  worker:
+    <<: *heftig
+    command: ["heftig", "worker"]
+    healthcheck:
+      disable: true
