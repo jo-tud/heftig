@@ -28,7 +28,7 @@ from typing import Any
 
 from . import documents as docs
 from .archive import Archive
-from .db import now_iso, write_tx
+from .db import now_iso, set_meta, write_tx
 from .i18n import N_
 from .textnorm import TOKEN_RE, fold, normalize_name
 
@@ -65,6 +65,7 @@ class Profile:
     idents: dict[str, str] = field(default_factory=dict)  # normalized key -> compact value
     amounts: dict[str, float] = field(default_factory=dict)
     recurring: set[str] = field(default_factory=set)  # ident values found on many documents
+    dates: set[str] = field(default_factory=set)  # full dates written in the text (ISO)
 
     @property
     def periods(self) -> set[str]:
@@ -86,6 +87,25 @@ def _tokens(text: str) -> set[str]:
     return out
 
 
+def _dates(text: str) -> set[str]:
+    from .classify import dates_in
+
+    return {d.isoformat() for d in dates_in(text[:200_000])}
+
+
+def _other_dates(a: set[str], b: set[str]) -> bool:
+    """Each text names a date the other does not (quarterly statements: "from 30.06. to
+    30.09." against "from 30.09. to 31.12."). A date only on one side is a stamp or a note;
+    one date against one date that differs in a single digit may be a misread scan."""
+    only_a, only_b = a - b, b - a
+    if not only_a or not only_b:
+        return False
+    if len(only_a) == 1 and len(only_b) == 1:
+        x, y = next(iter(only_a)), next(iter(only_b))
+        return sum(c != d for c, d in zip(x, y, strict=True)) > 1
+    return True
+
+
 def _compact(v: str) -> str:
     return re.sub(r"[\s./-]", "", fold(v))
 
@@ -105,6 +125,7 @@ def profile(conn: sqlite3.Connection, doc_id: str) -> Profile | None:
         correspondent_id=row["correspondent_id"],
         document_date=row["document_date"],
         tokens=_tokens(text_row[0] if text_row else ""),
+        dates=_dates(text_row[0] if text_row else ""),
     )
     for r in conn.execute(
         "SELECT key, type, value_text, value_num FROM custom_field_values WHERE doc_id=?", (doc_id,)
@@ -177,6 +198,7 @@ def _pool(conn: sqlite3.Connection, p: Profile) -> set[str]:
 
 # reasons and conflicts are stored in English (translated when shown)
 _OTHER_NUMBERS = N_("different numbers in the text (date, amount, number)")
+_OTHER_DATES = N_("different dates in the text")
 
 
 def compare(a: Profile, b: Profile) -> tuple[bool, float, list[str]]:
@@ -207,6 +229,11 @@ def compare(a: Profile, b: Profile) -> tuple[bool, float, list[str]]:
     numbers_diff = len(na ^ nb)
     if na and nb and numbers_diff >= 3 and numbers_diff / len(na | nb) > NUMBERS_MAX_DIFF:
         conflicts.append(_OTHER_NUMBERS)
+
+    # dates in the text: statements of different periods are "almost identical" otherwise
+    if _other_dates(a.dates, b.dates):
+        conflicts.append(_OTHER_DATES)
+        numbers_diff = max(numbers_diff, 2)  # never outweighed by near-identical text
 
     # period in words ("Rechnung April 2022" vs "... Juni 2022"): another month, another letter
     pa, pb = a.periods - {"quartal"}, b.periods - {"quartal"}
@@ -242,7 +269,7 @@ def compare(a: Profile, b: Profile) -> tuple[bool, float, list[str]]:
     # same date, same (non-recurring) number and same amount: the same letter, even if the
     # text recognition misread a few other numbers (a phone photo against the PDF)
     if ident_eq and date_eq and amount_eq:
-        conflicts = [c for c in conflicts if c != _OTHER_NUMBERS]
+        conflicts = [c for c in conflicts if c not in (_OTHER_NUMBERS, _OTHER_DATES)]
     # near-identical text outweighs structural differences (e.g. a misread date) - but only
     # when the numbers in the text agree as well (one deviation allowed for OCR misreads)
     if conflicts and (sim < TEXT_NEAR_IDENTICAL or numbers_diff > 1):
@@ -295,6 +322,32 @@ def check_document(archive: Archive, doc_id: str) -> list[dict[str, Any]]:
                     (a, b),
                 )
     return found
+
+
+RULES_VERSION = "2"  # raised when the rules get stricter: open pairs are checked again
+RULES_KEY = "duplicate_rules"
+
+
+def recheck_open(archive: Archive) -> int:
+    """Open pairs that the current rules no longer consider duplicates are dropped (once per
+    rules version; the rules only ever got stricter, so nothing new needs to be found)."""
+    conn = archive.conn
+    dropped = 0
+    for r in conn.execute(
+        "SELECT doc_a, doc_b FROM duplicate_candidates WHERE status='open'"
+    ).fetchall():
+        a, b = profile(conn, r[0]), profile(conn, r[1])
+        if a is not None and b is not None and compare(a, b)[0]:
+            continue
+        with write_tx(conn):
+            conn.execute(
+                "DELETE FROM duplicate_candidates WHERE doc_a=? AND doc_b=? AND status='open'",
+                (r[0], r[1]),
+            )
+        dropped += 1
+    with write_tx(conn):
+        set_meta(conn, RULES_KEY, RULES_VERSION)
+    return dropped
 
 
 def scan_all(archive: Archive) -> int:

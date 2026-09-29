@@ -426,59 +426,63 @@ msgstr "Ungültiger Anhang."
 msgid "Attachment not found."
 msgstr "Anhang nicht gefunden."
 
-#: src/heftig/duplicates.py:179
+#: src/heftig/duplicates.py:200
 msgid "different numbers in the text (date, amount, number)"
 msgstr "andere Zahlen im Text (Datum, Betrag, Nummer)"
 
-#: src/heftig/duplicates.py:189
+#: src/heftig/duplicates.py:201
+msgid "different dates in the text"
+msgstr "andere Datumsangaben im Text"
+
+#: src/heftig/duplicates.py:211
 msgid "Text nearly identical"
 msgstr "Text nahezu identisch"
 
-#: src/heftig/duplicates.py:191
+#: src/heftig/duplicates.py:213
 msgid "Text very similar (%(percent)s)"
 msgstr "Text sehr ähnlich (%(percent)s)"
 
-#: src/heftig/duplicates.py:195
+#: src/heftig/duplicates.py:217
 msgid "different document date"
 msgstr "anderes Dokumentdatum"
 
-#: src/heftig/duplicates.py:197
+#: src/heftig/duplicates.py:219
 msgid "same document date"
 msgstr "gleiches Dokumentdatum"
 
-#: src/heftig/duplicates.py:201
+#: src/heftig/duplicates.py:223
 msgid "different sender"
 msgstr "anderer Absender"
 
-#: src/heftig/duplicates.py:203 src/heftig/search.py:963
+#: src/heftig/duplicates.py:225 src/heftig/search.py:963
 msgid "same sender"
 msgstr "gleicher Absender"
 
-#: src/heftig/duplicates.py:214
+#: src/heftig/duplicates.py:241
 msgid "different period in the text"
 msgstr "anderer Zeitraum im Text"
 
-#: src/heftig/duplicates.py:223
+#: src/heftig/duplicates.py:250
 msgid "same number (%(key)s)"
 msgstr "gleiche Nummer (%(key)s)"
 
-#: src/heftig/duplicates.py:225
+#: src/heftig/duplicates.py:252
 msgid "different number (%(key)s)"
 msgstr "andere Nummer (%(key)s)"
 
-#: src/heftig/duplicates.py:229
+#: src/heftig/duplicates.py:256
 msgid "same number"
 msgstr "gleiche Nummer"
 
-#: src/heftig/duplicates.py:236
+#: src/heftig/duplicates.py:263
 msgid "different amount (%(key)s)"
 msgstr "anderer Betrag (%(key)s)"
 
-#: src/heftig/duplicates.py:240
+#: src/heftig/duplicates.py:267
 msgid "same amount"
 msgstr "gleicher Betrag"
 
-#: src/heftig/duplicates.py:437
+#: src/heftig/duplicates.py:464
 msgid "identical to “%(title)s”"
 msgstr "identisch mit „%(title)s“"
 
@@ -2692,7 +2696,7 @@ msgstr "Falsch ausgeblendet oder falsch angezeigt? Unten rechts auf der Seite um
 msgid "Pages of the document"
 msgstr "Seiten des Dokuments"
 
-#: src/heftig/web/templates/document.html:275 src/heftig/web/templates/document.html:86 src/heftig/web/templates/duplicate.html:80
+#: src/heftig/web/templates/document.html:275 src/heftig/web/templates/document.html:86 src/heftig/web/templates/duplicate.html:81
 msgid "Page %(num)s"
 msgstr "Seite %(num)s"
 
@@ -2708,15 +2712,15 @@ msgstr "Nicht leer – zeigen"
 msgid "Blank – hide"
 msgstr "Leer – ausblenden"
 
-#: src/heftig/web/templates/document.html:98 src/heftig/web/templates/duplicate.html:88
+#: src/heftig/web/templates/document.html:98 src/heftig/web/templates/duplicate.html:89
 msgid "Private – tap to show"
 msgstr "Privat – antippen zum Anzeigen"
 
-#: src/heftig/web/templates/document.html:99 src/heftig/web/templates/duplicate.html:89
+#: src/heftig/web/templates/document.html:99 src/heftig/web/templates/duplicate.html:90
 msgid "Blur again"
 msgstr "Wieder unscharf machen"
 
-#: src/heftig/web/templates/document.html:99 src/heftig/web/templates/duplicate.html:89
+#: src/heftig/web/templates/document.html:99 src/heftig/web/templates/duplicate.html:90
 msgid "Hide"
 msgstr "Verbergen"
 
@@ -3163,15 +3167,23 @@ msgstr "Seiten nebeneinander"
 msgid "Mark differences"
 msgstr "Unterschiede markieren"
 
-#: src/heftig/web/templates/duplicate.html:70
+#: src/heftig/web/templates/duplicate.html:69
+msgid "other text"
+msgstr "anderer Text"
+
+#: src/heftig/web/templates/duplicate.html:69
+msgid "other marks (signature, stamp, note)"
+msgstr "andere Zeichen (Unterschrift, Stempel, Notiz)"
+
+#: src/heftig/web/templates/duplicate.html:71
 msgid "Both sides scroll together"
 msgstr "Beide Seiten scrollen gemeinsam"
 
-#: src/heftig/web/templates/duplicate.html:75
+#: src/heftig/web/templates/duplicate.html:76
 msgid "Left: %(title)s"
 msgstr "Links: %(title)s"
 
-#: src/heftig/web/templates/duplicate.html:75
+#: src/heftig/web/templates/duplicate.html:76
 msgid "Right: %(title)s"
 msgstr "Rechts: %(title)s"
 

@@ -148,3 +148,47 @@ def test_compare_page(tmp_path):
 def _no_warmup_threads(monkeypatch):
     # the compare page warms the next pair's cache in a thread; not needed in tests
     monkeypatch.setattr("heftig.web.ui._warm_pagediff", lambda *a, **k: None)
+
+
+def test_text_pages_mark_the_changed_words_not_rendering_noise():
+    """Two born-digital statements: the period dates differ, a line moved by a few points."""
+    from heftig.media import render_width
+    from heftig.pagediff import WIDTH, compare_text_pages
+    from heftig.wordboxes import pdf_words
+
+    from .helpers import text_pdf
+
+    def statement(period):
+        return text_pdf([WORDS + f"\n\nAbschluss vom {period} Saldo 0,12 EUR"])
+
+    def page_of(data, tmp):
+        tmp.write_bytes(data)
+        return render_width(tmp, "application/pdf", 0, WIDTH, 50).convert("L"), pdf_words(tmp, 0)
+
+    import tempfile
+    from pathlib import Path
+
+    with tempfile.TemporaryDirectory() as d:
+        (ia, wa) = page_of(statement("30.06.2021 bis 30.09.2021"), Path(d, "a.pdf"))
+        (ib, wb) = page_of(statement("30.09.2021 bis 31.12.2021"), Path(d, "b.pdf"))
+        diff = compare_text_pages(ia, ib, wa, wb)
+        assert diff.status == "different" and not diff.boxes_a and not diff.boxes_b
+
+        def marked(words, boxes):
+            return {w[0] for w in words for b in boxes
+                    if b[0] <= w[1] and w[3] <= b[2] and b[1] <= w[2] and w[4] <= b[3]}  # fmt: skip
+
+        assert marked(wa, diff.words_a) and marked(wa, diff.words_a) <= {
+            "30.06.2021",
+            "bis",
+            "30.09.2021",
+        }
+        assert "31.12.2021" in marked(wb, diff.words_b) and "Saldo" not in marked(wb, diff.words_b)
+        # the same words: nothing to mark; a signature on one copy is found outside the text
+        assert compare_text_pages(ia, ia.copy(), wa, wa).status == "same"
+        signed = ia.copy()
+        ImageDraw.Draw(signed).line(
+            [(120, 900), (200, 860), (260, 910), (330, 850)], fill=0, width=4
+        )
+        d2 = compare_text_pages(ia, signed, wa, wa)
+        assert d2.status == "different" and d2.boxes_b and d2.more_ink == "b"

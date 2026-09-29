@@ -7,6 +7,12 @@ more ink is noted - a signature, stamp or handwritten note that only one copy ha
 
 Pages that do not line up at all (a phone photo against a PDF, different layouts) are reported
 as "not comparable" instead of drowning in boxes. Text differences come from a word diff.
+
+Pages with a text layer on both sides (born-digital PDFs) are compared by what they say: the
+words that differ are marked where they are on the page ("31.12.2021" instead of "30.09.2021"),
+and the image comparison only looks at what is not text - a signature, a stamp, a note, another
+logo. Two renderings of the same words never differ pixel for pixel (fonts, anti-aliasing,
+lines moved by a point), so comparing text areas as images marks noise and misses what matters.
 """
 
 from __future__ import annotations
@@ -16,7 +22,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from PIL import Image, ImageChops, ImageFilter
+from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 from . import documents as docs
 from .archive import Archive
@@ -37,7 +43,8 @@ BLUR = 2.0
 EDGE = 0.025  # boxes entirely within this margin of the page are scanner edges, not content
 UNALIGNED_SHARE = 0.35  # more changed cells than this: the pages do not line up
 MAX_PAGES = 30
-CACHE_VERSION = 2
+CACHE_VERSION = 3
+TEXT_PAGE_MIN_SIMILARITY = 0.5  # below: another layout, compare the pages as images
 
 
 @dataclass
@@ -47,6 +54,9 @@ class PageDiff:
     boxes_a: list[list[float]] = field(default_factory=list)  # [x0, y0, x1, y1] 0..1
     boxes_b: list[list[float]] = field(default_factory=list)
     more_ink: str | None = None  # "a" | "b": that side has extra marks in the differing areas
+    # words that differ (text layer on both sides), [x0, y0, x1, y1] 0..1
+    words_a: list[list[float]] = field(default_factory=list)
+    words_b: list[list[float]] = field(default_factory=list)
 
 
 def _ink(img: Image.Image) -> Image.Image:
@@ -75,7 +85,9 @@ def _best_shift(pa: list[float], pb: list[float], max_shift: int) -> int:
     return best_s
 
 
-def compare_images(img_a: Image.Image, img_b: Image.Image) -> PageDiff:
+def compare_images(img_a: Image.Image, img_b: Image.Image, whole_pages: bool = True) -> PageDiff:
+    """whole_pages=False: pages with their text painted over (see compare_text_pages) - little
+    ink is left, so a signature is not "a page that does not line up"."""
     ia, ib = _ink(img_a), _ink(img_b)
     ra, rb = ia.width / ia.height, ib.width / ib.height
     if abs(ra - rb) / max(ra, rb) > 0.08:
@@ -113,7 +125,7 @@ def compare_images(img_a: Image.Image, img_b: Image.Image) -> PageDiff:
         1 for gy in range(rows) for gx in range(cols)
         if na.crop((gx * CELL, gy * CELL, gx * CELL + CELL, gy * CELL + CELL)).getbbox()
     )  # fmt: skip
-    if changed / max(1, inked) > UNALIGNED_SHARE:
+    if whole_pages and changed / max(1, inked) > UNALIGNED_SHARE:
         return PageDiff(page=0, status="unaligned")
     boxes = [
         b for b in _components(grid)
@@ -136,6 +148,100 @@ def compare_images(img_a: Image.Image, img_b: Image.Image) -> PageDiff:
                             round((box[2] - dx) / NORM_W, 4), round((box[3] - dy) / nh, 4)])  # fmt: skip
     if max(ink_a, ink_b) > 0 and abs(ink_a - ink_b) / max(ink_a, ink_b) > 0.25:
         out.more_ink = "a" if ink_a > ink_b else "b"
+    return out
+
+
+def _word_key(text: str) -> str:
+    return fold(text).strip(".,;:()[]\"'“”„")
+
+
+def _changed_boxes(words: list, changed: set[int]) -> list[list[float]]:
+    """Boxes around the changed words; neighbours on the same line become one box."""
+    out: list[list[float]] = []
+    last = None
+    for i in sorted(changed):
+        _, x0, y0, x1, y1 = words[i]
+        if out and last == i - 1:
+            b = out[-1]
+            overlap = min(b[3], y1) - max(b[1], y0)
+            if overlap > 0.5 * min(b[3] - b[1], y1 - y0):
+                out[-1] = [min(b[0], x0), min(b[1], y0), max(b[2], x1), max(b[3], y1)]
+                last = i
+                continue
+        out.append([x0, y0, x1, y1])
+        last = i
+    pad = 0.003
+    return [[round(max(0, b[0] - pad), 4), round(max(0, b[1] - pad), 4),
+             round(min(1, b[2] + pad), 4), round(min(1, b[3] + pad), 4)] for b in out]  # fmt: skip
+
+
+def _without_words(img: Image.Image, words: list) -> Image.Image:
+    """The page with its text painted over in the paper colour: what is left is not text."""
+    out = img.convert("L").copy()
+    w, h = out.size
+    draw = ImageDraw.Draw(out)
+    for _, x0, y0, x1, y1 in words:
+        draw.rectangle((x0 * w - 2, y0 * h - 2, x1 * w + 2, y1 * h + 2), fill=255)
+    return out
+
+
+def _explained_by_shift(
+    a: Image.Image, b: Image.Image, box_a: list[float], box_b: list[float], max_shift: int = 8
+) -> bool:
+    """The area looks the same on both sides once moved by a few pixels."""
+    ia = _ink(a).filter(ImageFilter.GaussianBlur(1))
+    ib = _ink(b).filter(ImageFilter.GaussianBlur(1))
+    ax0, ay0 = round(box_a[0] * a.width), round(box_a[1] * a.height)
+    ax1, ay1 = round(box_a[2] * a.width), round(box_a[3] * a.height)
+    bx0, by0 = round(box_b[0] * b.width), round(box_b[1] * b.height)
+    crop_a = ia.crop((ax0, ay0, ax1, ay1))
+    n = max(1, crop_a.width * crop_a.height)
+    for dy in range(-max_shift, max_shift + 1, 2):
+        for dx in range(-max_shift, max_shift + 1, 2):
+            crop_b = ib.crop(
+                (bx0 + dx, by0 + dy, bx0 + dx + crop_a.width, by0 + dy + crop_a.height)
+            )
+            diff = ImageChops.difference(crop_a, crop_b).point(
+                lambda v: 255 if v > DIFF_LEVEL else 0
+            )
+            if sum(1 for v in diff.tobytes() if v) / n < 0.01:
+                return True
+    return False
+
+
+def compare_text_pages(
+    img_a: Image.Image, img_b: Image.Image, words_a: list, words_b: list
+) -> PageDiff:
+    """Two pages with a text layer: the differing words, plus image differences outside the
+    text (signature, stamp, note)."""
+    ka, kb = [_word_key(w[0]) for w in words_a], [_word_key(w[0]) for w in words_b]
+    sm = difflib.SequenceMatcher(None, ka, kb, autojunk=False)
+    if sm.ratio() < TEXT_PAGE_MIN_SIMILARITY:
+        return compare_images(img_a, img_b)
+    changed_a: set[int] = set()
+    changed_b: set[int] = set()
+    for op, i1, i2, j1, j2 in sm.get_opcodes():
+        if op != "equal":
+            changed_a.update(i for i in range(i1, i2) if ka[i])
+            changed_b.update(j for j in range(j1, j2) if kb[j])
+    bare_a, bare_b = _without_words(img_a, words_a), _without_words(img_b, words_b)
+    visual = compare_images(bare_a, bare_b, whole_pages=False)
+    # a logo or a frame a few points further down in one of the PDFs is not a difference
+    kept = [
+        i for i, (ba, bb) in enumerate(zip(visual.boxes_a, visual.boxes_b, strict=True))
+        if not _explained_by_shift(bare_a, bare_b, ba, bb)
+    ]  # fmt: skip
+    visual.boxes_a = [visual.boxes_a[i] for i in kept]
+    visual.boxes_b = [visual.boxes_b[i] for i in kept]
+    if not kept:
+        visual.status, visual.more_ink = "same", None
+    out = PageDiff(
+        page=0, status=visual.status, boxes_a=visual.boxes_a, boxes_b=visual.boxes_b,
+        more_ink=visual.more_ink, words_a=_changed_boxes(words_a, changed_a),
+        words_b=_changed_boxes(words_b, changed_b),
+    )  # fmt: skip
+    if out.words_a or out.words_b:
+        out.status = "different"
     return out
 
 
@@ -176,6 +282,15 @@ def _render(archive: Archive, meta: DocumentMetadata, page: int) -> Image.Image:
     ).convert("L")  # fmt: skip
 
 
+def _text_layer(archive: Archive, meta: DocumentMetadata, page: int) -> list | None:
+    """Words of the page's text layer (born-digital PDF), None for scans and photos."""
+    if meta.mime_type != "application/pdf":
+        return None
+    from .wordboxes import pdf_words
+
+    return pdf_words(archive.paths.resolve(meta.original_relpath), page - 1)
+
+
 def compare_documents(archive: Archive, a: DocumentMetadata, b: DocumentMetadata) -> dict[str, Any]:
     """Page-by-page comparison, cached next to document a (keyed by both file hashes)."""
     cache = docs.files(archive, a.id).dir / "cache" / f"pagediff-{b.id}.json"
@@ -193,7 +308,11 @@ def compare_documents(archive: Archive, a: DocumentMetadata, b: DocumentMetadata
             pages.append(PageDiff(page=n, status="missing", more_ink="a" if n <= pa else "b"))
             continue
         try:
-            d = compare_images(_render(archive, a, n), _render(archive, b, n))
+            wa, wb = _text_layer(archive, a, n), _text_layer(archive, b, n)
+            if wa and wb:
+                d = compare_text_pages(_render(archive, a, n), _render(archive, b, n), wa, wb)
+            else:
+                d = compare_images(_render(archive, a, n), _render(archive, b, n))
         except Exception:  # noqa: BLE001 - a broken page must not break the review page
             d = PageDiff(page=n, status="unaligned")
         d.page = n

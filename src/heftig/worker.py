@@ -11,7 +11,7 @@ import threading
 import time
 from concurrent.futures import Future, ThreadPoolExecutor
 
-from . import jobs, maintenance, sessions, trash
+from . import duplicates, jobs, maintenance, sessions, trash
 from .archive import Archive
 from .consume import ConsumeWatcher
 from .db import get_meta, now_iso, set_meta, write_tx
@@ -152,6 +152,9 @@ class Worker:
                 sessions.end_idle(self.archive)  # a forgotten scan session must not grab mail
                 trash.purge_expired(self.archive)
                 maintenance.snapshot_if_due(self.archive)
+                if get_meta(self.archive.conn, duplicates.RULES_KEY) != duplicates.RULES_VERSION:
+                    n = duplicates.recheck_open(self.archive)
+                    log.info("duplicate rules changed: %s open pair(s) no longer duplicates", n)
                 if not get_meta(self.archive.conn, maintenance.BLANK_CHECK_KEY):
                     r = maintenance.detect_blank_pages(self.archive)  # once, for older archives
                     log.info("blank pages: %s found in %s document(s)", r["pages"], r["documents"])

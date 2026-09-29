@@ -66,6 +66,7 @@
       <button type="button" data-czoom="fit" id="cz-label">100 %</button>
       <button type="button" data-czoom="in" aria-label="{{ _("Zoom in") }}">+</button>
       <label class="small inline"><input type="checkbox" id="cz-marks" checked> {{ _("Mark differences") }}</label>
+      <span class="muted small legend"><span class="swatch dword"></span> {{ _("other text") }} <span class="swatch"></span> {{ _("other marks (signature, stamp, note)") }}</span>
     </span>
     <span class="muted small">{{ _("Both sides scroll together") }}</span>
   </div>
@@ -80,7 +81,7 @@
             <img alt="{{ _("Page %(num)s", num=loop.index) }}" draggable="false" loading="lazy" decoding="async" src="/documents/{{ s.m.id }}/pages/{{ loop.index }}.webp?w=960"
                  srcset="/documents/{{ s.m.id }}/pages/{{ loop.index }}.webp?w=960 960w, /documents/{{ s.m.id }}/pages/{{ loop.index }}.webp?w=1440 1440w, /documents/{{ s.m.id }}/pages/{{ loop.index }}.webp?w=2048 2048w"
                  sizes="(max-width: 800px) 50vw, 45vw">
-            {% if pg and pg.status == 'different' %}{% for bx in (pg.boxes_a if side == 'a' else pg.boxes_b) %}<span class="dbox" data-box="{{ bx | join(',') }}"></span>{% endfor %}{% endif %}
+            {% if pg and pg.status == 'different' %}{% for bx in (pg.words_a if side == 'a' else pg.words_b) or [] %}<span class="dbox dword" data-box="{{ bx | join(',') }}"></span>{% endfor %}{% for bx in (pg.boxes_a if side == 'a' else pg.boxes_b) %}<span class="dbox" data-box="{{ bx | join(',') }}"></span>{% endfor %}{% endif %}
             <figcaption>{{ loop.index }}</figcaption>
           </figure>
           {% endfor %}

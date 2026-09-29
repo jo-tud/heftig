@@ -32,7 +32,7 @@ Word = list  # [text, x0, y0, x1, y1]
 _OCR_LOCK = threading.Lock()  # one Tesseract run at a time (CPU), others then hit the cache
 
 
-def _pdf_words(path: Path, index: int) -> list[Word] | None:
+def pdf_words(path: Path, index: int) -> list[Word] | None:
     """Words of the embedded text layer, or None if the page has (almost) no text layer."""
     with PDFIUM_LOCK:
         pdf = pdfium.PdfDocument(str(path))
@@ -124,7 +124,7 @@ def page_words(archive: Archive, meta: DocumentMetadata, page: int) -> tuple[lis
         return hit
     words = None
     if meta.mime_type == "application/pdf":
-        words = _pdf_words(archive.paths.resolve(meta.original_relpath), page - 1)
+        words = pdf_words(archive.paths.resolve(meta.original_relpath), page - 1)
     source = "pdf"
     if words is None:
         with _OCR_LOCK:

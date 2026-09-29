@@ -119,7 +119,7 @@ def _unspace(text: str) -> str:
     return re.sub(r"(?<=\b\w) (?=\w\b)", "", text)
 
 
-def _dates_in(evidence: str) -> set[date]:
+def dates_in(evidence: str) -> set[date]:
     """Every date an evidence quote can mean (day/month order and century ambiguity included):
     31.12.2025, 31/12/2025, 31-12-25, 2025-12-31, 31. Dezember 2025, December 31st, 2025,
     Dec-31-2025, 31 Dec 2025 ..."""
@@ -156,7 +156,7 @@ def _dates_in(evidence: str) -> set[date]:
 
 
 def _evidence_matches_date(evidence: str, iso: str) -> bool:
-    return date.fromisoformat(iso) in _dates_in(evidence)
+    return date.fromisoformat(iso) in dates_in(evidence)
 
 
 def apply(
@@ -412,7 +412,7 @@ def _validate_custom_field(item: Any, squashed: str) -> tuple[str, CustomField] 
             d = date.fromisoformat(value[:10])
         except ValueError:
             return None
-        if d not in _dates_in(str(evidence)):
+        if d not in dates_in(str(evidence)):
             return None
         return key, CustomField(type="date", value=d.isoformat())
     # a string value must itself be in the text (e.g. a contract number)

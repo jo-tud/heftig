@@ -266,3 +266,47 @@ def test_a_stamp_naming_the_month_short_is_the_same_period():
     a = Profile("a", "", 1, "2026-09-12", _tokens(text))
     b = Profile("b", "", 1, "2026-09-12", _tokens(text + " PAID Sep 14"))
     assert "different period in the text" not in compare(a, b)[2]
+
+
+def test_statements_of_different_periods_are_not_duplicates():
+    """Quarterly statements: the same words and balance, only the period dates differ."""
+    from heftig.duplicates import Profile, _dates, _tokens, compare
+
+    body = " ".join(f"Kontoabschluss Tagesgeldkonto Zeile {n} Abschlussbetrag" for n in range(30))
+
+    def prof(pid, text):
+        return Profile(pid, "t", 1, None, _tokens(body + text), amounts={"kontostand": 0.12},
+                       dates=_dates(text))  # fmt: skip
+
+    q3 = prof("a", " Abschluss vom 30.06.2021 bis 30.09.2021 per 30.09.2021")
+    q4 = prof("b", " Abschluss vom 30.09.2021 bis 31.12.2021 per 31.12.2021")
+    ok, _, why = compare(q3, q4)
+    assert not ok and "different dates in the text" in why
+    # a date only on one copy (a received stamp) or one misread digit: still the same letter
+    stamped = prof(
+        "c", " Abschluss vom 30.06.2021 bis 30.09.2021 per 30.09.2021 Eingang 04.10.2021"
+    )
+    assert compare(q3, stamped)[0]
+    misread = prof("d", " Abschluss vom 30.06.2021 bis 30.09.2021 per 30.08.2021")
+    assert compare(q3, misread)[0]
+
+
+def test_open_pairs_are_checked_again_when_the_rules_change(archive, monkeypatch):
+    from heftig import duplicates
+
+    a = ingest_bytes(archive, text_pdf([BODY_Q3]), "q3.pdf").doc_id
+    b = ingest_bytes(archive, text_pdf([BODY_Q4]), "q4.pdf").doc_id
+    process_all(archive)
+    with duplicates.write_tx(archive.conn):  # as found by the rules before
+        x, y = sorted((a, b))
+        archive.conn.execute(
+            "INSERT OR IGNORE INTO duplicate_candidates(doc_a, doc_b, score, reasons, status, "
+            "created_at) VALUES(?,?,0.9,'[]','open','2026-09-28T00:00:00Z')", (x, y))  # fmt: skip
+    assert duplicates.recheck_open(archive) == 1
+    assert not duplicates.open_pairs(archive.conn)
+
+
+BODY_Q3 = "\n".join(f"Kontoabschluss Zeile {n} Tagesgeldkonto" for n in range(20)) + (
+    "\nAbschluss vom 30.06.2021 bis 30.09.2021"
+)
+BODY_Q4 = BODY_Q3.replace("30.06.2021 bis 30.09.2021", "30.09.2021 bis 31.12.2021")

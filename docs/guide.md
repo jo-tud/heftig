@@ -97,10 +97,11 @@ are checked once in the background (`heftig blank-pages` does it again).
 The identical file never becomes a second document. The same letter in two forms – an e-mailed
 PDF and a phone photo – is recognised after processing (similar text, same date and sender, same
 invoice or contract number, same amount; a different date, amount, number or month named in the
-text rules a pair out, so monthly bills are not flagged – "Sep" and "September" count as the same
-month). The comparison shows both documents side by side, page by page,
-with the differing areas marked – a signature, a stamp, a note that only one copy has – and
-recommends which to keep. Keys: ← keep left, → keep right, B keep both, N skip. Truly identical
+text rules a pair out, so monthly bills and quarterly statements are not flagged – "Sep" and
+"September" count as the same month, and a date only one copy has is a stamp, not another letter).
+The comparison shows both documents side by side, page by page: words that differ are marked in
+yellow where they stand on the page (for PDFs with a text layer), marks only one copy has – a
+signature, a stamp, a note – in red; it recommends which to keep. Keys: ← keep left, → keep right, B keep both, N skip. Truly identical
 copies (the same text, every page visually the same) are resolved automatically; the copy with
 your notes, attachments or corrections stays.
 

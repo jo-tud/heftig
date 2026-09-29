@@ -345,6 +345,10 @@ ins { background: var(--ok-bg); color: var(--ok); text-decoration: none; padding
 .cviewer { height: 75vh; }
 .dbox { position: absolute; outline: 3px solid rgba(220, 40, 40, .85); background: rgba(255, 60, 60, .12);
   border-radius: 3px; pointer-events: none; }
+.dbox.dword { outline: 2px solid rgba(230, 150, 0, .95); background: rgba(255, 214, 0, .35); border-radius: 2px; }
+.legend .swatch { display: inline-block; width: .9em; height: .9em; vertical-align: -.1em; margin-left: .5em;
+  outline: 2px solid rgba(220, 40, 40, .85); background: rgba(255, 60, 60, .12); border-radius: 2px; }
+.legend .swatch.dword { outline-color: rgba(230, 150, 0, .95); background: rgba(255, 214, 0, .35); }
 body.no-marks .dbox { display: none; }
 html.privacy .viewer-wrap:not(.pv-open) .dbox { display: none; }
 @media (max-width: 800px) {
