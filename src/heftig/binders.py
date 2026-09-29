@@ -45,8 +45,13 @@ def load(paths: ArchivePaths) -> list[dict[str, Any]]:
     out = []
     for b in data.get("binders", []) if isinstance(data, dict) else []:
         if isinstance(b, dict) and isinstance(b.get("name"), str) and b["name"].strip():
-            stays = [e for e in b.get("stays") or [] if isinstance(e, dict)
-                     and isinstance(e.get("sequence"), int) and isinstance(e.get("section"), str)]
+            stays = [
+                e
+                for e in b.get("stays") or []
+                if isinstance(e, dict)
+                and isinstance(e.get("sequence"), int)
+                and isinstance(e.get("section"), str)
+            ]
             out.append({"name": b["name"].strip()[:60], "started_at": str(b.get("started_at") or ""),
                         "full_at": b.get("full_at") or None, "stays": stays})  # fmt: skip
     return out

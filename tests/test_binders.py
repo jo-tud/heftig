@@ -177,7 +177,7 @@ def test_deleted_sheet_taken_out_or_left_in_the_binder(archive):
     assert binders.keep_sheet(archive, gone)
     assert place(archive, a) == ("Ordner 1", 3, 3)
     pos = docs.filing_position(archive, docs.load_meta(archive, a))
-    assert pos.above[0]["kept"] and pos.above[0]["title"]
+    assert [x.get("kept", False) for x in pos.above] == [False, True]  # listed from the top
     trash.purge(archive, b)
     assert place(archive, a) == ("Ordner 1", 3, 3)
     assert binders.overview(archive)[0]["sheets"] == 3

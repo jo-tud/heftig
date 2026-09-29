@@ -631,7 +631,9 @@ def filing_position(archive: Archive, meta: DocumentMetadata, n: int = 2) -> Fil
         if e.get("doc_id") != meta.id:
             rows.append({"id": None, "title": e.get("title") or "", "original_filename": "",
                          "filing_sequence": e["sequence"], "kept": True})  # fmt: skip
-    above = sorted((r for r in rows if r["filing_sequence"] > seq), key=lambda r: r["filing_sequence"])
+    above = sorted(
+        (r for r in rows if r["filing_sequence"] > seq), key=lambda r: r["filing_sequence"]
+    )
     below = sorted((r for r in rows if r["filing_sequence"] < seq),
                    key=lambda r: r["filing_sequence"], reverse=True)  # fmt: skip
     return FilingPosition(
@@ -639,7 +641,7 @@ def filing_position(archive: Archive, meta: DocumentMetadata, n: int = 2) -> Fil
         section=sec,
         position_from_top=len(above) + 1,
         total_in_section=len(rows) + 1,
-        above=above[:n],
+        above=list(reversed(above[:n])),  # the nearest n, listed from the top down
         below=below[:n],
     )
 
@@ -651,7 +653,10 @@ def take_filing(archive: Archive, doc_id: str, placed: DocumentMetadata) -> Docu
         meta = load_meta(archive, doc_id)
         meta.filed_at, meta.filing_sequence = placed.filed_at, placed.filing_sequence
         meta.filing_section, meta.filing_binder = placed.filing_section, placed.filing_binder
-        meta.paper_location, meta.paper_discarded_at = placed.paper_location, placed.paper_discarded_at
+        meta.paper_location, meta.paper_discarded_at = (
+            placed.paper_location,
+            placed.paper_discarded_at,
+        )
         meta.paper = True
         add_history(meta, HistoryEntry(task="filing", at=now_iso(), status="taken over", by="user"))
         persist(archive, meta)
