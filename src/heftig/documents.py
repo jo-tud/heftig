@@ -374,6 +374,66 @@ def update_fields(
         return meta
 
 
+def field_snapshot(meta: DocumentMetadata, field: str) -> dict[str, Any]:
+    """Everything an edit of ``field`` changes, so that ``restore_field`` can undo it."""
+    data = meta.model_dump(mode="json")
+    snap: dict[str, Any] = {
+        "field": field,
+        "value": data.get(field),
+        "locked": bool(meta.field_locks.get(field)),
+        "source": meta.field_sources.get(field),
+        "suggestions": [sg for sg in data["suggestions"] if sg["field"] == field],
+        "status": meta.status,
+        "review_reasons": list(meta.review_reasons),
+    }
+    if field == "tags":
+        snap["tag_overrides"] = data["tag_overrides"]
+    if field == "document_date":
+        snap["date_status"] = meta.document_date_status
+        snap["date_reason"] = meta.document_date_reason
+    return snap
+
+
+def restore_field(archive: Archive, doc_id: str, snap: dict[str, Any]) -> DocumentMetadata:
+    """Undo an edit: the field, its lock, source and suggestions as they were before."""
+    field = str(snap.get("field") or "")
+    if field not in LOCKABLE_FIELDS:
+        raise EditError(_("Field “%(field)s” cannot be edited.", field=field))
+    with write_tx(archive.conn):
+        meta = load_meta(archive, doc_id)
+        data = meta.model_dump(mode="json")
+        data[field] = snap.get("value")
+        locks, sources = dict(data["field_locks"]), dict(data["field_sources"])
+        locks.pop(field, None)
+        if snap.get("locked"):
+            locks[field] = True
+        sources.pop(field, None)
+        if snap.get("source"):
+            sources[field] = snap["source"]
+        data["field_locks"], data["field_sources"] = locks, sources
+        data["suggestions"] = [sg for sg in data["suggestions"] if sg["field"] != field] + list(
+            snap.get("suggestions") or []
+        )
+        if snap.get("status") in ("done", "needs_review"):
+            data["status"] = snap["status"]
+            data["review_reasons"] = list(snap.get("review_reasons") or [])
+        if field == "tags" and isinstance(snap.get("tag_overrides"), dict):
+            data["tag_overrides"] = snap["tag_overrides"]
+        if field == "document_date":
+            data["document_date_status"] = snap.get("date_status") or data["document_date_status"]
+            data["document_date_reason"] = snap.get("date_reason")
+        try:
+            restored = DocumentMetadata.model_validate(data)
+        except ValueError as e:
+            raise EditError(_("This change cannot be undone any more.")) from e
+        add_history(
+            restored,
+            HistoryEntry(task="edit", at=now_iso(), status="undone", fields=[field], by="user"),
+        )
+        persist(archive, restored)
+        return restored
+
+
 def _review_resolved(meta: DocumentMetadata) -> bool:
     return meta.text_status in ("ok", "empty") and meta.document_date_status != "ai_uncertain"
 

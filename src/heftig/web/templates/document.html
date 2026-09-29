@@ -169,8 +169,9 @@
           </tbody>
         </table>
       </fieldset>
-      <p class="hint">{{ _("Changed fields are locked (🔒) and won't be overwritten when reprocessing.") }}</p>
-      <button type="submit" class="primary">{{ _("Save") }}</button>
+      <p class="hint autosave-hint">{{ _("Changes are saved as soon as you leave a field. Changed fields are locked (🔒) and won't be overwritten when reprocessing.") }}</p>
+      <p class="hint noscript-hint">{{ _("Changed fields are locked (🔒) and won't be overwritten when reprocessing.") }}</p>
+      <button type="submit" class="primary save-button">{{ _("Save") }}</button>
     </form>
     <datalist id="dl-corr">{% for t in terms.correspondent %}<option value="{{ t.name }}">{% endfor %}</datalist>
     <datalist id="dl-type">{% for t in terms.document_type %}<option value="{{ t.name }}">{% endfor %}</datalist>
@@ -348,4 +349,5 @@
 
 </details>
 
+<script src="/static/autosave.js?v={{ asset_v }}" defer></script>
 {% endblock %}

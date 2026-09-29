@@ -13,9 +13,13 @@ How the parts fit together in daily use. Setup and operation: [operations.md](op
    failed text recognition), possible duplicates, and paper still to file. *Reviewed → next*
    walks through them one by one; *Skip* leaves a document for later, *Trash → next* deletes it
    and goes on (with *Undo* on the next document).
-4. **Correct what's wrong** on the document page. Every field you edit is locked – reprocessing
-   never overwrites it. Suggestions of the AI are accepted or dismissed there, or on
-   *Suggestions in bulk* (linked from the inbox) for many documents at once.
+4. **Correct what's wrong** on the document page. A field is saved as soon as you leave it (or
+   pick a value); *Saved · Undo* appears next to it, and *Undo* restores the previous value,
+   its lock and the AI's suggestions. Nothing is saved while you type, and links and buttons
+   on the page wait for a save still running. Every field you edit is locked – reprocessing
+   never overwrites it. Suggestions of the AI are accepted or dismissed there (*Dismiss* only
+   removes the suggestion; the field keeps its value), or on *Suggestions in bulk* (linked
+   from the inbox) for many documents at once.
 5. **File the paper** and click *Filed just now* on its page (or *Filed now* in the inbox list) –
    or let Heftig do it for every scan (*Settings → Scanner and phone → I file every scanned letter
    right away*).

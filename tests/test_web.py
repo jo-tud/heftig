@@ -1,4 +1,5 @@
 import hashlib
+import json
 import logging
 
 import pytest
@@ -576,3 +577,54 @@ def test_settings_show_the_folders_as_seen_on_the_computer(tmp_path):
     assert "<code>/mnt/scans</code>" in page and "<code>~/Eingang</code>" in page
     assert "Scanner-Ordner" in page and "Ordner für digitale Dateien" in page
     app.state.archive.close()
+
+
+def test_autosave_one_field_and_undo(client, app):
+    from heftig.db import write_tx
+    from heftig.models import Suggestion
+
+    csrf = login(client)
+    doc = upload(client, csrf, text_pdf(["Rechnung Stadtwerke"]), "r.pdf").json()["results"][0][
+        "document_id"
+    ]
+    process_all(app.state.archive)
+    a = app.state.archive
+    with write_tx(a.conn):
+        m = docs.load_meta(a, doc)
+        m.correspondent, m.title = "Stadtwerke", "Rechnung"
+        m.field_sources["correspondent"] = "ai"
+        m.suggestions = [Suggestion(field="correspondent", value="Stadtwerke Beispiel", reason="x")]
+        m.status = "needs_review"
+        docs.persist(a, m)
+    m = docs.load_meta(a, doc)
+    form = {"csrf_token": csrf, "autosave": "1", "revision": str(m.revision), "title": "Tippfehle",
+            "correspondent": "Stadtwerke Dresden", "field": "correspondent"}  # fmt: skip
+    r = client.post(f"/documents/{doc}/edit", data=form)
+    data = r.json()
+    assert r.status_code == 200 and data["ok"] and data["locked"]
+    m = docs.load_meta(a, doc)
+    # only the field that was left is saved - not the title still being typed
+    assert m.correspondent == "Stadtwerke Dresden" and m.title == "Rechnung"
+    assert m.field_locks.get("correspondent") and m.suggestions == []
+    assert data["revision"] == m.revision
+    # the old revision is refused (the page is stale)
+    r = client.post(f"/documents/{doc}/edit", data=form)
+    assert r.status_code == 409 and r.json()["stale"]
+    # undo: value, lock, source and the suggestion as before
+    r = client.post(f"/documents/{doc}/edit", data={"csrf_token": csrf, "autosave": "1",
+                    "revision": str(m.revision), "undo": json.dumps(data["undo"])})  # fmt: skip
+    assert r.json()["ok"]
+    m = docs.load_meta(a, doc)
+    assert m.correspondent == "Stadtwerke" and not m.field_locks.get("correspondent")
+    assert m.field_sources.get("correspondent") == "ai" and len(m.suggestions) == 1
+    assert m.status == "needs_review"
+    # a lock toggled on its own; an invalid amount is reported, nothing saved
+    r = client.post(f"/documents/{doc}/edit", data={"csrf_token": csrf, "autosave": "1",
+                    "revision": str(m.revision), "field": "lock:title", "lock_title": "on"})  # fmt: skip
+    assert r.json()["ok"] and docs.load_meta(a, doc).field_locks.get("title")
+    m = docs.load_meta(a, doc)
+    r = client.post(f"/documents/{doc}/edit", data={"csrf_token": csrf, "autosave": "1",
+                    "revision": str(m.revision), "field": "custom_fields", "cf_key_0": "Betrag",
+                    "cf_type_0": "monetary", "cf_value_0": "zwölf"})  # fmt: skip
+    assert r.status_code == 400 and "Betrag" in r.json()["error"]
+    assert "autosave.js" in client.get(f"/documents/{doc}").text

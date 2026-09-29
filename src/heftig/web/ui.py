@@ -857,28 +857,28 @@ def _stale(form, meta) -> bool:
     return rev != "" and rev != str(meta.revision)
 
 
-def _edit_sync(a, doc_id: str, form) -> RedirectResponse:
-    meta = docs.load_meta(a, doc_id)
-    if _stale(form, meta):
-        return redirect(_doc_url(doc_id, form, msg=_(STALE_MSG)))
+def _form_changes(form, meta) -> tuple[dict[str, Any], str | None]:
+    """The fields the form changes compared to ``meta`` (or an error message)."""
     changes: dict[str, Any] = {}
 
     def val(name: str) -> str:
         return _form_val(form, name)
 
-    if val("title") != meta.title:
+    if "title" in form and val("title") != meta.title:
         changes["title"] = val("title")
-    if (val("document_date") or None) != meta.document_date:
+    if "document_date" in form and (val("document_date") or None) != meta.document_date:
         changes["document_date"] = val("document_date") or None
     for fld in ("correspondent", "document_type"):
-        if (val(fld) or None) != getattr(meta, fld):
+        if fld in form and (val(fld) or None) != getattr(meta, fld):
             changes[fld] = val(fld) or None
     # only parse the tag field when the user edited it (tag names may contain commas)
-    if val("tags") != ", ".join(meta.tags):
+    if "tags" in form and val("tags") != ", ".join(meta.tags):
         changes["tags"] = [t.strip() for t in val("tags").split(",") if t.strip()]
-    if val("summary") != meta.summary:
+    if "summary" in form and val("summary") != meta.summary:
         changes["summary"] = val("summary")
     # custom fields: rows cf_key_N / cf_type_N / cf_value_N / cf_currency_N
+    if "cf_key_0" not in form:
+        return changes, None
     cfs: dict[str, Any] = {}
     i = 0
     while f"cf_key_{i}" in form:
@@ -890,12 +890,7 @@ def _edit_sync(a, doc_id: str, form) -> RedirectResponse:
             if ftype in ("number", "monetary"):
                 num = parse_number(value)  # "1.234,56", "1.234" (= 1234), "12.50"
                 if num is None:
-                    return redirect(
-                        f"/documents/{doc_id}?"
-                        + urlencode(
-                            {"msg": _("Invalid number in the field “%(field)s”", field=key)}
-                        )
-                    )
+                    return {}, _("Invalid number in the field “%(field)s”", field=key)
                 entry["value"] = num
             if ftype == "monetary":
                 entry["currency"] = (val(f"cf_currency_{i}") or "EUR").upper()
@@ -907,6 +902,18 @@ def _edit_sync(a, doc_id: str, form) -> RedirectResponse:
     normalized = {k: {kk: vv for kk, vv in v.items() if vv is not None} for k, v in cfs.items()}
     if normalized != current_cfs:
         changes["custom_fields"] = cfs
+    return changes, None
+
+
+def _edit_sync(a, doc_id: str, form) -> Response:
+    meta = docs.load_meta(a, doc_id)
+    if str(form.get("autosave") or "") == "1":
+        return _autosave(a, doc_id, form, meta)
+    if _stale(form, meta):
+        return redirect(_doc_url(doc_id, form, msg=_(STALE_MSG)))
+    changes, error = _form_changes(form, meta)
+    if error:
+        return redirect(f"/documents/{doc_id}?" + urlencode({"msg": error}))
     # fields changed in this edit are locked automatically; the checkboxes decide the rest
     # (tags are never locked automatically - their checkbox always counts)
     locks = {
@@ -922,6 +929,38 @@ def _edit_sync(a, doc_id: str, form) -> RedirectResponse:
         docs.mark_reviewed(a, doc_id)
         return redirect("/review/next?" + urlencode({"after": doc_id}))
     return redirect(_doc_url(doc_id, form, saved="1"))
+
+
+def _autosave(a, doc_id: str, form, meta) -> JSONResponse:
+    """One field saved as soon as the user leaves it (or its lock toggled, or an undo).
+    Answers with the new revision and what is needed to undo the change."""
+    if _stale(form, meta):
+        return JSONResponse({"ok": False, "stale": True, "error": _(STALE_MSG)}, status_code=409)
+    try:
+        if form.get("undo"):
+            snap = json.loads(str(form.get("undo")))
+            meta = docs.restore_field(a, doc_id, snap)
+            return JSONResponse({"ok": True, "revision": meta.revision})
+        field = _form_val(form, "field")
+        if field.startswith("lock:"):
+            name = field[5:]
+            if name not in LOCKABLE_FIELDS:
+                raise docs.EditError(_("Field “%(field)s” cannot be locked.", field=name))
+            meta = docs.update_fields(a, doc_id, {}, {name: form.get(f"lock_{name}") == "on"})
+            return JSONResponse({"ok": True, "revision": meta.revision, "undo": None})
+        if field not in LOCKABLE_FIELDS:
+            raise docs.EditError(_("Field “%(field)s” cannot be edited.", field=field))
+        changes, error = _form_changes(form, meta)
+        if error:
+            raise docs.EditError(error)
+        if field not in changes:
+            return JSONResponse({"ok": True, "revision": meta.revision, "undo": None})
+        snap = docs.field_snapshot(meta, field)
+        meta = docs.update_fields(a, doc_id, {field: changes[field]})
+    except (docs.EditError, ValueError) as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
+    return JSONResponse({"ok": True, "revision": meta.revision, "undo": snap,
+                         "locked": bool(meta.field_locks.get(field))})  # fmt: skip
 
 
 @router.post("/documents/{doc_id}/edit")
