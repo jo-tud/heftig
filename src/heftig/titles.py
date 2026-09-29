@@ -118,7 +118,6 @@ def drops_sender(old: str, new: str, words: set[str]) -> bool:
     )
 
 
-
 def _groups(conn: sqlite3.Connection) -> list[dict[str, Any]]:
     rows = conn.execute(
         """
@@ -235,8 +234,11 @@ def generate(archive: Archive, progress=None) -> dict[str, Any]:
             d = ids.get(str(item.get("id", "")))
             new = normalize_title(item.get("title") if isinstance(item.get("title"), str) else "")
             gi = int(str(item["id"]).split(".")[0]) if d is not None else 0
-            if d is None or d["locked"] or not new or drops_sender(
-                d["title"], new, batch[gi]["sender_words"]
+            if (
+                d is None
+                or d["locked"]
+                or not new
+                or drops_sender(d["title"], new, batch[gi]["sender_words"])
             ):
                 report["skipped"] += 1
                 continue
