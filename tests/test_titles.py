@@ -170,3 +170,27 @@ def test_titles_page_flow(tmp_path):
     assert docs.load_meta(arch, x).title == "Kontoabrechnung Girokonto Q1 2021"
     assert docs.load_meta(arch, y).title == "Kontoabrechnung Girokonto Q2 2021"
     arch.close()
+
+
+def test_proposals_never_drop_the_sender(archive):
+    """ "Aktienbuch (Cap Table) atpar AG 2019" -> "Aktienbuch (Cap Table) 2019" is refused: the
+    sender makes a title quick to understand. An alias ("TK") counts as the sender."""
+    from heftig import taxonomy as tax
+    from heftig.db import write_tx
+    from heftig.titles import drops_sender, sender_words
+
+    with write_tx(archive.conn):
+        tid = tax.get_or_create(archive.conn, "correspondent", "Techniker Krankenkasse")
+        tax.add_alias(archive.conn, tid, "TK")
+    words = sender_words(archive.conn, tid)
+    assert {"techniker", "krankenkasse", "tk"} <= words
+    assert drops_sender("Gesundheitskarte Techniker Krankenkasse", "Gesundheitskarte", words)
+    assert not drops_sender("Gesundheitskarte Techniker Krankenkasse", "Gesundheitskarte TK",
+                            words)  # fmt: skip
+    assert not drops_sender("Beitragsbescheid 2025", "Beitragsbescheid TK 2025", words)
+    assert not drops_sender("Beitragsbescheid 2025", "Beitragsbescheid 2025", words)
+    atpar = sender_words(archive.conn, tax.get_or_create(archive.conn, "correspondent", "atpar AG"))
+    assert atpar == {"atpar"}
+    assert drops_sender(
+        "Aktienbuch (Cap Table) atpar AG 2019", "Aktienbuch (Cap Table) 2019", atpar
+    )

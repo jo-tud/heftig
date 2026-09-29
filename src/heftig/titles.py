@@ -94,6 +94,30 @@ def title_examples(conn: sqlite3.Connection, doc_id: str, limit: int = 8) -> lis
 
 # --- harmonising existing titles -------------------------------------------------------------
 
+_NOT_A_NAME = {
+    "gmbh", "ag", "kg", "ohg", "ug", "se", "ev", "mbh", "inc", "ltd", "llc", "co", "und", "der",
+    "die", "das", "the", "and", "of", "fuer", "for", "haftungsbeschraenkt", "deutschland",
+}  # fmt: skip
+
+
+def sender_words(conn: sqlite3.Connection, correspondent_id: int | None) -> set[str]:
+    """Words that name the sender in a title: from its name and aliases ("TK", "atpar")."""
+    if correspondent_id is None:
+        return set()
+    from . import taxonomy as tax
+
+    names = [tax.term_name(conn, correspondent_id), *tax.aliases_for(conn, correspondent_id)]
+    return {w for n in names if n for w in normalize_name(n).split()
+            if w not in _NOT_A_NAME and len(w) >= 2}  # fmt: skip
+
+
+def drops_sender(old: str, new: str, words: set[str]) -> bool:
+    """The proposal loses the sender the current title names (the user wants to keep it)."""
+    return bool(words & set(normalize_name(old).split())) and not (
+        words & set(normalize_name(new).split())
+    )
+
+
 
 def _groups(conn: sqlite3.Connection) -> list[dict[str, Any]]:
     rows = conn.execute(
@@ -113,6 +137,7 @@ def _groups(conn: sqlite3.Connection) -> list[dict[str, Any]]:
         g = groups.setdefault(key, {
             "correspondent": names.get(r["correspondent_id"]),
             "document_type": names.get(r["document_type_id"]), "documents": [],
+            "sender_words": sender_words(conn, r["correspondent_id"]),
         })  # fmt: skip
         g["documents"].append({
             "id": r["id"], "title": r["title"], "date": r["document_date"],
@@ -209,7 +234,10 @@ def generate(archive: Archive, progress=None) -> dict[str, Any]:
                 continue
             d = ids.get(str(item.get("id", "")))
             new = normalize_title(item.get("title") if isinstance(item.get("title"), str) else "")
-            if d is None or d["locked"] or not new:
+            gi = int(str(item["id"]).split(".")[0]) if d is not None else 0
+            if d is None or d["locked"] or not new or drops_sender(
+                d["title"], new, batch[gi]["sender_words"]
+            ):
                 report["skipped"] += 1
                 continue
             report["documents"] += 1
@@ -230,12 +258,19 @@ def generate(archive: Archive, progress=None) -> dict[str, Any]:
 
 
 def proposals(conn: sqlite3.Connection) -> list[dict[str, Any]]:
-    """Open proposals grouped by label, groups sorted by name."""
+    """Open proposals grouped by label, groups sorted by name. Proposals that would drop the
+    sender from a title (made before that rule) are not shown."""
     grouped: dict[str, list[dict[str, Any]]] = {}
+    words: dict[int | None, set[str]] = {}
     for r in conn.execute(
-        "SELECT p.*, d.document_date FROM title_proposals p JOIN documents d ON d.id = p.doc_id "
-        "ORDER BY p.group_label, d.document_date, p.doc_id"
+        "SELECT p.*, d.document_date, d.correspondent_id FROM title_proposals p "
+        "JOIN documents d ON d.id = p.doc_id ORDER BY p.group_label, d.document_date, p.doc_id"
     ):
+        cid = r["correspondent_id"]
+        if cid not in words:
+            words[cid] = sender_words(conn, cid)
+        if drops_sender(r["old_title"], r["new_title"], words[cid]):
+            continue
         grouped.setdefault(r["group_label"], []).append(dict(r))
     return [{"label": k, "items": v} for k, v in sorted(grouped.items())]
 
