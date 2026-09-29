@@ -85,6 +85,7 @@ class SearchParams:
     status: list[str] = field(default_factory=list)
     filed: str | None = None  # "yes" | "no"
     filing_section: str | None = None
+    filing_binder: str | None = None
     cf_key: str | None = None
     cf_min: float | str | None = None  # text: an amount that could not be read
     cf_max: float | str | None = None
@@ -688,6 +689,8 @@ def _filters(
         add("session", "d.scan_session_id = ?", p.session)
     if p.filing_section:
         add("filing_section", "d.filing_section = ?", p.filing_section)
+    if p.filing_binder:
+        add("filing_binder", "d.filing_binder = ?", p.filing_binder)
     for bound in (p.cf_min, p.cf_max):
         if isinstance(bound, str):
             raise SearchSyntaxError(
@@ -1024,6 +1027,8 @@ def _hydrate(
             "mime_type": d["mime_type"],
             "page_count": d["page_count"],
             "filing_section": d["filing_section"],
+            "filing_binder": d["filing_binder"],
+            "taken_out": d["filing_sequence"] is not None and d["paper_location"] is not None,
             "filed": d["filing_sequence"] is not None,
             "paper": bool(d["paper"]),
             "rank": rank,

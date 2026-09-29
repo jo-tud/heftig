@@ -28,7 +28,8 @@ CHIP_LABELS = i18n.Labels({
     "correspondent": N_("Sender"), "document_type": N_("Type"), "tag": N_("Tag"),
     "date_from": N_("Date from"), "date_to": N_("Date to"), "received_from": N_("Received from"),
     "received_to": N_("Received to"), "source": N_("Source"), "status": N_("Status"),
-    "filed": N_("Filed"), "filing_section": N_("Section"), "cf_key": N_("Field"),
+    "filed": N_("Filed"), "filing_section": N_("Section"), "filing_binder": N_("Binder"),
+    "cf_key": N_("Field"),
     "cf_min": N_("min."), "cf_max": N_("max."), "session": N_("Scan batch"),
 })  # fmt: skip
 YES_NO = i18n.Labels({"yes": N_("yes"), "no": N_("no")})

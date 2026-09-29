@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}{{ _("Binders") }}{% endblock %}
+{% block content %}
+<nav class="crumbs"><a href="/settings">← {{ _("Settings") }}</a></nav>
+<h1>{{ _("Binders") }}</h1>
+{% if message %}<p class="notice ok" role="status">{{ message }}</p>{% endif %}
+{% if error %}<p class="notice error" role="alert">{{ error }}</p>{% endif %}
+<p>{{ _("Paper you mark as filed goes on top of the current month’s section in the current binder. Write the binder’s name on its spine; Heftig then tells you for every letter which binder, which section and which position from the top.") }}</p>
+
+{% for b in binders %}
+<section class="card" aria-label="{{ b.name }}">
+  <h2>{{ b.name }} {% if b.current %}<span class="badge st-done">{{ _("current") }}</span>{% endif %}</h2>
+  <p>{{ ngettext("%(num)d sheet", "%(num)d sheets", b.sheets) }}{% if b.first_section %} · {{ _("sections %(first)s to %(last)s", first=b.first_section, last=b.last_section) }}{% endif %}
+    {% if b.full_at %} · {{ _("full since %(when)s", when=b.full_at | dt) }}{% endif %}
+    · <a href="/?filing_binder={{ b.name | urlencode }}&amp;sort=received">{{ _("Show documents") }}</a></p>
+  {% if b.current %}
+  <form method="post" action="/binders" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf }}">
+    <label>{{ _("Next binder") }} <input name="name" value="{{ next_name }}" maxlength="60" required></label>
+    <button name="action" value="next" class="primary" data-confirm-click="{{ _("Close %(name)s as full? New filings go into the next binder from now on.", name=b.name) }}">{{ _("This binder is full – start the next one") }}</button>
+  </form>
+  {% endif %}
+  <details><summary class="small">{{ _("Rename …") }}</summary>
+    <form method="post" action="/binders" class="inline-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf }}"><input type="hidden" name="old" value="{{ b.name }}">
+      <input name="name" value="{{ b.name }}" maxlength="60" required aria-label="{{ _("New name") }}">
+      <button name="action" value="rename">{{ _("Rename") }}</button>
+    </form>
+    <p class="hint">{{ _("For example to what is written on the binder. The documents in it are updated.") }}</p>
+  </details>
+</section>
+{% endfor %}
+
+<section class="card">
+  <h2>{{ _("Everyday cases") }}</h2>
+  <ul>
+    <li>{{ _("Taking a letter out (lending it, handing it in): on its page, “Taken out …” – it keeps its place, and “Put back in its place” returns it there.") }}</li>
+    <li>{{ _("Moving a letter to another binder: on its page, “Into another binder …” – it goes on top of that binder’s current section.") }}</li>
+    <li>{{ _("Paper that is never filed (a referral left at the doctor’s): “Not kept”.") }}</li>
+    <li>{{ _("Digitising an old binder: in the inbox, “Start a batch” – choose whether the paper goes back into the old binder or into the current Heftig binder.") }}</li>
+  </ul>
+</section>
+{% endblock %}

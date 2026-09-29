@@ -91,9 +91,9 @@
   </section>
   {% endif %}
 
-  <details class="facet advanced"{% if params.status or params.filed or params.filing_section or params.cf_key or params.received_from or params.received_to %} open{% endif %}>
+  <details class="facet advanced"{% if params.status or params.filed or params.filing_section or params.filing_binder or params.cf_key or params.received_from or params.received_to %} open{% endif %}>
     <summary>{{ _("More filters") }}</summary>
-    {% set adv = ('status', 'filed', 'filing_section', 'cf_key', 'cf_min', 'cf_max', 'received_from', 'received_to') %}
+    {% set adv = ('status', 'filed', 'filing_section', 'filing_binder', 'cf_key', 'cf_min', 'cf_max', 'received_from', 'received_to') %}
     <form method="get" action="/">
       {% for k, val in v.qitems if k not in adv %}<input type="hidden" name="{{ k }}" value="{{ val }}">{% endfor %}
       <label>{{ _("Status") }}
@@ -105,6 +105,10 @@
           <option value="yes" {% if params.filed == 'yes' %}selected{% endif %}>{{ _("yes") }}</option>
           <option value="no" {% if params.filed == 'no' %}selected{% endif %}>{{ _("no (paper, not filed yet)") }}</option>
         </select></label>
+      {% if binder_names %}<label>{{ _("Binder") }}
+        <select name="filing_binder"><option value="">{{ _("– all –") }}</option>
+          {% for b in binder_names %}<option {% if b == params.filing_binder %}selected{% endif %}>{{ b }}</option>{% endfor %}
+        </select></label>{% endif %}
       {% if sections %}<label>{{ _("Filing section") }}
         <select name="filing_section"><option value="">{{ _("– all –") }}</option>
           {% for s in sections %}<option {% if s == params.filing_section %}selected{% endif %}>{{ s }}</option>{% endfor %}
@@ -217,7 +221,7 @@
           <span title="{{ _("Document date") }}">{% if it.document_date %}📄 {{ it.document_date | date }}{% if it.document_date_status == 'ai_uncertain' %} <span class="badge st-needs_review">{{ _("uncertain") }}</span>{% endif %}{% else %}📄 –{% endif %}</span>
           <span title="{{ _("Received") }}">📥 {{ time(it.received_at) }}</span>
           <span>{{ SOURCE_LABELS.get(it.source, it.source) }}</span>
-          {% if it.filed %}<span title="{{ _("Paper filed") }}">🗂 {{ it.filing_section }}</span>{% elif it.paper %}<span class="muted">{{ _("Paper not filed") }}</span>{% endif %}
+          {% if it.taken_out %}<span title="{{ _("Taken out of the binder") }}">🗂 {{ _("taken out") }}</span>{% elif it.filed %}<span title="{{ _("Paper filed") }}">🗂 {% if it.filing_binder %}{{ it.filing_binder }} · {% endif %}{{ it.filing_section }}</span>{% elif it.paper %}<span class="muted">{{ _("Paper not filed") }}</span>{% endif %}
           {% if it.status != 'done' %}{{ status_badge(it.status) }}{% endif %}
         </p>
         {% if it.tags %}<p class="tags">{% for t in it.tags %}<a class="tag" href="/?tag={{ t | urlencode }}">{{ t }}</a>{% endfor %}</p>{% endif %}

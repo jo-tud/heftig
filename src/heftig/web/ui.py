@@ -22,7 +22,7 @@ from fastapi.responses import (
 from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 
-from .. import auth, combine, i18n, jobs, maintenance, saved_searches, sessions, trash
+from .. import auth, binders, combine, i18n, jobs, maintenance, saved_searches, sessions, trash
 from .. import documents as docs
 from .. import taxonomy as tax
 from ..consume import list_quarantine
@@ -306,6 +306,7 @@ def _params_from(qp) -> SearchParams:
         status=[v for v in qp.getlist("status") if v],
         filed=qp.get("filed") or None,
         filing_section=qp.get("filing_section") or None,
+        filing_binder=qp.get("filing_binder") or None,
         cf_key=qp.get("cf_key") or None,
         cf_min=f("cf_min"),
         cf_max=f("cf_max"),
@@ -340,6 +341,7 @@ def documents_page(request: Request, p: Principal = Depends(require_user)):
     cf_keys = [
         r[0] for r in a.conn.execute("SELECT DISTINCT key FROM custom_field_values ORDER BY key")
     ]
+    binder_names = [b["name"] for b in reversed(binders.load(a.paths))]
     saved = saved_searches.load(a.paths)
     for e in saved:
         e["href"] = "/?" + e["query"]
@@ -359,6 +361,7 @@ def documents_page(request: Request, p: Principal = Depends(require_user)):
         page_count=pages,
         base_qs=view["query"],
         sections=sections,
+        binder_names=binder_names,
         cf_keys=cf_keys,
         saved_searches=saved,
         saved_current=next(
@@ -694,6 +697,8 @@ def document_page(request: Request, doc_id: str, p: Principal = Depends(require_
         d=detail,
         m=detail["metadata"],
         pos=detail["filing_position"],
+        current_binder=binders.current(a) if detail["metadata"].get("paper") else "",
+        binder_names=[b["name"] for b in reversed(binders.load(a.paths))],
         text_pages=tp.pages if tp else [],
         events=events,
         terms={k: tax.list_terms(a.conn, k) for k in tax.KINDS},
@@ -920,6 +925,18 @@ def _action_sync(a, doc_id: str, form) -> RedirectResponse:
     elif action == "unfile":
         docs.unmark_filed(a, doc_id)
         msg = _("Filing undone.")
+    elif action == "take_out":
+        docs.take_out(a, doc_id, _form_val(form, "where"))
+        msg = _("Noted as taken out – the sheet keeps its place.")
+    elif action == "put_back":
+        docs.put_back(a, doc_id)
+        msg = _("Back in its place.")
+    elif action == "refile":
+        target = _form_val(form, "binder")
+        if target not in {b["name"] for b in binders.load(a.paths)}:
+            raise ApiError(400, "invalid", _("Unknown binder."))
+        docs.mark_filed(a, doc_id, binder=target)
+        msg = _("Moved to binder %(name)s, on top of the current section.", name=target)
     elif action == "paper_folder":
         docs.set_paper_state(a, doc_id, location=_form_val(form, "location"))
         msg = _("Location saved.")
@@ -1550,6 +1567,7 @@ def inbox_page(request: Request, p: Principal = Depends(require_user)):
         review_total=review_total,
         events=events,
         unfiled=unfiled,
+        current_binder=binders.current(a),
         quarantine=list_quarantine(a)[:50],
         snapshot_warning=maintenance.snapshot_overdue(a),
         suggestion_groups=_suggestion_groups(a),
@@ -1647,6 +1665,40 @@ CATEGORY_KINDS = i18n.Labels({
     "document_type": N_("Document types"),
     "tag": N_("Tags"),
 })  # fmt: skip
+
+
+@router.get("/binders")
+def binders_page(request: Request, p: Principal = Depends(require_user)):
+    a = get_archive(request)
+    binders.current(a)  # there always is one
+    msg = {"next": _("New filings go into the new binder from now on."),
+           "renamed": _("Renamed.")}.get(request.query_params.get("done", ""))  # fmt: skip
+    return render(request, "binders.html", nav="settings", binders=binders.overview(a),
+                  next_name=binders.next_name(binders.load(a.paths), a.settings.language),
+                  message=msg)  # fmt: skip
+
+
+@router.post("/binders")
+async def binders_action(request: Request, p: Principal = Depends(require_write)):
+    form = await request.form()
+    return await run_in_threadpool(_binders_sync, request, form)
+
+
+def _binders_sync(request: Request, form) -> Any:
+    a = get_archive(request)
+    action = _form_val(form, "action")
+    try:
+        if action == "next":
+            binders.start_next(a, _form_val(form, "name"))
+            return redirect("/binders?done=next")
+        if action == "rename":
+            binders.rename(a, _form_val(form, "old"), _form_val(form, "name"))
+            return redirect("/binders?done=renamed")
+    except binders.BinderError as e:
+        return render(request, "binders.html", http_status=400, nav="settings",
+                      binders=binders.overview(a), error=str(e),
+                      next_name=binders.next_name(binders.load(a.paths), a.settings.language))  # fmt: skip
+    return redirect("/binders")
 
 
 @router.get("/categories")

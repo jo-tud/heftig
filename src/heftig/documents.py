@@ -168,8 +168,9 @@ def _upsert_row(
             size_bytes, page_count, source, received_at, ingest_sequence, document_date,
             filed_at, filing_sequence, filing_section, paper, title, correspondent_id,
             document_type_id, summary, status, text_status, review_reasons, revision,
-            updated_at, metadata_json, scan_session_id, paper_location, paper_discarded_at)
-        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            updated_at, metadata_json, scan_session_id, paper_location, paper_discarded_at,
+            filing_binder)
+        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ON CONFLICT(id) DO UPDATE SET
             original_filename=excluded.original_filename, page_count=excluded.page_count,
             document_date=excluded.document_date, filed_at=excluded.filed_at,
@@ -181,7 +182,7 @@ def _upsert_row(
             review_reasons=excluded.review_reasons, revision=excluded.revision,
             updated_at=excluded.updated_at, metadata_json=excluded.metadata_json,
             scan_session_id=excluded.scan_session_id, paper_location=excluded.paper_location,
-            paper_discarded_at=excluded.paper_discarded_at
+            paper_discarded_at=excluded.paper_discarded_at, filing_binder=excluded.filing_binder
         """,
         (
             meta.id,
@@ -212,6 +213,7 @@ def _upsert_row(
             meta.scan_session.id if meta.scan_session else None,
             meta.paper_location,
             meta.paper_discarded_at,
+            meta.filing_binder,
         ),
     )
     conn.execute("DELETE FROM document_tags WHERE doc_id=?", (meta.id,))
@@ -440,17 +442,29 @@ def filing_section_for(archive: Archive, filed_at: str) -> str:
 
 
 def mark_filed(
-    archive: Archive, doc_id: str, *, by: str = "user", filed_at: str | None = None
+    archive: Archive,
+    doc_id: str,
+    *,
+    by: str = "user",
+    filed_at: str | None = None,
+    binder: str | None = None,
 ) -> DocumentMetadata:
-    """Record that the paper was physically filed now: newest on top of its section."""
+    """Record that the paper was physically filed now: on top of the current section of the
+    current binder (or of ``binder``)."""
+    from . import binders
+
     conn = archive.conn
+    binder = binder or binders.current(archive)
     with write_tx(conn):
         meta = load_meta(archive, doc_id)
-        if meta.filing_sequence is not None:
+        if meta.filing_sequence is not None and meta.filing_binder == binder:
+            if meta.paper_location:  # it was taken out: back in its place
+                return put_back(archive, doc_id)
             return meta
         meta.filed_at = filed_at or now_iso()
         meta.filing_sequence = next_sequence(conn, "filing_sequence")
         meta.filing_section = filing_section_for(archive, meta.filed_at)
+        meta.filing_binder = binder
         meta.paper_location = meta.paper_discarded_at = None
         meta.paper = True
         add_history(
@@ -461,11 +475,35 @@ def mark_filed(
         return meta
 
 
+def take_out(archive: Archive, doc_id: str, where: str = "") -> DocumentMetadata:
+    """The sheet was taken out of its binder (lent, sent, in use). It keeps its place, so
+    ``put_back`` returns it there; ``where`` says where it is meanwhile."""
+    with write_tx(archive.conn):
+        meta = load_meta(archive, doc_id)
+        if meta.filing_sequence is None:
+            raise EditError(_("The paper is not filed."))
+        meta.paper_location = " ".join(where.split())[:200] or N_("taken out")
+        add_history(meta, HistoryEntry(task="filing", at=now_iso(), status="taken out", by="user"))
+        persist(archive, meta)
+        return meta
+
+
+def put_back(archive: Archive, doc_id: str) -> DocumentMetadata:
+    """A sheet taken out is back in its old place."""
+    with write_tx(archive.conn):
+        meta = load_meta(archive, doc_id)
+        meta.paper_location = None
+        add_history(meta, HistoryEntry(task="filing", at=now_iso(), status="put back", by="user"))
+        persist(archive, meta)
+        return meta
+
+
 def unmark_filed(archive: Archive, doc_id: str) -> DocumentMetadata:
     with write_tx(archive.conn):
         meta = load_meta(archive, doc_id)
-        meta.filed_at = meta.filing_section = None
+        meta.filed_at = meta.filing_section = meta.filing_binder = None
         meta.filing_sequence = None
+        meta.paper_location = None
         add_history(meta, HistoryEntry(task="filing", at=now_iso(), status="unfiled", by="user"))
         persist(archive, meta)
         return meta
@@ -473,6 +511,7 @@ def unmark_filed(archive: Archive, doc_id: str) -> DocumentMetadata:
 
 @dataclass
 class FilingPosition:
+    binder: str | None
     section: str
     position_from_top: int
     total_in_section: int
@@ -489,8 +528,10 @@ def set_paper_state(
         meta = load_meta(archive, doc_id)
         meta.paper_location = (location or "").strip()[:200] or None
         meta.paper_discarded_at = now_iso() if discarded else None
-        if meta.paper_location or discarded:
-            meta.filed_at = meta.filing_section = None
+        # not kept: no place in a binder any more. Somewhere else: a filed sheet keeps its
+        # place (taken out, see take_out); an unfiled one is simply elsewhere
+        if discarded or (meta.paper_location and meta.filing_sequence is None):
+            meta.filed_at = meta.filing_section = meta.filing_binder = None
             meta.filing_sequence = None
         status = "discarded" if discarded else ("in_folder" if meta.paper_location else "reset")
         add_history(meta, HistoryEntry(task="filing", at=now_iso(), status=status, by="user"))
@@ -508,31 +549,38 @@ def set_keep_original(archive: Archive, doc_id: str, keep: bool) -> DocumentMeta
 
 
 def filing_position(archive: Archive, meta: DocumentMetadata, n: int = 2) -> FilingPosition | None:
+    """Where the sheet lies: binder, section, position counted from the top among the sheets
+    that are there (taken-out and not-kept ones don't count; a taken-out sheet keeps its place)."""
     if meta.filing_sequence is None or not meta.filing_section:
         return None
     conn = archive.conn
-    sec, seq = meta.filing_section, meta.filing_sequence
-    total = conn.execute(
-        "SELECT COUNT(*) FROM documents WHERE filing_section=?", (sec,)
-    ).fetchone()[0]
+    sec, seq, binder = meta.filing_section, meta.filing_sequence, meta.filing_binder
+    here = (
+        "filing_section=? AND filing_binder IS ? AND paper_location IS NULL "
+        "AND paper_discarded_at IS NULL"
+    )
+    total = conn.execute(f"SELECT COUNT(*) FROM documents WHERE {here}", (sec, binder)).fetchone()[
+        0
+    ]
     newer = conn.execute(
-        "SELECT COUNT(*) FROM documents WHERE filing_section=? AND filing_sequence>?", (sec, seq)
+        f"SELECT COUNT(*) FROM documents WHERE {here} AND filing_sequence>?", (sec, binder, seq)
     ).fetchone()[0]
     cols = "id, title, original_filename, filing_sequence"
     above = conn.execute(
-        f"SELECT {cols} FROM documents WHERE filing_section=? AND filing_sequence>? "
+        f"SELECT {cols} FROM documents WHERE {here} AND filing_sequence>? "
         "ORDER BY filing_sequence ASC LIMIT ?",
-        (sec, seq, n),
+        (sec, binder, seq, n),
     ).fetchall()
     below = conn.execute(
-        f"SELECT {cols} FROM documents WHERE filing_section=? AND filing_sequence<? "
+        f"SELECT {cols} FROM documents WHERE {here} AND filing_sequence<? "
         "ORDER BY filing_sequence DESC LIMIT ?",
-        (sec, seq, n),
+        (sec, binder, seq, n),
     ).fetchall()
     return FilingPosition(
+        binder=binder,
         section=sec,
         position_from_top=newer + 1,
-        total_in_section=total,
+        total_in_section=total if meta.paper_location is None else total + 1,
         above=[dict(r) for r in reversed(above)],
         below=[dict(r) for r in below],
     )

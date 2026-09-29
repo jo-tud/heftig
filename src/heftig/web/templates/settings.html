@@ -27,6 +27,11 @@
     {{ _("Keys are never shown, logged or exported.") }}</p>
 </section>
 
+<section class="card" aria-labelledby="binders-h">
+  <h2 id="binders-h">{{ _("Binders") }}</h2>
+  <p>{{ _("Which binder the paper goes into, and what to do when it is full.") }} <a href="/binders">{{ _("Binders") }}</a></p>
+</section>
+
 <section class="card" aria-labelledby="trash-h">
   <h2 id="trash-h">{{ _("Trash") }}</h2>
   <p>{{ ngettext("Deleted documents can be restored for %(num)d day.", "Deleted documents can be restored for %(num)d days.", s.trash_retention_days) }} <a href="/trash">{{ _("Open trash") }}</a></p>

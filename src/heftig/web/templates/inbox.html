@@ -18,7 +18,7 @@
 
   {% for d in session.pending %}<input type="hidden" name="shown" value="{{ d.id }}">{% endfor %}
   {% if session.mode == 'refile' and session.pending %}
-    <p><button name="action" value="file_all" class="primary">{{ _("All %(num)s filed in scan order", num=session.pending | length) }}</button></p>
+    <p><button name="action" value="file_all" class="primary">{{ _("All %(num)s filed in scan order", num=session.pending | length) }}</button> <span class="small muted">{% trans binder=current_binder %}into binder <strong>{{ binder }}</strong> (<a href="/binders">full?</a>){% endtrans %}</span></p>
   {% elif session.mode == 'sort' and session.pending %}
     {% if session.busy %}
     <p class="muted">{{ _("The sorting suggestion appears once everything is processed.") }}</p>
@@ -98,7 +98,7 @@
 {% if unfiled %}
 <section class="card" aria-labelledby="unf-h">
   <h2 id="unf-h">{{ _("Paper still to file") }}</h2>
-  <p class="hint">{{ _("The last sheet filed goes on top of the current section.") }}</p>
+  <p class="hint">{% trans binder=current_binder %}Into binder <strong>{{ binder }}</strong>, on top of the current section.{% endtrans %} <a href="/binders">{{ _("Binders") }}</a></p>
   <ul class="plain">
   {% for d in unfiled %}
     <li><a href="/documents/{{ d.id }}">{{ d.title or d.original_filename }}</a> <span class="small muted">· {{ _("received %(time)s", time=time(d.received_at)) }}</span>
@@ -202,7 +202,7 @@
       <label>{{ _("Binder") }} <input name="name" required maxlength="80" placeholder="{{ _("e.g. Insurance") }}"></label>
       <fieldset><legend>{{ _("Afterwards, the paper goes …") }}</legend>
         <label><input type="radio" name="mode" value="folder" checked> {{ _("back into the binder") }} <span class="muted small">– {{ _("Heftig remembers the binder") }}</span></label>
-        <label><input type="radio" name="mode" value="refile"> {{ _("into the Heftig filing") }} <span class="muted small">– {{ _("filed with one click at the end") }}</span></label>
+        <label><input type="radio" name="mode" value="refile"> {{ _("into the Heftig filing") }} <span class="muted small">– {{ _("filed with one click at the end, into the current binder") }}</span></label>
         <label><input type="radio" name="mode" value="sort"> {{ _("away, except what matters") }} <span class="muted small">– {{ _("Heftig suggests what to keep") }}</span></label>
       </fieldset>
       <button name="action" value="start" class="primary">{{ _("Start") }}</button>

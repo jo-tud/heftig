@@ -28,6 +28,19 @@ class Archive:
         self._settings_revision = -1
         self.refresh_settings()
         self._rebuild_index_if_required()
+        self._adopt_unassigned_filings()
+
+    def _adopt_unassigned_filings(self) -> None:
+        """Sheets filed before binders existed belong to the first binder."""
+        from .binders import adopt_unassigned
+
+        try:
+            n = adopt_unassigned(self)
+        except Exception:  # noqa: BLE001 - never block the start over this
+            log.exception("assigning filed documents to a binder failed")
+            return
+        if n:
+            log.info("%s filed document(s) assigned to the first binder", n)
 
     def refresh_settings(self) -> bool:
         """Pick up settings changed in the web interface (cheap: one small query)."""

@@ -23,8 +23,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, BinaryIO
 
+from . import binders, jobs, sessions
 from . import documents as docs
-from . import jobs, sessions
 from .archive import Archive
 from .db import now_iso, write_tx
 from .i18n import N_, translate_text
@@ -259,6 +259,7 @@ def _commit(
             meta.filed_at = now
             meta.filing_sequence = docs.next_sequence(conn, "filing_sequence")
             meta.filing_section = docs.filing_section_for(archive, now)
+            meta.filing_binder = binders.current(archive)
             docs.add_history(
                 meta, HistoryEntry(task="filing", at=now, status="auto-filed", by="rule")
             )

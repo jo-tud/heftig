@@ -212,10 +212,13 @@ def _placed(parts: list[DocumentMetadata]) -> DocumentMetadata | None:
 def _take_filing(archive: Archive, doc_id: str, placed: DocumentMetadata) -> None:
     with write_tx(archive.conn):
         meta = docs.load_meta(archive, doc_id)
-        meta.filed_at, meta.filing_sequence, meta.filing_section = (
-            placed.filed_at, placed.filing_sequence, placed.filing_section,
+        meta.filed_at, meta.filing_sequence, meta.filing_section, meta.filing_binder = (
+            placed.filed_at, placed.filing_sequence, placed.filing_section, placed.filing_binder,
         )  # fmt: skip
-        meta.paper_location = meta.paper_discarded_at = None
+        meta.paper_location, meta.paper_discarded_at = (
+            placed.paper_location,
+            placed.paper_discarded_at,
+        )
         docs.persist(archive, meta)
 
 

@@ -147,6 +147,8 @@ class DocumentMetadata(BaseModel):
     filed_at: str | None = None
     filing_sequence: int | None = None
     filing_section: str | None = None
+    # the binder the paper went into (name on its spine, see binders.json)
+    filing_binder: str | None = None
     title: str = ""
     correspondent: str | None = None
     document_type: str | None = None

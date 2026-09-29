@@ -387,9 +387,12 @@ def test_automatic_snapshot_and_copy_before_an_update(tmp_path):
         assert "vor 3 Tagen" in maintenance.snapshot_overdue(a)
     assert maintenance.snapshot_if_due(a) is not None
     # an update with migrations first copies the database as it was
-    a.conn.execute("PRAGMA user_version = 9")
+    # (the database as version 10 left it: without the binder column of migration 11)
+    a.conn.execute("DROP INDEX idx_documents_binder")
+    a.conn.execute("ALTER TABLE documents DROP COLUMN filing_binder")
+    a.conn.execute("PRAGMA user_version = 10")
     a.close()
     a = Archive(make_settings(tmp_path))
-    assert (a.paths.backup / "vor-update-v9.sqlite").exists()
+    assert (a.paths.backup / "vor-update-v10.sqlite").exists()
     assert not list(a.paths.backup.glob(".*.tmp"))
     a.close()

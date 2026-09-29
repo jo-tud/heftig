@@ -164,6 +164,7 @@ def _search_params(
     status: list[str] = Query(default=[]),
     filed: Literal["yes", "no"] | None = None,
     filing_section: str | None = None,
+    filing_binder: str | None = None,
     cf_key: str | None = None,
     cf_min: float | None = None,
     cf_max: float | None = None,
@@ -179,6 +180,7 @@ def _search_params(
         date_from=date_from or None, date_to=date_to or None,
         received_from=received_from or None, received_to=received_to or None,
         source=source, status=status, filed=filed, filing_section=filing_section or None,
+        filing_binder=filing_binder or None,
         cf_key=cf_key or None, cf_min=cf_min, cf_max=cf_max, sort=sort, page=page,
         per_page=per_page, tag_mode=tag_mode, literal=literal, session=session or None,
     )  # fmt: skip

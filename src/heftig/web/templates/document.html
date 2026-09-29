@@ -180,15 +180,33 @@
 <section class="card" aria-labelledby="filing-h">
     <h2 id="filing-h">{{ _("Paper filing") }}</h2>
     {% if m.scan_session %}<p class="muted small">{% trans url="/?session=" ~ m.scan_session.id ~ "&sort=received", name=m.scan_session.name %}Scanned in batch <a href="{{ url }}">“{{ name }}”</a>{% endtrans %}{% if m.keep_original is not none %} · {{ _("Original kept") if m.keep_original else _("Original not needed") }}{% if m.keep_original_reason %} ({{ m.keep_original_reason | reason }}){% endif %}{% endif %}</p>{% endif %}
-    {% if pos %}
-      <p>{% trans section=pos.section, when=time(m.filed_at), n=pos.position_from_top, total=pos.total_in_section %}Filed in section <strong>{{ section }}</strong> on {{ when }} – position <strong>{{ n }}</strong> of {{ total }} (counted from the top, newest on top).{% endtrans %}</p>
+    {% if pos and m.paper_location %}
+      <p class="notice warn">{% trans binder=pos.binder or "–", where=m.paper_location | reason %}Taken out of binder <strong>{{ binder }}</strong> – now: {{ where }}{% endtrans %}</p>
+      <p>{% trans section=pos.section, n=pos.position_from_top %}Its place: section <strong>{{ section }}</strong>, position <strong>{{ n }}</strong> from the top.{% endtrans %}</p>
+      <form method="post" action="/documents/{{ m.id }}/action" class="buttons">{{ csrf_field(csrf) }}{{ rv }}
+        <button name="action" value="put_back" class="primary">{{ _("Put back in its place") }}</button>
+        <button name="action" value="paper_discarded" class="secondary" title="{{ _("Handed over, sent away or thrown out – nothing to file") }}">{{ _("Not kept") }}</button></form>
+    {% elif pos %}
+      <p>{% trans binder=pos.binder or "–", section=pos.section, n=pos.position_from_top, total=pos.total_in_section %}Binder <strong>{{ binder }}</strong>, section <strong>{{ section }}</strong> – position <strong>{{ n }}</strong> of {{ total }}, counted from the top (newest on top).{% endtrans %} <span class="muted small">{{ _("Filed on %(when)s.", when=time(m.filed_at)) }}</span></p>
       <ol class="stack">
         {% for n in pos.above %}<li class="muted"><a href="/documents/{{ n.id }}">{{ n.title or n.original_filename }}</a></li>{% endfor %}
         <li class="current"><strong>{{ m.title or m.original_filename }}</strong> {{ _("← this document") }}</li>
         {% for n in pos.below %}<li class="muted"><a href="/documents/{{ n.id }}">{{ n.title or n.original_filename }}</a></li>{% endfor %}
       </ol>
-      <form method="post" action="/documents/{{ m.id }}/action">{{ csrf_field(csrf) }}{{ rv }}
-        <button name="action" value="unfile" class="secondary">{{ _("Undo filing") }}</button></form>
+      <details><summary class="small">{{ _("Taken out …") }}</summary>
+        <form method="post" action="/documents/{{ m.id }}/action" class="inline-form">{{ csrf_field(csrf) }}{{ rv }}
+          <input name="where" maxlength="200" placeholder="{{ _("where it is now, e.g. with the tax adviser") }}" aria-label="{{ _("Where the paper is") }}">
+          <button name="action" value="take_out">{{ _("Taken out") }}</button></form>
+        <p class="hint">{{ _("The sheet keeps its place; “Put back in its place” returns it there.") }}</p></details>
+      {% if binder_names | length > 1 %}<details><summary class="small">{{ _("Into another binder …") }}</summary>
+        <form method="post" action="/documents/{{ m.id }}/action" class="inline-form">{{ csrf_field(csrf) }}{{ rv }}
+          <select name="binder" aria-label="{{ _("Binder") }}">{% for b in binder_names if b != pos.binder %}<option>{{ b }}</option>{% endfor %}</select>
+          <button name="action" value="refile">{{ _("Moved there") }}</button></form>
+        <p class="hint">{{ _("It goes on top of that binder’s current section.") }}</p></details>{% endif %}
+      <details><summary class="small">{{ _("Other …") }}</summary>
+        <form method="post" action="/documents/{{ m.id }}/action" class="buttons">{{ csrf_field(csrf) }}{{ rv }}
+          <button name="action" value="paper_discarded" class="secondary" title="{{ _("Handed over, sent away or thrown out – nothing to file") }}">{{ _("Not kept") }}</button>
+          <button name="action" value="unfile" class="secondary">{{ _("Undo filing") }}</button></form></details>
     {% elif m.paper_location %}
       <p>{% trans loc=m.paper_location %}Where the paper is: <strong>{{ loc }}</strong>{% endtrans %}</p>
       <form method="post" action="/documents/{{ m.id }}/action">{{ csrf_field(csrf) }}{{ rv }}
@@ -200,7 +218,7 @@
     {% elif m.paper %}
       <p class="notice warn">{{ _("Paper document – where is the paper?") }}</p>
       <form method="post" action="/documents/{{ m.id }}/action" class="buttons">{{ csrf_field(csrf) }}{{ rv }}
-        <button name="action" value="file" class="primary">{{ _("Filed just now") }}</button>
+        <button name="action" value="file" class="primary">{{ _("Filed just now") }}</button> <span class="small muted">{{ _("into binder %(name)s", name=current_binder) }}</span>
         <button name="action" value="paper_discarded" class="secondary" title="{{ _("Handed over, sent away or thrown out – nothing to file") }}">{{ _("Not kept") }}</button>
       </form>
       <details><summary class="small">{{ _("Somewhere else …") }}</summary>

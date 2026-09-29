@@ -16,6 +16,7 @@ archive/
   documents/<uuid>/cache/            rendered pages and word boxes for the viewer (regenerable)
   taxonomy.json                      correspondents, document types, tags + aliases (sidecar)
   saved_searches.json                saved searches of the search page (optional)
+  binders.json                       the binders of the paper filing: name, started, full since
   index.sqlite                       database: index, metadata copy, jobs, auth, import state
   index.sqlite-wal, -shm             SQLite write-ahead log (part of the database while running)
   consume/                           watched input folder (default location; often mounted elsewhere)
@@ -65,6 +66,7 @@ Example (shortened):
   "filed_at": "2026-09-28T08:51:55Z",
   "filing_sequence": 1,
   "filing_section": "2026-09",
+  "filing_binder": "Heftig 1",
   "title": "Mobilfunkrechnung September 2026",
   "correspondent": "Telekom Deutschland GmbH",
   "document_type": "Rechnung",
@@ -117,6 +119,7 @@ Fields marked * are additions to the minimal field list of the original specific
 | `filed_at` | timestamp or null | When the paper was filed. Null means: physical location not confirmed. |
 | `filing_sequence` | int or null | Unique, increasing filing counter. Within a section, higher = further up in the stack. |
 | `filing_section` | string or null | `YYYY-MM` (or `YYYY` with `HEFTIG_FILING_GRANULARITY=year`), derived from `filed_at` in local time. |
+| `filing_binder` | string or null | Name of the binder the paper is in (see `binders.json`). A filed sheet with a `paper_location` has been taken out and keeps its place. |
 | `title` | string | Initially the filename without extension (source `rule`). |
 | `correspondent` | string or null | Canonical name of a taxonomy term. |
 | `document_type` | string or null | Canonical name of a taxonomy term. |
@@ -236,6 +239,7 @@ heftig-export-20260928-120000/
   documents/<uuid>/        metadata.json, text.md, text_pages.json
   taxonomy.json            correspondents, document types, tags with aliases
   saved_searches.json      saved searches (only if there are any; merged on import)
+  binders.json             binders of the paper filing (merged on import; imported ones count as full)
   state/sequences.json     last_ingest_sequence, last_filing_sequence
   state/ingest_events.jsonl
   state/imap_state.json

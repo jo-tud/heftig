@@ -20,7 +20,7 @@ MAX_ENTRIES = 200
 # query parameters of the search page that a saved search may contain
 KEYS = (
     "q", "correspondent", "document_type", "tag", "tag_mode", "date_from", "date_to",
-    "received_from", "received_to", "source", "status", "filed", "filing_section", "cf_key",
+    "received_from", "received_to", "source", "status", "filed", "filing_section", "filing_binder", "cf_key",
     "cf_min", "cf_max", "sort", "literal", "session",
 )  # fmt: skip
 _LOCK = threading.Lock()

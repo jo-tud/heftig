@@ -23,12 +23,26 @@ bulk deletion can be undone.
 
 ## Paper without archive numbers
 
-Use one binder (or one per year) with a section per month, and always put the newest letter
-**on top** of the current month's section. When you mark a document as filed, Heftig stores the
-time, a running number and the section (`2026-09`, or `2026` with yearly sections). The document
-page then shows "position 3 from the top of section 2026-09" and the letters directly above and
-below it. The section is the month you *filed* the letter, not its date – so a letter from March
-filed in September lies in the September section, exactly where you put it.
+Paper goes into binders, one section per month, newest letter always **on top** of the current
+month's section. Heftig knows the **current binder** (*Settings → Binders*, first called
+"Binder 1"; rename it to what you write on its spine). When you mark a letter as filed, Heftig
+records the binder, the section and the order; the document page then shows "binder Heftig 1,
+section 2026-09, position 3 from the top" and the letters directly above and below it. The
+section is the month you *filed* the letter, not its date.
+
+The everyday cases:
+
+- **Binder full:** *Settings → Binders → This binder is full – start the next one* (the name
+  is suggested: "Heftig 1" → "Heftig 2"). From then on everything goes into the new binder;
+  positions in the full one stay as they are.
+- **Taking a letter out** (lending it, handing it to the tax adviser): *Taken out …* on its
+  page, optionally with where it is. It keeps its place; *Put back in its place* returns it.
+- **Moving a letter to another binder:** *Into another binder …* – it goes on top of that
+  binder's current section.
+- **Paper that is never filed** (a referral left at the doctor's): *Not kept*, in the inbox
+  list or on the document page.
+- **Paper somewhere else entirely** (an old binder you don't file into): *Somewhere else …*
+  with a note.
 
 Three dates are kept apart:
 
