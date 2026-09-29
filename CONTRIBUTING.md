@@ -28,7 +28,10 @@ details.
 
 The interface is English, translations live in `src/heftig/locale/<language>/messages.po`
 (standard gettext format, any .po editor works). To add a language: add it to `LANGUAGES` in
-`src/heftig/i18n.py`, run `uv run python scripts/i18n.py update <code>` and translate the file.
+`src/heftig/i18n.py` and to the `language` setting in `src/heftig/config.py`, run
+`uv run python scripts/i18n.py update <code>` and translate the file. The AI prompts have their
+examples and language names in `src/heftig/providers/prompt.py`; a language missing there falls
+back to English examples and English summaries.
 
 ## Security issues
 

@@ -9,20 +9,24 @@ database can be rebuilt from those files (except for the operational state liste
 ```text
 archive/
   originals/ab/<sha256>.<ext>        byte-identical originals, mode 0400, never modified
+  originals/attachments/ab/<sha256>.<ext>  files attached to documents (see "Notes and attachments")
   documents/<uuid>/metadata.json     authoritative per-document metadata (sidecar)
   documents/<uuid>/text.md           extracted text of the whole document
   documents/<uuid>/text_pages.json   text per page incl. method, provider and errors
   documents/<uuid>/preview.webp      thumbnail of page 1 (regenerable)
-  documents/<uuid>/cache/            rendered pages and word boxes for the viewer (regenerable)
+  documents/<uuid>/cache/            rendered pages, word boxes, OCR page cache (regenerable)
+  trash/<uuid>/                      sidecar folders of deleted documents until they are purged
   taxonomy.json                      correspondents, document types, tags + aliases (sidecar)
   saved_searches.json                saved searches of the search page (optional)
   binders.json                       the binders of the paper filing: name, started, full since
   index.sqlite                       database: index, metadata copy, jobs, auth, import state
   index.sqlite-wal, -shm             SQLite write-ahead log (part of the database while running)
+  setup-token                        one-time code for /setup, only while no user exists
   consume/                           watched input folder (default location; often mounted elsewhere)
-  quarantine/                        rejected consume files + <name>.reason.json
+  quarantine/                        rejected consume files + <name>.reason.json (hidden ones in ausgeblendet/)
   email/                             archived .eml sources (only with HEFTIG_IMAP_ARCHIVE_EML=true)
-  backup/index-snapshot.sqlite       consistent database copy from `heftig db-snapshot`
+  backup/index-snapshot.sqlite       consistent database copy (`heftig db-snapshot`, automatic every 6 h)
+  backup/vor-update-v<N>.sqlite      database copy taken before a migration (last three kept)
   exports/                           exports started from the web UI / API
   imports/                           place exports here to import them via the API
   tmp/                               staging area for uploads (same filesystem, cleaned by repair)
@@ -62,7 +66,7 @@ Example (shortened):
   "paper": true,
   "document_date": "2026-09-03",
   "document_date_status": "ai",
-  "document_date_reason": "Im Text gefunden: „03.09.2026“",
+  "document_date_reason": "Found in the text: “03.09.2026”",
   "filed_at": "2026-09-28T08:51:55Z",
   "filing_sequence": 1,
   "filing_section": "2026-09",
@@ -109,7 +113,7 @@ Fields marked * are additions to the minimal field list of the original specific
 | `size_bytes`* | int | Size of the original. |
 | `page_count`* | int or null | Pages (PDF) or frames (TIFF); set on ingest, confirmed by extraction. |
 | `source` | enum | First arrival: `scanner` (consume folder), `folder` (`heftig ingest`), `web`, `api`, `email`, `import` (e.g. adopted by `heftig repair`). |
-| `source_details` | object | Sparse provenance of the first arrival. Consume: `path` (relative to the consume folder). Web/API: `client`, `kind` (`digital`/`paper`). E-mail: `import_ref` (shared by all attachments of one message), `message_id`, `from` (address only), `subject`, `message_date` (the mail's Date header, provenance only), `mailbox`, `uid`, `uidvalidity`, `attachment`, optionally `eml`. Combined documents: `action: "combine"` and `combined_from` (`[{id, title, pages}]` of the parts in page order; the parts are in the Papierkorb as batch `combine-<id>`). Never credentials. |
+| `source_details` | object | Sparse provenance of the first arrival. Consume: `path` (relative to the consume folder). Web/API: `client`, `kind` (`digital`/`paper`). E-mail: `import_ref` (shared by all attachments of one message), `message_id`, `from` (address only), `subject`, `message_date` (the mail's Date header, provenance only), `mailbox`, `uid`, `uidvalidity`, `attachment`, optionally `eml`. Combined documents: `action: "combine"` and `combined_from` (`[{id, title, pages}]` of the parts in page order; the parts are in the trash as batch `combine-<id>`). Never credentials. |
 | `received_at` | timestamp | First successful arrival. Set by the server, never changed (not by reprocessing, duplicates or import). |
 | `ingest_sequence` | int | Unique, strictly increasing arrival counter; numbers of deleted documents are not reused. |
 | `paper`* | bool | The document exists on paper and can be filed. True for `scanner`, for uploads marked as paper, and once filed. |
@@ -119,7 +123,11 @@ Fields marked * are additions to the minimal field list of the original specific
 | `filed_at` | timestamp or null | When the paper was filed. Null means: physical location not confirmed. |
 | `filing_sequence` | int or null | Unique, increasing filing counter. Within a section, higher = further up in the stack. |
 | `filing_section` | string or null | `YYYY-MM` (or `YYYY` with `HEFTIG_FILING_GRANULARITY=year`), derived from `filed_at` in local time. |
-| `filing_binder` | string or null | Name of the binder the paper is in (see `binders.json`). A filed sheet with a `paper_location` has been taken out and keeps its place. |
+| `filing_binder`* | string or null | Name of the binder the paper is in (see [binders.json](#bindersjson)). A filed sheet with a `paper_location` has been taken out and keeps its place. |
+| `paper_location`* | string or null | Where the paper is if not in its place in Heftig's filing: taken out (with an optional note), in an old binder (scan batch "back into the binder"), or "somewhere else". |
+| `paper_discarded_at`* | timestamp or null | The paper was not kept ("Not kept", or discarded after a scan batch). |
+| `scan_session`* | object or null | The scan batch the paper came in with: `{id, name, mode}`, `mode` `folder` (back into the binder), `refile` (into Heftig's filing) or `sort` (away, except what matters). |
+| `keep_original`*, `keep_original_reason`*, `keep_original_source`* | bool / string / enum, or null | Whether to keep the paper original, suggested by the classifier (`ai`) or a rule (`rule`) in a scan batch, decided by the `user`. |
 | `title` | string | Initially the filename without extension (source `rule`). |
 | `correspondent` | string or null | Canonical name of a taxonomy term. |
 | `document_type` | string or null | Canonical name of a taxonomy term. |
@@ -132,9 +140,12 @@ Fields marked * are additions to the minimal field list of the original specific
 | `suggestions`* | list | AI proposals that were not applied: `{field, value, reason, confidence}`. Replaced on every classification run; accepting one sets and locks the field. |
 | `status`* | enum | `queued`, `processing`, `done`, `needs_review`, `failed`. |
 | `text_status`* | enum | `pending`, `ok`, `partial` (some pages failed), `failed`, `empty` (no text on any page). |
-| `review_reasons`* | list of strings | Why the document needs review (German UI texts), e.g. OCR errors, uncertain date, possible duplicate category. |
+| `review_reasons`* | list of strings | Why the document needs review, e.g. OCR errors, uncertain date, possible duplicate category. Stored in English, translated when shown. |
 | `ingest_events`* | list | Every arrival of this exact file: `{at, source, source_details, original_filename, result}` with `result` `created` or `duplicate` (`imported` is reserved). |
-| `processing_history` | list | Extraction, classification, edits, filing and merges: `{task, at, status, provider, model, target, adapter_version, prompt_version, fields, error, by}`. `task`: `extract`, `classify`, `edit`, `filing`, `import`, `merge`; `by`: `ai`, `user`, `rule`, `import`, `system`. The last 200 entries are kept. |
+| `processing_history` | list | Extraction, classification, edits, filing and merges: `{task, at, status, provider, model, target, adapter_version, prompt_version, fields, error, by}`. `task`: `extract`, `classify`, `edit`, `filing`, `import`, `merge`, `note`, `attachment`; `by`: `ai`, `user`, `rule`, `import`, `system`. The last 200 entries are kept. |
+| `ai_pending`* | list | AI stages (`extract`, `classify`) that ran with the local fallback and are redone once the provider answers again ([providers.md](providers.md#when-the-ai-provider-is-unreachable)). |
+| `ocr_all_pages`* | bool | The user asked for AI text recognition of every page, beyond `HEFTIG_OCR_AI_MAX_PAGES`. |
+| `trashed_at`*, `trash_reason`*, `trash_batch`* | string or null | Set while the document is in the trash (`trash/<uuid>/`); documents deleted together (a bulk deletion, the parts of a combined document) share a batch and can be restored together. |
 | `revision`* | int | Incremented on every write; used by `heftig repair` to decide whether the sidecar or the database is newer. |
 | `updated_at`* | timestamp | Last write. |
 
@@ -180,6 +191,17 @@ Saved searches: `{"version": 1, "searches": [{"id", "name", "query", "created_at
 the query string of the search page, restricted to the known search parameters. Missing file =
 no saved searches.
 
+## binders.json
+
+The binders of the paper filing, oldest first:
+`{"version": 1, "binders": [{"name", "started_at", "full_at"}]}`. `name` is what is written on
+the binder's spine (at most 60 characters); `full_at` is null for the binder still being filled.
+New filings go into the newest binder that is not full (created on first use as "Binder 1", in
+German "Ordner 1"). Each filed document also carries the binder's name in `filing_binder`, so
+the sidecars alone say where the paper is. Renaming a binder rewrites the affected sidecars.
+Missing file = no binders yet; filings from before binders existed are assigned to the first
+binder. On import, unknown binders are added and count as full.
+
 ## taxonomy.json
 
 All correspondents, document types and tags with aliases, rewritten on every taxonomy change:
@@ -209,18 +231,21 @@ originals or sidecars:
 
 | Table | Content | In the export | Restored by import |
 |---|---|---|---|
-| `meta` | sequence counters, last export/backup/snapshot time, worker heartbeat | `state/sequences.json` (counters) | counters are raised to at least the exported values |
+| `meta` | sequence counters, last export/backup/snapshot time, worker heartbeat, the settings saved in the web interface (`setting.<name>`, including API keys and the mail password) | `state/sequences.json` (counters); settings are not exported | counters are raised to at least the exported values |
 | `ingest_events` | global arrival log incl. rejections, skipped attachments, deletions | `state/ingest_events.jsonl` | only into an empty archive |
 | `imap_state` | UIDVALIDITY and last processed UID per account/mailbox | `state/imap_state.json` | yes (existing entries win) |
 | `imap_items` | idempotency keys (account, Message-ID, attachment SHA-256) | `state/imap_items.jsonl` | yes (existing entries win) |
 | `jobs` | job queue and history | open jobs in `state/open_jobs.jsonl`, for reference | no |
-| `users` | user name and password hash | user names only (`state/users.json`) | no, run `heftig init` |
+| `users` | user name and password hash | user names only (`state/users.json`) | no, create the account on `/setup` (or with `heftig init`) |
 | `api_tokens` | token hashes, names, prefixes, usage | names, prefixes, dates only | no, create new tokens |
 | `sessions`, `login_attempts` | browser sessions, rate limit | no | no |
 | `processing_runs` | one row per extraction/classification run incl. applied/suggested/dropped fields and the raw AI response (truncated, pruned after the retention period) | no (the per-document `processing_history` is in the sidecar) | no |
 | `consume_failures` | failure counter per consume file | no | no |
+| `scan_sessions` | scan batches (name, mode, start and end); the documents keep their batch in `scan_session` | no | no |
+| `title_proposals` | open proposals of the title harmonisation (temporary) | no | no |
 
-Secrets (password hashes, session and API tokens, API keys, IMAP password) are never exported.
+Secrets (password hashes, session and API tokens, API keys, IMAP password) are never exported,
+neither are the settings saved in the web interface.
 To keep them, back up the whole archive directory ([operations.md](operations.md#backup)).
 
 ## Export format
@@ -264,8 +289,8 @@ heftig-export-20260928-120000/
 
 `files` lists every file of the export except `manifest.json` itself. Document metadata, taxonomy
 and state are read in one database read transaction, so they are mutually consistent. Preview
-thumbnails are not exported (they are regenerated on import). In `state/ingest_events.jsonl`,
-`source_details` is the raw JSON string as stored in the database.
+thumbnails are not exported (they are regenerated on import), nor are documents in the trash. In
+`state/ingest_events.jsonl`, `source_details` is the raw JSON string as stored in the database.
 
 The export is also the input for migrations to other systems, see [paperless.md](paperless.md).
 
@@ -311,7 +336,7 @@ was still being processed is reported by `heftig check` as `unfinished_processin
 
 | Item | Version field | Current |
 |---|---|---|
-| Database schema | `PRAGMA user_version` | 1 |
+| Database schema | `PRAGMA user_version` | 11 (number of the last migration) |
 | `metadata.json` | `schema_version` | 1 |
 | `text_pages.json` | `schema_version` | 1 |
 | `taxonomy.json` | `schema_version` | 1 |

@@ -25,11 +25,32 @@ Pillow, httpx). There is no message broker, no external database and no cloud de
 
 | Component | Command | Responsibilities |
 |---|---|---|
-| Web | `heftig serve` | Web UI, REST API (`/api/...`, OpenAPI at `/api/docs`), login, uploads (ingested synchronously in the request), `/health`, `/ready` |
-| Worker | `heftig worker` | Consume folder polling, IMAP polling, processing jobs (OCR, classification), export/import/reindex/rebuild jobs, heartbeat, hourly maintenance |
+| Web | `heftig serve` | Web UI, REST API (`/api/...`, OpenAPI at `/api/docs`), first setup and settings pages, login, uploads (ingested synchronously in the request), `/health`, `/ready` |
+| Worker | `heftig worker` | Consume folder polling, IMAP polling, processing jobs (OCR, classification), export/import/reindex/rebuild/title jobs, heartbeat, hourly maintenance |
 | Both | `heftig run` | Web server plus the worker in a thread of the same process (simple local setup) |
-| Database | `archive/index.sqlite` | Search index and a queryable copy of all document metadata; primary store for jobs, users, sessions, API tokens, IMAP cursors, the ingest event log |
-| Sidecars | `archive/documents/<uuid>/`, `archive/taxonomy.json` | Authoritative, human-readable document data; the database can be rebuilt from them |
+| Database | `archive/index.sqlite` | Search index and a queryable copy of all document metadata; primary store for jobs, users, sessions, API tokens, IMAP cursors, the ingest event log and the settings saved in the web interface |
+| Sidecars | `archive/documents/<uuid>/`, `archive/trash/<uuid>/`, `taxonomy.json`, `binders.json`, `saved_searches.json` | Authoritative, human-readable document data; the database can be rebuilt from them |
+
+Settings come from environment variables (`config.Settings`) plus the values saved on the setup
+and settings pages (`settings_store`, stored in the database's `meta` table). An environment
+variable wins; a saved value applies to web server and worker without a restart (both compare
+`meta.settings_revision` and reload).
+
+The main modules:
+
+| Module | Purpose |
+|---|---|
+| `ingest.py`, `consume.py`, `imap_import.py` | Intake: one ingest function, the watched folders, the mailbox |
+| `processing.py`, `classify.py`, `providers/` | Text extraction, classification, validation of AI output, provider adapters and prompts |
+| `documents.py`, `storage.py`, `db.py`, `index.py`, `migrations/` | Sidecars, atomic writes, the SQLite database and its FTS index |
+| `search.py`, `datephrases.py`, `aisearch.py`, `wordboxes.py` | Search, date phrases, the optional AI search, hit boxes on page images |
+| `duplicates.py`, `pagediff.py`, `combine.py`, `trash.py` | Possible duplicates and the page comparison, combining documents, the trash |
+| `binders.py`, `sessions.py` | Paper filing in named binders (`binders.json`), batches for scanning old binders |
+| `titles.py`, `taxonomy.py`, `suggestions.py`, `saved_searches.py` | Title normalisation and harmonisation, categories, AI suggestions, saved searches |
+| `settings_store.py`, `web/setup.py`, `connections.py` | Settings saved in the web interface, the setup/settings pages for AI, mail and scanner, and the connection tests behind their "Test" buttons (IMAP presets, model lists) |
+| `i18n.py`, `locale/` | Interface languages: English source texts, gettext catalogues (`locale/de/messages.po`), translation of stored texts when shown |
+| `auth.py`, `web/` | Users, sessions, API tokens; the FastAPI app, HTML pages and REST API |
+| `maintenance.py`, `worker.py`, `jobs.py`, `cli.py`, `mcp_server.py` | Check/repair/rebuild/export/import/backup, the worker loop, the job queue, the command line, the MCP server |
 
 Run **exactly one worker per archive**. On start the worker puts every job still marked
 `processing` back into the queue, which is only correct if no other worker is running.
@@ -39,11 +60,15 @@ the worker read concurrently. All writes go through `BEGIN IMMEDIATE` transactio
 (`db.write_tx`) and are therefore serialised across processes. Every thread has its own
 connection.
 
-The worker's main loop runs once per second: write a heartbeat (`meta.worker_heartbeat`, used by
-`/ready` and the status page), poll the consume folder every `HEFTIG_CONSUME_POLL_SECONDS`, poll
-IMAP every `HEFTIG_IMAP_POLL_SECONDS` (only if `HEFTIG_IMAP_HOST` is set), once an hour requeue
-jobs with expired leases and prune old raw AI responses, then claim due jobs until
-`HEFTIG_WORKER_CONCURRENCY` jobs are running.
+The worker's main loop runs once per second: reload the settings if they were changed in the web
+interface, write a heartbeat (`meta.worker_heartbeat`, used by `/ready` and the status page),
+poll the consume folder (and the optional folder for digital files) every
+`HEFTIG_CONSUME_POLL_SECONDS`, poll IMAP every `HEFTIG_IMAP_POLL_SECONDS` (only if a mail server
+is configured), every `HEFTIG_AI_RETRY_MINUTES` check whether an unreachable AI provider is back
+([providers.md](providers.md#when-the-ai-provider-is-unreachable)), once an hour requeue jobs with
+expired leases, prune old raw AI responses, end forgotten scan batches, purge expired trash and
+write the automatic database snapshot, then claim due jobs until `HEFTIG_WORKER_CONCURRENCY` jobs
+are running.
 
 ## Ingestion pipeline
 
@@ -57,8 +82,8 @@ that a crash at any point leaves either nothing, or something `heftig repair` ca
 2. **Validate by content.** Magic bytes decide the type (PDF, JPEG, PNG, TIFF); the file is then
    actually opened with pdfium or Pillow. Encrypted, broken, empty, oversized
    (`HEFTIG_MAX_PAGES`, `HEFTIG_MAX_IMAGE_MEGAPIXELS`) or unknown files are rejected with a
-   German message. A rejection is recorded as an ingest event; the source is never deleted by
-   the ingest function itself.
+   message (stored in English, shown in the interface language). A rejection is recorded as an
+   ingest event; the source is never deleted by the ingest function itself.
 3. **One exclusive transaction:**
    - If a document with the same SHA-256 exists: append a `duplicate` event to its
      `metadata.json` and to the event log. No second original, no new document.
@@ -87,15 +112,20 @@ row and the index are updated, then the transaction commits. If the process dies
 `heftig check` reports a `revision_mismatch` and `heftig repair` takes the newer version
 (normally the sidecar).
 
-Deleting a document is the only operation that removes an original and must be confirmed explicitly (UI: a confirmation
-checkbox plus a dialog; API: `DELETE /api/documents/<id>?confirm=<id>`). The database rows are removed first,
-then the files; a crash in between leaves orphans that `heftig check` reports.
+Deleting a document moves it to the trash (`trash.py`): its sidecar folder moves from
+`documents/<id>/` to `trash/<id>/`, the original stays in `originals/`, and it can be restored
+until it is purged - after `HEFTIG_TRASH_RETENTION_DAYS` (30) or explicitly. Purging is the only
+operation that removes an original (and only one that no other live or trashed document
+references); it must be confirmed explicitly (UI: in the trash; API:
+`DELETE /api/trash/<id>?confirm=<id>`, while `DELETE /api/documents/<id>?confirm=<id>` only
+moves to the trash).
 
 ## Jobs
 
 Jobs live in the `jobs` table. Kinds: `process` (per document), `export`, `import`, `reindex`,
-`rebuild`. Status: `queued`, `processing`, `done`, `needs_review`, `failed`. Each job records its
-current stage, progress (0..1), attempts, last error and a JSON result.
+`rebuild`, `titles` (title harmonisation). Status: `queued`, `processing`, `done`,
+`needs_review`, `failed`. Each job records its current stage, progress (0..1), attempts, last
+error and a JSON result.
 
 | Mechanism | Behaviour |
 |---|---|
@@ -108,7 +138,7 @@ current stage, progress (0..1), attempts, last error and a JSON result.
 | Manual retry | Failed or needs-review jobs can be retried from the inbox or via `POST /api/jobs/<id>/retry` (resets attempts). |
 
 Export, import, reindex and rebuild jobs are started from the UI/API and run with
-`max_attempts = 1`.
+`max_attempts = 1` (`titles`: 2).
 
 ## Processing stages
 
@@ -160,7 +190,7 @@ on its own (provider, model, base URL, key, cloud permission).
 | `Classifier` | `classify(ClassifyRequest) -> ClassifyResponse` (parsed JSON + raw text) | `rules`, `openai`, `openai_compatible`, `anthropic`, `mock` |
 | `Embedder` | `embed(texts: list[str]) -> list[list[float]]` | none (extension point) |
 
-Every provider exposes `name`, `model`, `target` (where data goes, e.g. `lokal` or an API host),
+Every provider exposes `name`, `model`, `target` (where data goes, e.g. `local` or an API host),
 `adapter_version` and, for classifiers, `prompt_version`; these are stored in the processing
 history. The pipeline converts PDF pages to page images itself, so an extractor only has to
 accept images; a text-only endpoint is detected via its capability flag and not sent images.
@@ -178,8 +208,10 @@ by default; see [operations.md](operations.md#ports-and-network-access) for LAN 
 
 **Authentication**
 
-- Exactly one user, created with `heftig init` (CLI only; there is no web setup page and no
-  default password). Passwords: minimum 10 characters, hashed with scrypt (N=2^15, r=8, p=1,
+- Exactly one user, created on the first start at `/setup` (or with `heftig init`). There is no
+  default password: as long as no user exists, the setup page only accepts the one-time code in
+  `<archive>/setup-token` (also written to the log), so whoever reaches the port first cannot
+  take over the archive. Passwords: minimum 10 characters, hashed with scrypt (N=2^15, r=8, p=1,
   random salt).
 - Browser sessions: a random 256-bit token in the cookie `heftig_session` (`HttpOnly`,
   `SameSite=Strict`, `Secure` when the request came in via HTTPS, including `X-Forwarded-Proto`
@@ -191,8 +223,9 @@ by default; see [operations.md](operations.md#ports-and-network-access) for LAN 
 - Login rate limit per client address and per username (`HEFTIG_LOGIN_MAX_ATTEMPTS` = 5 per
   `HEFTIG_LOGIN_WINDOW_SECONDS` = 300 s), stored in the database so it survives restarts. Unknown
   users cost the same scrypt time as known ones.
-- Every page and API endpoint except `/health`, `/ready`, `/login`, static files and the OpenAPI
-  schema requires authentication, including original downloads.
+- Every page and API endpoint except `/health`, `/ready`, `/login`, `/setup` (setup code, only
+  while no user exists), static files and the OpenAPI schema requires authentication, including
+  original downloads.
 
 **CSRF.** Every state-changing request authenticated by a session cookie must carry the
 session's CSRF token (`X-CSRF-Token` header or `csrf_token` form field), and a present
@@ -242,9 +275,11 @@ only data: it is parsed as JSON, validated field by field (see
 [providers.md](providers.md#validation-rules)) and never executed or rendered as HTML. The worst a
 malicious document can achieve is wrong suggestions for its own metadata.
 
-**Secrets and logs.** API keys and the IMAP password can be given as files (`*_FILE`); they are
-never logged, exported or shown in the UI (the UI only shows whether a key is configured). Logs
-contain document IDs and error types, not document content, cookies or tokens.
+**Secrets and logs.** API keys and the IMAP password can be given as environment variables, as
+files (`*_FILE`) or on the settings pages (then stored in the database's `meta` table, mode
+0600). They are never logged, exported or shown again in the UI (the UI only shows whether a key
+is configured); a stored key is only sent to the server it was entered for. Logs contain
+document IDs and error types, not document content, cookies or tokens.
 
 **Files.** Directories are created with umask 077, sidecars and the database with mode 0600,
 originals 0400.
@@ -259,8 +294,7 @@ reach Heftig (e.g. ClamAV in front of the consume folder, see
 | Feature | Status | Extension point |
 |---|---|---|
 | Searchable OCR-PDF / PDF/A derivative | Not generated | Derivatives belong next to the sidecars in `documents/<uuid>/` (like the regenerable `preview.webp`), never replacing the original; the original's hash and path stay the contract. `ExtractCapabilities.pdf` already reports whether an extractor could take PDFs. |
-| Semantic search / embeddings / question answering | Not implemented, no fake results | `Embedder` protocol in `providers/base.py`. A separate search mode with its own index; the normal FTS search stays local and deterministic and never calls a model. |
-| Merging separately scanned pages into one document | Not implemented; each file is its own document | Would create a new, derived original and keep references to the source documents; the inbox already shows the parts. Configure the scanner to produce one PDF per letter. |
+| Semantic search / embeddings | Not implemented, no fake results (questions across documents: [mcp.md](mcp.md)) | `Embedder` protocol in `providers/base.py`. A separate search mode with its own index; the normal FTS search stays local and deterministic and never calls a model. |
 | Editing OCR text | Not in the UI | `text_pages.json` has `user_confirmed` and the page method `user`; re-extraction already respects confirmed text. |
 | Multiple users, roles, sharing, workflows | Not planned for V1 | - |
 | Digital signatures, revision-proof storage | Not provided | - |

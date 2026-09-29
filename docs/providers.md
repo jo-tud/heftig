@@ -12,9 +12,12 @@ Uploading, storing and searching never depend on either. With no provider at all
 archived and searchable by their embedded text and filename, and all metadata can be entered by
 hand.
 
-The easiest way to choose is the page *Settings → Change AI* (also part of the first setup): it
-sets both tasks, tests the connection and lists the models of an endpoint. Everything below can
-also be set with environment variables, which then take precedence.
+The easiest way to choose is the page *Settings → Change AI* (`/settings/ai`, also part of the
+first setup): offline (Tesseract + rules), Anthropic, OpenAI or a local/own server. It sets the
+classification and, if you tick it, AI text recognition with the same provider, asks for the
+consent before anything goes to a cloud service, tests the connection and lists the models of
+an endpoint. Everything below can also be set with environment variables, which then take
+precedence (the page shows them as fixed).
 
 ## Available providers
 
@@ -33,7 +36,7 @@ also be set with environment variables, which then take precedence.
 
 | Provider | Where it runs | Notes |
 |---|---|---|
-| `rules` (default) | local | Deterministic patterns: first plausible date, correspondents and tags that already exist in your taxonomy (incl. aliases), document type from a keyword list (Rechnung, Mahnung, Vertrag, Bescheid, ...), contract/customer/invoice numbers and amounts. Never invents new correspondents. A useful baseline without any AI. |
+| `rules` (default) | local | Deterministic patterns for German and English letters: first plausible date (`15.09.2026`, `15. September 2026`, `September 15, 2026`, ISO), correspondents and tags that already exist in your taxonomy (incl. aliases), document type from a keyword list (Rechnung/Invoice, Mahnung/Reminder, Vertrag/Contract, Bescheid/Tax assessment, Payslip, ...; named in the installation's language), contract/customer/invoice numbers and amounts (`39,95 EUR`, `Total due $39.95`). Never invents new correspondents. A useful baseline without any AI. |
 | `none` | - | No classification; title stays the file name. |
 | `openai_compatible` | local or cloud | As above; see [JSON modes](#json-modes). |
 | `openai` | cloud | OpenAI API. |
@@ -60,7 +63,8 @@ URL that is **not** local. A URL is local if its host is `localhost`, ends in `.
 host name that cannot be resolved counts as cloud.
 
 If a cloud provider is configured without its switch, it is not called at all: OCR pages get the
-error "Cloud-OCR ist nicht freigegeben ...", classification adds a review reason, the job is not
+error "Cloud OCR is not allowed (set HEFTIG_ALLOW_CLOUD_OCR=true ...)", classification adds a
+review reason, the job is not
 retried, and the settings page shows the provider as blocked. The settings page, the inbox and
 every document page show provider, model and target host for both tasks, and the document page
 warns before a reprocess sends data to a cloud provider. The processing history of each document
@@ -255,7 +259,7 @@ The model's answer is treated as a proposal and checked field by field
 | `custom_fields` | Each needs a key, a type (`string`, `number`, `monetary`, `date`), a non-empty value and `evidence` that occurs verbatim in the text. Numbers are parsed in German and English notation; `monetary` needs an ISO currency code or `€`/`EUR` in the evidence; `string` values must themselves appear in the text (separators ignored). Anything else is dropped. Keys are matched to existing keys case- and umlaut-insensitively. |
 
 Previous suggestions are replaced by each classification run. Dropped values are listed in the
-processing history ("verworfen: ..."). Suggestions are shown on the document page and can be
+processing history ("dropped: ..."). Suggestions are shown on the document page and can be
 accepted (sets and locks the field) or dismissed.
 
 The prompt tells the model that the document text is untrusted data and must not be followed as
@@ -263,19 +267,26 @@ instructions; see [architecture.md](architecture.md#security-model).
 
 ## Consistent titles
 
-The prompt prescribes one naming scheme (`<kind> [<subject>] [<period>]`, period last as
-`Q3 2020`, `März 2025`, `2025`; no sender, dates, IDs or file-name fragments) and passes the
-titles of the most similar documents already in the archive (`search.similar`, only documents
-with an AI or user title), so documents of the same kind get the same wording.
+The prompt prescribes one naming scheme (`<kind> [<subject>] <sender> [<period>]`, e.g.
+"Beitragsbescheid TK 2025" or "Payslip Acme March 2025"): the sender in the short form people
+use ("TK", "ADAC", "Telekom", no legal forms such as GmbH), left out only for private
+individuals; the period last as `Q3 2020`, `March 2025`, `2025` or `2024/2025`; no full dates,
+IDs or file-name fragments. It passes the titles of the most similar documents already in the
+archive (`search.similar`, up to 8, only documents with an AI, user or imported title), so
+documents of the same kind get the same wording. Examples and month names follow the
+installation's language.
 
 For titles that already exist, **Settings -> Consistent titles** (`/titles`) starts a
 background job (`titles`): per group of correspondent + type, only titles, dates and the two names
 go to the classification provider in batches of up to 80 titles (method `complete_json`, JSON
 schema `HARMONIZE_SCHEMA`); the page shows the number of requests and an estimated cost first.
-The answers are normalised and stored as proposals (`title_proposals`, temporary). Nothing
-changes until you accept them; accepted titles are ordinary user edits (locked). Locked titles
-are sent as fixed examples and never changed, and a title edited in the meantime is never
-overwritten. Needs an AI classifier (`anthropic`, `openai`, `openai_compatible`).
+The same scheme applies, and the sender's name stays in every title of the group. The answers
+are normalised and stored as proposals (`title_proposals`, temporary); a proposal that would drop
+a sender name the current title contains (the correspondent's name or one of its aliases) is
+discarded. Nothing changes until you accept them; accepted titles are ordinary user edits
+(locked). Locked titles are sent as fixed examples and never changed, and a title edited in the
+meantime is never overwritten. Needs an AI classifier (`anthropic`, `openai`,
+`openai_compatible`).
 
 ## Quality
 
@@ -315,7 +326,7 @@ quality does not depend on the provider.
   0.1 %: blank duplex back sides, filler pages, a lone footer line) are read by the local
   Tesseract instead (free; nothing is lost if there is a line on it). At most
   `HEFTIG_OCR_AI_MAX_PAGES` (default 30) pages per document go to the AI; further pages are read
-  locally and the document shows a note with a button "Alle Seiten mit KI erkennen". Files above
+  locally and the document shows a note with a button "Recognize all pages with AI". Files above
   `HEFTIG_MAX_PAGES` (500) or `HEFTIG_MAX_UPLOAD_MB` (100) are rejected at intake.
 - **Rate limits** (HTTP 429) are not treated as "unreachable": the job waits
   (`retry-after`, else `HEFTIG_RATE_LIMIT_PAUSE_SECONDS`, default 90) without using up an

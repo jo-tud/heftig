@@ -15,21 +15,22 @@ The MCP server runs on the machine where Claude runs (started by Claude over std
 the running Heftig through its REST API with an API token. It never opens the archive files
 itself, so it works the same with Heftig on the laptop, in a container or on a home server.
 
-All tools are **read-only**. Create the token as "nur lesen": Heftig then rejects every
+All tools are **read-only**. Create the token as "read only": Heftig then rejects every
 changing request (`403 read_only`), whatever the model tries.
 
 | Tool | Purpose |
 |---|---|
 | `archive_overview` | Counts per correspondent, type, tag, source and year plus the custom fields - the vocabulary for filters |
-| `search_documents` | Full-text search with filters (same search as the web UI, incl. German date phrases) |
+| `search_documents` | Full-text search with filters (same search as the web UI, incl. date phrases such as "March 2025" or "letztes Jahr") |
 | `find_text` | Matching **text lines** across all documents within the filters, with page numbers - for sums, lists and "every mention of ..." questions without reading whole documents; plain substring or regular expression, optional neighbouring lines |
-| `field_values` | Extracted structured values per document (e.g. `Betrag` with currency, `Vertragsnummer`) |
+| `field_values` | Extracted structured values per document (e.g. `Amount` with currency, `Contract number`; German installations: `Betrag`, `Vertragsnummer`) |
 | `get_document` | Metadata, summary, notes, attachments, filing and text per page (page ranges for long documents) |
 | `get_page_image` | A page as image, to check an amount or table the text got wrong |
 | `similar_documents` | Related documents (e.g. the other statements of the same account) |
 
 The server also gives Claude instructions: learn the names first, use `find_text` /
-`field_values` for questions across many documents, check signs and German number formats, check
+`field_values` for questions across many documents, mind signs and the number format of the
+document's language (`1.234,56` in German documents), check
 doubtful values on the page image, and always name the sources with a link to the document page.
 
 The same data is available without MCP: `GET /api/lines` and `GET /api/fields` (see `/api/docs`).
@@ -54,10 +55,11 @@ permission prompts on, and restrict who can mail documents (`HEFTIG_IMAP_ALLOWED
 
 ## Setup
 
-1. **Token:** Heftig -> Einstellungen -> API-Tokens: name e.g. "Claude", keep "nur lesen" ticked,
-   *Token erstellen*, copy the token. Or on the command line:
+1. **Token:** Heftig -> *Settings* -> *API tokens*: name e.g. "Claude", keep "read only" ticked,
+   *Create token*, copy the token. Or on the command line:
    `heftig token create Claude --read-only` (inside the container:
-   `docker compose exec web heftig token create Claude --read-only`).
+   `podman exec heftig heftig token create Claude --read-only` for the installer,
+   `docker compose exec web heftig token create Claude --read-only` for Compose).
    Store it in a file only you can read:
 
    ```bash
@@ -106,12 +108,13 @@ permission prompts on, and restrict who can mail documents (`HEFTIG_IMAP_ALLOWED
    ```json
    "heftig": {
      "command": "podman",
-     "args": ["exec", "-i", "-e", "HEFTIG_MCP_TOKEN", "heftig_web_1", "heftig", "mcp"],
+     "args": ["exec", "-i", "-e", "HEFTIG_MCP_TOKEN", "heftig", "heftig", "mcp"],
      "env": { "HEFTIG_MCP_TOKEN": "hft_..." }
    }
    ```
 
-   (`docker` instead of `podman`; the container name is shown by `docker compose ps`.)
+   (`heftig` is the installer's container; with Compose use the web container's name shown by
+   `docker compose ps`, and `docker` instead of `podman` where needed.)
 
 4. **Links in answers** point to `HEFTIG_MCP_URL`. If you open Heftig under another address
    (e.g. via Tailscale HTTPS), set `HEFTIG_MCP_PUBLIC_URL=https://your-host.ts.net`.
@@ -120,7 +123,8 @@ Revoke the token in the settings at any time; the connection then stops working 
 
 ## Troubleshooting
 
-- "Heftig ist unter ... nicht erreichbar": is Heftig running, and is the URL right?
-- "Heftig lehnt den API-Token ab": token missing, mistyped or revoked.
+- "Heftig is not reachable at ...": is Heftig running, and is the URL right?
+- "Heftig rejected the API token (missing, wrong or revoked)": token missing, mistyped or
+  revoked.
 - `heftig mcp` needs the `mcp` extra: `pip install 'heftig[mcp]'`.
 - Claude Code: `claude mcp list` shows whether the server starts; its stderr ends up in the MCP log.

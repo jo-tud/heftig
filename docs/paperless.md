@@ -19,11 +19,12 @@ Paperless equivalent, and Paperless recomputes some values itself.
 | text (`text.md`) | `content` | **Not transferred.** Paperless runs its own OCR on every upload, so its `content` will differ from Heftig's text (better or worse, depending on the engines). |
 | `custom_fields` | custom fields | Not uploaded by the script. Create the fields in Paperless and fill them afterwards if needed. Type mapping: `string` -> String, `number` -> Float (or Integer), `monetary` -> Monetary (Paperless format: currency code + amount, e.g. `EUR123.45`), `date` -> Date, `boolean` -> Boolean. |
 | taxonomy aliases | - | Paperless has no aliases. Its matching rules (`match`, `matching_algorithm`) are a different concept; the script creates new terms with matching disabled (`matching_algorithm: 0`), so Paperless does not start auto-assigning them. |
-| `filed_at`, `filing_sequence`, `filing_section` (paper position) | - | No equivalent. Suggestion: a custom field "Ablage" (e.g. `2026-09 / 14`) or a note. Paperless's archive serial number (ASN) is an integer, but it is usually meant to be printed on the paper, which Heftig deliberately avoids. |
+| `filed_at`, `filing_sequence`, `filing_section`, `filing_binder`, `paper_location` (paper position) | - | No equivalent. Suggestion: a custom field "Filing" (e.g. `Binder 1 / 2026-09 / 14`) or a note. Paperless's archive serial number (ASN) is an integer, but it is usually meant to be printed on the paper, which Heftig deliberately avoids. |
 | `ingest_sequence`, `source`, `source_details`, `ingest_events` | - | No equivalent. Suggestion: a note, or a string custom field "Heftig-ID" with the document ID so you can trace back to the export. |
 | `field_locks`, `field_sources`, `suggestions`, `document_date_status`, `processing_history` | - | No equivalent; Paperless has its own history of changes. |
 | `status`, `review_reasons` | inbox tags (conceptually) | Paperless marks new documents with its configured inbox tag(s); open review items are not transferred. |
 | `summary` | - | Could go into a note. |
+| `notes`, `attachments` | - | Not transferred. Notes could go into Paperless notes; attached files would have to be uploaded as documents of their own. |
 
 ## Migration script
 

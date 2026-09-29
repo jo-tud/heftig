@@ -11,12 +11,14 @@ How the parts fit together in daily use. Setup and operation: [operations.md](op
    date, sender, type, tags, amounts. The badge on *Inbox* counts what needs you.
 3. **The inbox** lists the tasks: documents to review (an uncertain date, AI suggestions, a
    failed text recognition), possible duplicates, and paper still to file. *Reviewed → next*
-   walks through them one by one.
+   walks through them one by one; *Skip* leaves a document for later, *Trash → next* deletes it
+   and goes on (with *Undo* on the next document).
 4. **Correct what's wrong** on the document page. Every field you edit is locked – reprocessing
    never overwrites it. Suggestions of the AI are accepted or dismissed there, or on
-   *Suggestions* for many documents at once.
-5. **File the paper** and click *Paper filed* – or let Heftig do it for every scan (setting
-   *Scanner → I file every scanned letter right away*).
+   *Suggestions in bulk* (linked from the inbox) for many documents at once.
+5. **File the paper** and click *Filed just now* on its page (or *Filed now* in the inbox list) –
+   or let Heftig do it for every scan (*Settings → Scanner and phone → I file every scanned letter
+   right away*).
 
 Nothing is ever lost by a click: deleted documents go to the trash for 30 days, combining and
 bulk deletion can be undone.
@@ -58,7 +60,8 @@ Before scanning a stack from an old binder, start a **batch** in the inbox: name
 ("Insurance") and choose once what happens with the paper afterwards:
 
 - **back into the binder** – every scan remembers "binder Insurance" as the paper's place;
-- **into Heftig's filing** – at the end one click files all of them, in scan order;
+- **into the Heftig filing** – at the end one click files all of them into the current binder,
+  in scan order;
 - **away, except what matters** – the AI suggests per document whether to keep the original
   (contracts, certificates, assessments, policies …); the inbox lists the few to keep with their
   position in the stack, and one click files those and marks the rest as discarded.
@@ -71,8 +74,9 @@ this: [scanner-imap.md](scanner-imap.md#settings-for-digitising-old-folders).
 
 The identical file never becomes a second document. The same letter in two forms – an e-mailed
 PDF and a phone photo – is recognised after processing (similar text, same date and sender, same
-invoice or contract number, same amount; a different date, amount or number rules a pair out, so
-monthly bills are not flagged). The comparison shows both documents side by side, page by page,
+invoice or contract number, same amount; a different date, amount, number or month named in the
+text rules a pair out, so monthly bills are not flagged – "Sep" and "September" count as the same
+month). The comparison shows both documents side by side, page by page,
 with the differing areas marked – a signature, a stamp, a note that only one copy has – and
 recommends which to keep. Keys: ← keep left, → keep right, B keep both, N skip. Truly identical
 copies (the same text, every page visually the same) are resolved automatically; the copy with

@@ -12,8 +12,9 @@ FTS5, vanilla JavaScript, no build step. Read `docs/architecture.md` before larg
 | `src/heftig/classify.py` | validates what a classifier returns before anything is applied |
 | `src/heftig/providers/` | OCR and AI adapters (Tesseract, rules, Anthropic, OpenAI-compatible), prompts |
 | `src/heftig/documents.py` | loading/saving a document (`persist`: sidecar + DB row + index), user edits |
-| `src/heftig/search.py` | search: query parsing, FTS5, ranking, facets, suggestions |
-| `src/heftig/web/ui.py`, `web/templates/` | the HTML pages; `web/api.py` the REST API; `web/setup.py` setup and connection pages |
+| `src/heftig/search.py`, `datephrases.py` | search: query parsing, date phrases, FTS5, ranking, facets, suggestions |
+| `src/heftig/binders.py`, `titles.py`, `duplicates.py`, `trash.py`, `combine.py` | paper filing in named binders, consistent titles, duplicates, trash, combining documents |
+| `src/heftig/web/ui.py`, `web/templates/` | the HTML pages; `web/api.py` the REST API; `web/setup.py` setup and connection pages, their "Test" buttons in `connections.py` |
 | `src/heftig/worker.py` | background loop: scanner folder, IMAP, jobs, hourly maintenance |
 | `src/heftig/config.py`, `settings_store.py` | settings: environment variables win over values saved in the web interface |
 | `src/heftig/i18n.py`, `locale/de/messages.po` | interface languages |
@@ -44,7 +45,7 @@ FTS5, vanilla JavaScript, no build step. Read `docs/architecture.md` before larg
 
 ```sh
 make test      # offline, about a minute
-make lint      # ruff check + format check
+make lint      # ruff check + format check + i18n check
 uv run python scripts/i18n.py check de
 uv run python scripts/demo_archive.py /tmp/demo && HEFTIG_ARCHIVE_DIR=/tmp/demo uv run heftig run
 ```

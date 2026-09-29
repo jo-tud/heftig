@@ -50,27 +50,34 @@ don't want to keep the archive.
 ### Setup page and settings
 
 On the first start Heftig has no account. The setup page (`/setup`, protected by the one-time
-code in `archive/setup-token`, also written to the log) creates it and then walks through the AI,
-the mailbox and the scanner. The same pages are under *Settings* later. What is saved there is
-stored in the archive's database (`meta` table) and applies to web server and worker without a
-restart. API keys and the mail password are never shown again; they are stored in the
-archive's database (readable only by your user), so a copy or backup of the archive folder
-contains them – protect backups accordingly. Exports (`heftig export`) do not contain them.
+code in `archive/setup-token`, also written to the log) asks for the interface language and
+creates the account, then walks through the AI (`/settings/ai`), the mailbox (`/settings/mail`)
+and the scanner (`/settings/scanner`). The same pages are under *Settings* later (*Change AI*,
+*E-mail import*, *Scanner and phone*); the binders of the paper filing are on
+*Settings → Binders*. (`heftig init` still creates the account on the command line, e.g. for
+scripted installations.)
+
+What is saved on these pages is stored in the archive's database (`meta` table) and applies to
+web server and worker without a restart. API keys and the mail password are never shown again;
+they are stored in the archive's database (readable only by your user), so a copy or backup of
+the archive folder contains them – protect backups accordingly. Exports (`heftig export`) do not
+contain them.
 
 Environment variables (and a `.env` file) still work and **win** over the settings page: a setting
-given there is shown on the page but cannot be changed. That keeps existing installations and
-configuration management working. The full list is under
-[Configuration reference](#configuration-reference).
+given there is shown on the page but cannot be changed. An empty variable (`HEFTIG_IMAP_HOST=`)
+counts as not set. That keeps existing installations and configuration management working. The
+full list is under [Configuration reference](#configuration-reference).
 
 ### With Docker Compose
 
-`compose.yaml` in the repository runs web server and worker as two services from one image and
-reads `.env` (see [.env.example](../.env.example)):
+`compose.yaml` in the repository runs web server and worker as two services from one image
+(restart policy `always`) and reads `.env` if it exists (see [.env.example](../.env.example);
+optional, settings can also be made in the browser):
 
 ```sh
 git clone https://github.com/jo-tud/heftig.git && cd heftig
-mkdir -p archive consume      # create them yourself so they belong to your user
-docker compose up -d          # or: podman compose up -d
+mkdir -p archive consume folder   # create them yourself so they belong to your user
+docker compose up -d              # or: podman compose up -d
 ```
 
 Then open <http://127.0.0.1:8765/setup> (the setup code is in `archive/setup-token`).
@@ -94,11 +101,13 @@ systemd user units in [contrib/systemd/](../contrib/systemd/).
 
 | Setup | Listens on | Reachable from |
 |---|---|---|
+| Installer | container: `0.0.0.0:8765`; published on `127.0.0.1:<HEFTIG_PORT>` (all interfaces with `HEFTIG_LAN=1`) | this machine only |
 | Native (`heftig serve` / `heftig run`) | `HEFTIG_HOST:HEFTIG_PORT`, default `127.0.0.1:8765` | this machine only |
 | Compose | container: `0.0.0.0:8765`; published as `HEFTIG_PUBLISH`, default `127.0.0.1:8765` | this machine only |
 
 **LAN access** (e.g. a phone in the same Wi-Fi):
 
+- Installer: run it again with `HEFTIG_LAN=1`.
 - Compose: set `HEFTIG_PUBLISH=0.0.0.0:8765` (all interfaces) or `HEFTIG_PUBLISH=192.168.1.10:8765`
   (one interface) in `.env` and run `docker compose up -d`.
 - Native: `HEFTIG_HOST=0.0.0.0`.
@@ -145,6 +154,9 @@ With a reverse proxy:
 |---|---|---|
 | `/archive` | `./archive` (`HEFTIG_ARCHIVE_HOST_DIR`) | everything persistent: originals, sidecars, database, quarantine, exports |
 | `/consume` | `./consume` (`HEFTIG_CONSUME_HOST_DIR`) | scanner input folder; may be a mounted network share |
+| `/folder` | `./folder` (`HEFTIG_FOLDER_HOST_DIR`) | folder for digital files (source `folder`, not marked as paper) |
+
+The installer mounts `~/heftig/archive` as `/archive` and `~/heftig/scanner` as `/consume`.
 
 - `archive/` is the only directory you need to back up. Keep it on a **local disk**. SQLite over
   SMB/NFS is not reliable (file locking), so never put the archive itself on a network share;
@@ -166,8 +178,8 @@ With a reverse proxy:
   - **Rootless Podman/Docker:** the container's root already is your unprivileged host user;
     it keeps running as that user, so files in `./archive` belong to you. `PUID`/`PGID` are not
     used.
-- Create `archive/` and `consume/` yourself before the first `docker compose up`, so they exist
-  with your ownership.
+- Create `archive/`, `consume/` and `folder/` yourself before the first `docker compose up`, so
+  they exist with your ownership.
 - SELinux: `compose.yaml` mounts both volumes with `:z` so the container may access them. That
   does not work for CIFS/NFS mounts; see
   [scanner-imap.md](scanner-imap.md#podman-selinux-and-network-mounts).
@@ -178,30 +190,36 @@ With a reverse proxy:
 All settings are environment variables with the prefix `HEFTIG_` (or lines in a `.env` file in
 the working directory; Compose passes `.env` to the containers). Defaults in brackets. The
 authoritative list is `src/heftig/config.py`; [.env.example](../.env.example) has comments.
+Settings marked † can also be made on the setup and settings pages (see
+[Setup page and settings](#setup-page-and-settings)); a variable that is set wins. Secrets can be
+given as files instead (`OCR_API_KEY_FILE`, `CLASSIFY_API_KEY_FILE`, `IMAP_PASSWORD_FILE`, e.g.
+container secrets; `compose.yaml` has a commented example); the direct value wins over the file.
 
 | Area | Variables |
 |---|---|
-| Storage | `ARCHIVE_DIR` (`./archive`), `CONSUME_DIR` (`<archive>/consume`), `FOLDER_DIR` (none) |
-| Language | `LANGUAGE` (`en`/`de`): interface, and the language of AI-written titles and summaries |
+| Storage | `ARCHIVE_DIR` (`./archive`), `CONSUME_DIR` (`<archive>/consume`), `FOLDER_DIR` (none), `HOST_SCANNER_DIR`, `HOST_FOLDER_DIR` (in a container: where these folders are on the host, only for display on the settings pages; set by `compose.yaml`, the installer sets the first) |
+| Language | `LANGUAGE` (`en`/`de`)†: interface, and the language of AI-written titles and summaries; chosen on the setup page, later changeable only with the variable |
 | Web | `HOST` (`127.0.0.1`), `PORT` (`8765`), `COOKIE_SECURE` (`auto`/`true`/`false`), `TRUST_PROXY_HEADERS` (`false`), `SESSION_HOURS` (`336`), `LOGIN_MAX_ATTEMPTS` (`5`), `LOGIN_WINDOW_SECONDS` (`300`) |
 | Limits | `MAX_UPLOAD_MB` (`100`), `MAX_PAGES` (`500`), `MAX_IMAGE_MEGAPIXELS` (`150`), `OCR_DPI` (`300`), `OCR_PAGE_TIMEOUT_SECONDS` (`180`), `MIN_TEXT_CHARS_PER_PAGE` (`40`) |
-| Worker | `WORKER_CONCURRENCY` (`2`, 1-16), `JOB_MAX_ATTEMPTS` (`5`), `JOB_BACKOFF_SECONDS` (`30`), `JOB_LEASE_SECONDS` (`900`), `RAW_RESPONSE_RETENTION_DAYS` (`30`), `RAW_RESPONSE_MAX_KB` (`64`) |
-| Consume folder | `CONSUME_POLL_SECONDS` (`10`), `CONSUME_STABLE_POLLS` (`2`), `CONSUME_MIN_AGE_SECONDS` (`5`), `CONSUME_AFTER` (`delete`/`move`), `CONSUME_MAX_FAILURES` (`3`) |
-| Paper filing | `AUTO_FILE_SOURCES` (empty; e.g. `scanner`), `FILING_GRANULARITY` (`month`/`year`) |
-| OCR | `OCR_PROVIDER` (`tesseract`), `OCR_LANGUAGES` (`deu+eng`), `OCR_MODEL`, `OCR_BASE_URL`, `OCR_API_KEY`, `OCR_API_KEY_FILE`, `OCR_SUPPORTS_IMAGES` (`true`), `ANTHROPIC_OCR_EFFORT` (`low`), `ALLOW_CLOUD_OCR` (`false`) |
-| Classification | `CLASSIFY_PROVIDER` (`rules`), `CLASSIFY_MODEL`, `CLASSIFY_BASE_URL`, `CLASSIFY_API_KEY`, `CLASSIFY_API_KEY_FILE`, `CLASSIFY_JSON_MODE` (`schema`), `CLASSIFY_MAX_CHARS` (`24000`), `CLASSIFY_MIN_CONFIDENCE` (`0.6`), `ALLOW_CLOUD_CLASSIFY` (`false`), `PROVIDER_TIMEOUT_SECONDS` (`120`) |
-| IMAP | `IMAP_HOST`, `IMAP_PORT` (`993`), `IMAP_USER`, `IMAP_PASSWORD`, `IMAP_PASSWORD_FILE`, `IMAP_MAILBOX` (`INBOX`), `IMAP_MOVE_TO`, `IMAP_POLL_SECONDS` (`300`), `IMAP_MAX_ATTACHMENT_MB` (`50`), `IMAP_SKIP_INLINE_IMAGES_BELOW_KB` (`30`), `IMAP_SKIP_FILENAME_PATTERNS` (`logo*,image0*,signature*`), `IMAP_ARCHIVE_EML` (`false`) |
+| Worker | `WORKER_CONCURRENCY` (`2`, 1-16), `JOB_MAX_ATTEMPTS` (`5`), `JOB_BACKOFF_SECONDS` (`30`), `JOB_LEASE_SECONDS` (`900`), `RAW_RESPONSE_RETENTION_DAYS` (`30`), `RAW_RESPONSE_MAX_KB` (`64`), `DB_SNAPSHOT_HOURS` (`6`, 0 = off), `TRASH_RETENTION_DAYS` (`30`), `AUTO_RESOLVE_IDENTICAL` (`true`: the second of two truly identical documents goes to the trash) |
+| Consume folder | `CONSUME_POLL_SECONDS` (`10`), `CONSUME_STABLE_POLLS` (`2`), `CONSUME_MIN_AGE_SECONDS` (`5`), `CONSUME_INCOMPLETE_WAIT_SECONDS` (`900`), `CONSUME_AFTER` (`delete`/`move`), `CONSUME_MAX_FAILURES` (`3`) |
+| Paper filing | `AUTO_FILE_SOURCES` (empty; e.g. `scanner`)†, `FILING_GRANULARITY` (`month`/`year`) |
+| OCR | `OCR_PROVIDER` (`tesseract`)†, `OCR_LANGUAGES` (`deu+eng`), `OCR_MODEL`†, `OCR_BASE_URL`†, `OCR_API_KEY`†, `OCR_API_KEY_FILE`, `OCR_SUPPORTS_IMAGES` (`true`), `ANTHROPIC_OCR_EFFORT` (`low`), `ALLOW_CLOUD_OCR` (`false`)†, `OCR_FIRST_PAGE_MODEL` (empty), `OCR_MAX_SIDE` (`2000`), `OCR_PAGE_CONCURRENCY` (`3`), `OCR_BLANK_MAX_INK` (`0.001`), `OCR_AI_MAX_PAGES` (`30`, 0 = no limit) |
+| Classification | `CLASSIFY_PROVIDER` (`rules`)†, `CLASSIFY_MODEL`†, `CLASSIFY_BASE_URL`†, `CLASSIFY_API_KEY`†, `CLASSIFY_API_KEY_FILE`, `CLASSIFY_JSON_MODE` (`schema`), `CLASSIFY_MAX_CHARS` (`24000`), `CLASSIFY_MIN_CONFIDENCE` (`0.6`), `ALLOW_CLOUD_CLASSIFY` (`false`)†, `AI_SEARCH_MODEL` (`claude-haiku-4-5-20251001`), `PROVIDER_TIMEOUT_SECONDS` (`120`) |
+| AI availability | `AI_FALLBACK` (`true`), `AI_RETRY_MINUTES` (`60`), `AI_CATCH_UP_BATCH` (`25`), `RATE_LIMIT_PAUSE_SECONDS` (`90`); see [providers.md](providers.md#when-the-ai-provider-is-unreachable) |
+| IMAP | `IMAP_HOST`†, `IMAP_PORT` (`993`)†, `IMAP_USER`†, `IMAP_PASSWORD`†, `IMAP_PASSWORD_FILE`, `IMAP_MAILBOX` (`INBOX`)†, `IMAP_MOVE_TO`†, `IMAP_DELETE_AFTER_IMPORT` (`false`)†, `IMAP_TRASH_MAILBOX` (auto-detected), `IMAP_ALLOWED_SENDERS` (empty = everyone)†, `IMAP_POLL_SECONDS` (`300`), `IMAP_MAX_ATTACHMENT_MB` (`50`), `IMAP_MAX_ATTACHMENTS` (`20`), `IMAP_SKIP_INLINE_IMAGES_BELOW_KB` (`30`), `IMAP_SKIP_FILENAME_PATTERNS` (`logo*,image0*,signature*`), `IMAP_ARCHIVE_EML` (`false`) |
 | Misc | `LOG_LEVEL` (`INFO`), `MOCK_FAIL` (tests only) |
 
-Compose additionally reads `HEFTIG_PUBLISH`, `HEFTIG_ARCHIVE_HOST_DIR` and
-`HEFTIG_CONSUME_HOST_DIR`; the container entrypoint reads `PUID`/`PGID` (see
-[Permissions](#permissions)). Environment variables are read at process start; restart both
+Compose additionally reads `HEFTIG_PUBLISH`, `HEFTIG_ARCHIVE_HOST_DIR`,
+`HEFTIG_CONSUME_HOST_DIR` and `HEFTIG_FOLDER_HOST_DIR`; the container entrypoint reads
+`PUID`/`PGID` (see [Permissions](#permissions)). Environment variables are read at process start; restart both
 services after changing one. Settings made on the settings page apply right away.
 
 ## Upgrades and migrations
 
 1. Make a backup (`heftig backup`, see below).
-2. Update the code: `git pull`.
+2. Installer: run it again (it downloads the new image and replaces the container). Otherwise
+   update the code: `git pull`.
 3. Compose: `docker compose up -d --build`. Native: `uv tool install --force .` (or
    `pipx install --force .`), then restart `heftig-web` and `heftig-worker`.
 4. Database migrations run automatically when a process opens the archive. Check with
@@ -227,10 +245,13 @@ heftig backup /mnt/backup/heftig
 ```
 
 The backup contains a consistent copy of the database made with SQLite's online backup API, plus
-`originals/`, `documents/`, `taxonomy.json`, `email/`, `quarantine/` and a `backup.json` marker.
+`originals/`, `documents/`, `trash/`, `taxonomy.json`, `saved_searches.json`, `binders.json`,
+`email/`, `quarantine/` and a `backup.json` marker.
 It is a full copy every time (no deduplication), so it suits small archives or an external disk.
 In containers, mount the target:
-`docker compose run --rm -v /mnt/backup/heftig:/backup web heftig backup /backup`.
+`docker compose run --rm -v /mnt/backup/heftig:/backup web heftig backup /backup`. The
+installer's container has no mount for a backup target; there, use method B on
+`~/heftig/archive` (the snapshot is written automatically, see below).
 
 **B. `heftig db-snapshot` + a backup tool (incremental, encrypted)**
 
@@ -263,7 +284,8 @@ Automatic copies inside the archive (no setup needed):
 
 Notes:
 
-- Backups contain all your documents plus the password hash and token hashes. Encrypt them
+- Backups contain all your documents plus the password hash, token hashes and the API keys and
+  mail password saved on the settings pages. Encrypt them
   (restic, Borg and Kopia do) and store at least one copy off-site.
 - The last backup and snapshot times are shown on the settings page and in `heftig status`.
 - An export (`heftig export`) is not a full backup: it omits password hashes, token secrets and
@@ -312,9 +334,9 @@ Practise a restore once after setting up backups, and again from time to time.
 
 If only the database is lost or damaged and no backup exists, `heftig rebuild-db` recreates all
 document data from the sidecars (see below). Users, API tokens, the job queue, IMAP cursors and
-the global event log are lost in that case: run `heftig init` again; the IMAP importer then looks
-at the whole mailbox again, and attachments that are already archived are only recorded as
-duplicates.
+the global event log are lost in that case, as are the settings made on the settings pages: set
+Heftig up again on `/setup` (or with `heftig init`); the IMAP importer then looks at the whole
+mailbox again, and attachments that are already archived are only recorded as duplicates.
 
 ## Integrity check
 
@@ -380,6 +402,7 @@ paths below `<archive>/imports/`. Format, conflict handling and what is (not) in
 
 ## Logs
 
+- Installer: `podman logs -f heftig` (or `docker logs -f heftig`).
 - Compose: `docker compose logs -f worker` / `web`.
 - systemd user units: `journalctl --user -u heftig-worker -f`.
 - Level: `HEFTIG_LOG_LEVEL` (`DEBUG`, `INFO`, `WARNING`).

@@ -19,8 +19,8 @@ reads, sorts, finds and remembers where the paper is – and leaves out what a h
 need: roles, workflows, sharing, plugins. Where a decision was possible, it was made, so there is
 little to configure.
 
-**Easy to change.** About 17,000 lines of plain Python, server-rendered HTML and a little
-JavaScript, no build step, no front-end framework, and about 350 tests that run in a minute and
+**Easy to change.** About 18,000 lines of plain Python, server-rendered HTML and a little
+JavaScript, no build step, no front-end framework, and about 370 tests that run in a minute and
 a half without network access. That makes it a good fit for coding agents such as Claude Code or
 Codex: describe what you want different, let the agent change it and run the tests.
 [AGENTS.md](AGENTS.md) gives it the map and the rules that are easy to break. Heftig itself was
@@ -81,9 +81,9 @@ Other ways to run it (Docker Compose, without containers, behind a reverse proxy
   phrases like “March 2025” or “last year”, shows filters with counts and a timeline, suggests
   while you type, and marks the hits on the page. Optionally, an AI turns a question like
   “phone bills over $50 last year” into filters. The search itself never leaves your computer.
-- **Paper without archive numbers:** file letters in a binder with a section per month, newest
-  on top. Heftig records the position when you mark a letter as filed and later shows exactly
-  where it is, and which letters lie above and below it.
+- **Paper without archive numbers:** file letters in binders with a section per month, newest
+  on top. Heftig records the binder and the position when you mark a letter as filed and later
+  shows exactly where it is, and which letters lie above and below it.
 - **Keeping it clean:** duplicates are recognised (the identical file, and the same letter as
   scan and PDF); deleted documents stay in the trash for 30 days; combining and bulk deletion
   can be undone.
@@ -130,7 +130,8 @@ know:
 | [docs/mcp.md](docs/mcp.md) | Ask Claude about your archive (read-only) |
 | [docs/data-format.md](docs/data-format.md) | The archive on disk, export and import |
 | [docs/architecture.md](docs/architecture.md) | Components, pipeline, security model – the place to start before changing things |
-| [docs/paperless.md](docs/paperless.md) | Moving from Paperless-ngx |
+| [docs/testing.md](docs/testing.md) | What the tests cover, a manual smoke test, known gaps |
+| [docs/paperless.md](docs/paperless.md) | Moving to Paperless-ngx: field mapping and a migration script |
 
 ## Changing Heftig
 

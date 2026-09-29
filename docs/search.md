@@ -38,6 +38,7 @@ where they occur. BM25 weights (`index.COLUMN_WEIGHTS`, higher = more important)
 | `tags` | 6.0 | Tags |
 | `dates` | 4.0 | Document date, received date and filing date as `YYYY`, `YYYY-MM`, `YYYY-MM-DD` (tokenised into year, month and day numbers) |
 | `filename` | 3.0 | Original file name |
+| `notes` | 5.0 | Your notes, attachment names and descriptions |
 | `summary` | 2.5 | Summary |
 | `body` | 1.0 | Full extracted text, plus separator-free variants of numbers in the text |
 
@@ -98,7 +99,8 @@ single document directly, marked as an exact match.
 ## Query processing
 
 1. Exact ID / SHA-256 check (see above).
-2. Date phrases ("März 2025", "letztes Jahr" ...) become a document-date filter (see below).
+2. Date phrases ("March 2025", "last year", "März 2025" ...) become a document-date filter (see
+   below).
 3. Parse the query: field syntax becomes filters, `"..."` becomes a phrase, everything else
    becomes search terms. Unknown prefixes such as `Vertragsnr:83729381` are treated as plain
    text. An unbalanced quote is reported and the quotes are ignored. At most 12 terms are used
@@ -109,15 +111,16 @@ single document directly, marked as an exact match.
    into the FTS5 expression, so neither SQL nor FTS5 syntax can be injected.
 5. Typo correction for terms that match nothing (below).
 6. Search with **all** terms (AND). If that finds nothing and there is more than one term, search
-   again with **any** term (OR) and tell the user ("Nicht alle Suchbegriffe kommen gemeinsam
-   vor - zeige Teiltreffer.").
+   again with **any** term (OR) and tell the user ("Not all search terms occur together – showing
+   partial matches.").
 7. Rank, sort and paginate; build snippets and match reasons.
 
 Each result contains ID, title, document date (and its status), received date, ingest sequence,
 correspondent, document type, tags, source, status, text status, MIME type, page count, paper and
 filing information, the BM25 rank, a highlighted snippet (HTML-escaped, matches in `<mark>`) and
-the **reasons**: the fields that matched (`Nummer/ID`, `Titel`, `Korrespondent`, `Dokumenttyp`,
-`Tag`, `Zusatzfeld`, `Dateiname`, `Datum`, `Zusammenfassung`, `Text`).
+the **reasons**: the fields that matched (`Number/ID`, `Title`, `Sender`, `Document type`, `Tag`,
+`Custom field`, `File name`, `Date`, `Summary`, `Text`, `Note/attachment`; in the interface
+language).
 
 ## Typo correction
 
@@ -134,8 +137,8 @@ Correction is a fallback for words that occur nowhere, not a fuzzy search:
   characters and 2 for longer words. The best candidate is the one with the smallest distance,
   then the one occurring in the most documents, then alphabetical order.
 - Corrections are reported (`corrections: [{"from": "telekomm", "to": "telekom"}]` in the API;
-  the UI shows "Gesucht mit korrigierten Begriffen: telekomm -> telekom"). The API also reports `fuzzy.candidates_checked` and
-  `fuzzy.ms`, so the cost is measurable; the acceptance test requires fewer than 200 checked
+  the UI shows "Search term corrected: telekomm -> telekom"). The API also reports
+  `fuzzy.candidates_checked` and `fuzzy.ms`, so the cost is measurable; the acceptance test requires fewer than 200 checked
   candidates for the test corpus.
 
 Limits: a typo in the first letter is not corrected; a swapped pair of letters counts as two
@@ -176,6 +179,8 @@ The web UI's filter panel and the API (`GET /api/documents`) accept:
 | `status` (repeatable) | `queued`, `processing`, `done`, `needs_review`, `failed` |
 | `filed` | `yes` (paper filing confirmed) or `no` (paper, not yet filed) |
 | `filing_section` | e.g. `2026-09` |
+| `filing_binder` | name of a binder, e.g. `Binder 1` |
+| `session` | ID of a scan batch |
 | `cf_key`, `cf_min`, `cf_max` | numeric range on a custom field, e.g. `Betrag` between 40 and 50 |
 | `tag_mode` | `all` (default) or `any` |
 | `literal` | `1`: do not interpret date phrases in `q` |
@@ -207,19 +212,23 @@ test suite checks that both rebuilds return exactly the same results for the acc
 
 ## Date phrases
 
-German date phrases in the query become a document-date range and are removed from the search
-text (`heftig/datephrases.py`). Recognised, case-insensitive, first phrase only:
+English and German date phrases in the query become a document-date range and are removed from
+the search text (`heftig/datephrases.py`). Recognised, case-insensitive, first phrase only:
 
 | Example | Range |
 |---|---|
-| `März 2025`, `Maerz 2025`, `Jan. 2026` | that month |
-| `ab/seit Mai 2024`, `bis/vor/nach Mai 2024` | open ranges around the month |
-| `letztes Jahr`, `vorletztes Jahr`, `dieses Jahr` | calendar year |
-| `letzten/diesen Monat`, `letztes Quartal`, `letzte Woche` | calendar month / quarter / week (Mon-Sun) |
-| `letzte 3 Monate`, `in den letzten 30 Tagen`, `vergangenen 2 Jahre` | from today back |
-| `seit 2023`, `ab 2023`, `bis 2023`, `vor 2020`, `nach 2020` | open year ranges |
-| `von 2021 bis 2023`, `2021 bis 2023` | year span |
+| `March 2025`, `Sep 2025`, `März 2025`, `Maerz 2025`, `Jan. 2026` | that month |
+| `March to May 2025`, `between January and March 2025`, `von Nov. 2024 bis Feb. 2025` | month span |
+| `since/after/before May 2024`, `ab/seit/bis/vor/nach Mai 2024` | open ranges around the month |
+| `last year`, `this year`, `letztes Jahr`, `vorletztes Jahr`, `dieses Jahr` | calendar year |
+| `last month`, `this quarter`, `last week`, `letzten Monat`, `letztes Quartal` | calendar month / quarter / week (Mon-Sun) |
+| `last 3 months`, `past 30 days`, `letzte 3 Monate`, `in den letzten 30 Tagen` | from today back |
+| `since 2023`, `until 2023`, `before 2020`, `after 2020`, `seit/ab/bis/vor/nach 2023` | open year ranges |
+| `from 2021 to 2023`, `2021 to 2023`, `von 2021 bis 2023` | year span |
 | `im Jahr 2019`, `Jahrgang 2019` | that year |
+
+"2021 and 2023" (like "2021 und 2023") is not a span - both years stay search terms; "between
+2021 and 2023" is one.
 
 Phrases inside `"quotes"` are left alone, and a bare year (`2025`) stays a search term (with the
 year boost). The result page names the interpretation and links to the same search with
@@ -298,5 +307,7 @@ becomes the senders of your phone providers, type Invoice, document date 2024 an
   that can be removed, a banner shows the model's one-sentence reading and offers to search
   without AI. Reloading or going back does not ask the model again.
 - **Cost:** every AI search is recorded in the AI cost overview (task `search`).
-- Offered only when the classification provider is Anthropic or OpenAI-compatible and cloud use
-  is allowed; the local rule classifier has no AI search.
+- Offered only when the classification provider is Anthropic, OpenAI or OpenAI-compatible and
+  may be used (a cloud service needs the cloud permission, a local server does not); the local
+  rule classifier has no AI search. With OpenAI and OpenAI-compatible servers the classification
+  model is used.
