@@ -190,22 +190,22 @@
       <form method="post" action="/documents/{{ m.id }}/action">{{ csrf_field(csrf) }}{{ rv }}
         <button name="action" value="unfile" class="secondary">{{ _("Undo filing") }}</button></form>
     {% elif m.paper_location %}
-      <p>{% trans loc=m.paper_location %}The paper is in <strong>{{ loc }}</strong>.{% endtrans %}</p>
+      <p>{% trans loc=m.paper_location %}Where the paper is: <strong>{{ loc }}</strong>{% endtrans %}</p>
       <form method="post" action="/documents/{{ m.id }}/action">{{ csrf_field(csrf) }}{{ rv }}
         <button name="action" value="paper_reset" class="secondary">{{ _("Revert") }}</button></form>
     {% elif m.paper_discarded_at %}
-      <p>{{ _("Paper discarded on %(when)s.", when=time(m.paper_discarded_at)) }}</p>
+      <p>{{ _("Paper not kept (handed over, sent away or thrown out) – noted on %(when)s.", when=time(m.paper_discarded_at)) }}</p>
       <form method="post" action="/documents/{{ m.id }}/action">{{ csrf_field(csrf) }}{{ rv }}
         <button name="action" value="paper_reset" class="secondary">{{ _("Revert") }}</button></form>
     {% elif m.paper %}
       <p class="notice warn">{{ _("Paper document – where is the paper?") }}</p>
       <form method="post" action="/documents/{{ m.id }}/action" class="buttons">{{ csrf_field(csrf) }}{{ rv }}
         <button name="action" value="file" class="primary">{{ _("Filed just now") }}</button>
-        <button name="action" value="paper_discarded" class="secondary">{{ _("Discarded") }}</button>
+        <button name="action" value="paper_discarded" class="secondary" title="{{ _("Handed over, sent away or thrown out – nothing to file") }}">{{ _("Not kept") }}</button>
       </form>
-      <details><summary class="small">{{ _("In another binder …") }}</summary>
+      <details><summary class="small">{{ _("Somewhere else …") }}</summary>
         <form method="post" action="/documents/{{ m.id }}/action" class="inline-form">{{ csrf_field(csrf) }}{{ rv }}
-          <input name="location" required maxlength="200" placeholder="{{ _("e.g. Insurance binder") }}" aria-label="{{ _("Binder") }}">
+          <input name="location" required maxlength="200" placeholder="{{ _("e.g. Insurance binder, or: given to the doctor") }}" aria-label="{{ _("Where the paper is") }}">
           <button name="action" value="paper_folder">{{ _("Save") }}</button></form></details>
       <p class="hint">{{ _("“Filed”: Heftig remembers the order – the sheet filed last is on top of the current section.") }}</p>
     {% endif %}

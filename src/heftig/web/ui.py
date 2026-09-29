@@ -925,7 +925,7 @@ def _action_sync(a, doc_id: str, form) -> RedirectResponse:
         msg = _("Location saved.")
     elif action == "paper_discarded":
         docs.set_paper_state(a, doc_id, discarded=True)
-        msg = _("Marked as discarded.")
+        msg = _("Noted: the paper is not kept.")
     elif action == "paper_reset":
         docs.set_paper_state(a, doc_id)
         msg = _("Undone.")
@@ -1045,7 +1045,7 @@ def _facts(a, m: dict, pos) -> dict[str, str]:
     elif m.get("paper_location"):
         paper = m["paper_location"]
     elif m.get("paper_discarded_at"):
-        paper = _("discarded")
+        paper = _("not kept")
     else:
         paper = _("paper, open") if m.get("paper") else "–"
     received = (
@@ -1590,6 +1590,10 @@ def _inbox_sync(a, form) -> RedirectResponse:
     elif action.startswith("file_"):
         docs.mark_filed(a, action[5:])
         return redirect("/inbox#unf-h")  # stay at the list: the next sheet is right there
+    elif action.startswith("notkept_"):
+        # handed over (a referral at the doctor's), sent away or thrown out: nothing to file
+        docs.set_paper_state(a, action[8:], discarded=True)
+        return redirect("/inbox#unf-h")
     if action.startswith("reprocess_all"):
         return redirect("/settings?" + urlencode({"msg": _("Reprocessing scheduled.")}))
     return redirect("/inbox")

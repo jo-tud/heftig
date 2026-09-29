@@ -5,6 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from heftig import auth
+from heftig import documents as docs
 from heftig.web.app import create_app
 
 from .conftest import make_settings, process_all
@@ -519,3 +520,20 @@ def test_categories_page(client, app):
         "term_id": str(tax.find_term(a.conn, "correspondent", "Vodafone GmbH")),
         "into": "Gibt es nicht"}, follow_redirects=False)  # fmt: skip
     assert "Fehler" in r.headers["location"]
+
+
+def test_paper_not_kept_leaves_the_filing_list(client, app):
+    """A referral slip handed in at the doctor's: no binder, nothing to file."""
+    csrf = login(client)
+    r = upload(client, csrf, text_pdf(["Überweisungsschein Facharzt"]), "u.pdf", kind="paper")
+    doc_id = r.json()["results"][0]["document_id"]
+    process_all(app.state.archive)
+    page = client.get("/inbox").text
+    assert f'value="notkept_{doc_id}"' in page and "Nicht aufbewahrt" in page
+    r = client.post("/inbox/action", data={"csrf_token": csrf, "action": f"notkept_{doc_id}"},
+                    follow_redirects=False)  # fmt: skip
+    assert r.status_code == 303
+    assert f'value="notkept_{doc_id}"' not in client.get("/inbox").text
+    meta = docs.load_meta(app.state.archive, doc_id)
+    assert meta.paper_discarded_at and meta.filing_sequence is None
+    assert "Papier nicht aufbewahrt" in client.get(f"/documents/{doc_id}").text

@@ -102,7 +102,8 @@
   <ul class="plain">
   {% for d in unfiled %}
     <li><a href="/documents/{{ d.id }}">{{ d.title or d.original_filename }}</a> <span class="small muted">· {{ _("received %(time)s", time=time(d.received_at)) }}</span>
-      <button name="action" value="file_{{ d.id }}">{{ _("Filed now") }}</button></li>
+      <button name="action" value="file_{{ d.id }}">{{ _("Filed now") }}</button>
+      <button name="action" value="notkept_{{ d.id }}" class="secondary" title="{{ _("Handed over, sent away or thrown out – nothing to file") }}">{{ _("Not kept") }}</button></li>
   {% endfor %}
   </ul>
 </section>
