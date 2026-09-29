@@ -70,7 +70,7 @@
   function updateCurrent() {
     ticking = false;
     const line = viewer.scrollTop + viewer.clientHeight * 0.3;
-    let n = 1;
+    let n = pages.length ? Number(pages[0].dataset.page) : 1;
     for (const p of pages) {
       if (p.offsetTop <= line) n = Number(p.dataset.page);
       else break;
@@ -81,6 +81,12 @@
     if (!ticking) { ticking = true; requestAnimationFrame(updateCurrent); }
   }, { passive: true });
 
+  // the next / previous page shown (hidden blank pages are not in the viewer)
+  function neighbour(n, dir) {
+    const i = pages.findIndex((p) => Number(p.dataset.page) === n);
+    const p = pages[i + dir];
+    return p ? Number(p.dataset.page) : n;
+  }
   function gotoPage(n) {
     const el = document.getElementById(`page-${n}`);
     if (!el) return;
@@ -151,8 +157,8 @@
     else if (e.key === "-") { step(-1); e.preventDefault(); }
     else if (e.key === "0") { setZoom(1); e.preventDefault(); }
     else if (e.key === "f" || e.key === "F") { toggleFullscreen(); e.preventDefault(); }
-    else if (e.key === "PageDown" || e.key === "n") { gotoPage(page + 1); e.preventDefault(); }
-    else if (e.key === "PageUp" || e.key === "p") { gotoPage(page - 1); e.preventDefault(); }
+    else if (e.key === "PageDown" || e.key === "n") { gotoPage(neighbour(page, 1)); e.preventDefault(); }
+    else if (e.key === "PageUp" || e.key === "p") { gotoPage(neighbour(page, -1)); e.preventDefault(); }
     else if (e.key === "Escape") card.classList.remove("viewer-max");
   });
 })();

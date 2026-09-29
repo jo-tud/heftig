@@ -12,7 +12,7 @@
     {% for r in chosen %}
     <li>
       <input type="hidden" name="ids" value="{{ r.id }}">
-      <span class="thumb"><img src="/documents/{{ r.id }}/preview.webp?w=54&amp;t={{ THUMB_VERSION }}" srcset="/documents/{{ r.id }}/preview.webp?w=54&amp;t={{ THUMB_VERSION }} 1x, /documents/{{ r.id }}/preview.webp?w=108&amp;t={{ THUMB_VERSION }} 2x, /documents/{{ r.id }}/preview.webp?w=162&amp;t={{ THUMB_VERSION }} 3x" alt="" loading="lazy" width="54" height="75"></span>
+      <span class="thumb"><img src="/documents/{{ r.id }}/preview.webp?w=54&amp;t={{ THUMB_VERSION }}.{{ r.revision }}" srcset="/documents/{{ r.id }}/preview.webp?w=54&amp;t={{ THUMB_VERSION }}.{{ r.revision }} 1x, /documents/{{ r.id }}/preview.webp?w=108&amp;t={{ THUMB_VERSION }}.{{ r.revision }} 2x, /documents/{{ r.id }}/preview.webp?w=162&amp;t={{ THUMB_VERSION }}.{{ r.revision }} 3x" alt="" loading="lazy" width="54" height="75"></span>
       <span class="cl-main"><a href="/documents/{{ r.id }}" target="_blank" rel="noopener">{{ r.title or r.original_filename }}</a>
         {% set prange %}{{ r.first_page }}{% if (r.page_count or 1) > 1 %}–{{ r.first_page + r.page_count - 1 }}{% endif %}{% endset %}
         <span class="muted small">{{ _("p. %(pages)s", pages=prange) }}

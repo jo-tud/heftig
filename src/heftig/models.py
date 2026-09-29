@@ -169,6 +169,9 @@ class DocumentMetadata(BaseModel):
     ai_pending: list[Literal["extract", "classify"]] = Field(default_factory=list)
     # the user asked for AI text recognition of every page (beyond HEFTIG_OCR_AI_MAX_PAGES)
     ocr_all_pages: bool = False
+    # pages (1-based) the user marked as blank (True: hidden in the viewer) or as not blank
+    # (False: always shown) - overrides the detection in text_pages.json
+    page_blank: dict[int, bool] = Field(default_factory=dict)
     # scan session the paper came in with, and where the paper is now (besides Heftig's own
     # filing): in an existing folder (paper_location) or shredded (paper_discarded_at)
     scan_session: ScanSessionRef | None = None
@@ -228,7 +231,9 @@ class PageText(BaseModel):
     text: str = ""
     chars: int = 0
     error: str | None = None
-    blank: bool = False  # (almost) no ink: read locally instead of by the paid AI
+    # (almost) no ink, e.g. the empty back of a duplex scan: not sent to a paid AI, hidden in the
+    # page viewer (unless the user decided otherwise, see DocumentMetadata.page_blank)
+    blank: bool = False
 
 
 class TextPages(BaseModel):

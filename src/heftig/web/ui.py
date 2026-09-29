@@ -752,10 +752,25 @@ def document_page(request: Request, doc_id: str, p: Principal = Depends(require_
             n = count_hits(pg.text, hit_terms)
             if n:
                 hit_pages.append({"page": pg.page, "count": n})
+    # blank pages (empty backs of duplex scans) are hidden - except pages with search hits
+    # and when all pages are asked for
+    blank = docs.blank_pages(tp, detail["metadata"].get("page_blank"))
+    all_pages = request.query_params.get("pages") == "all"
+    hits = {h["page"] for h in hit_pages}
+    keep = {k: v for k, v in request.query_params.items() if k in ("q", "review")}
     return render(
         request,
         "document.html",
         nav="inbox" if request.query_params.get("review") == "1" else "documents",
+        blank_pages=blank,
+        hidden_pages=[] if all_pages else [n for n in blank if n not in hits],
+        all_pages=all_pages,
+        url_all_pages=f"/documents/{doc_id}?"
+        + urlencode({**keep, "pages": "all"})
+        + "#viewer-card",
+        url_some_pages=f"/documents/{doc_id}"
+        + ("?" + urlencode(keep) if keep else "")
+        + "#viewer-card",
         d=detail,
         m=detail["metadata"],
         pos=detail["filing_position"],
@@ -856,8 +871,9 @@ def document_page_hits(
 def document_preview(
     request: Request, doc_id: str, w: int = 144, p: Principal = Depends(require_user)
 ):
-    """Thumbnail of page 1 in exactly the requested width (one per screen density, so the
-    browser does not scale again); made once per width and cached (regenerable)."""
+    """Thumbnail of the first page (the first one that is not blank) in exactly the requested
+    width (one per screen density, so the browser does not scale again); made once per width
+    and cached (regenerable)."""
     from ..media import THUMB_VERSION, THUMB_WIDTHS, make_thumbnail
     from ..storage import atomic_write_bytes
 
@@ -867,18 +883,20 @@ def document_preview(
         meta = docs.load_meta(a, doc_id)
     except (docs.DocumentNotFound, ValueError):
         return Response(status_code=404)
+    cover = docs.cover_page(a, meta)
+    page = f"-p{cover + 1}" if cover else ""
     headers = {
         "Cache-Control": "private, max-age=604800",
-        "ETag": f'"{meta.sha256[:16]}-t{THUMB_VERSION}-{width}"',
+        "ETag": f'"{meta.sha256[:16]}-t{THUMB_VERSION}-{width}{page}"',
     }
     if request.headers.get("if-none-match") == headers["ETag"]:
         return Response(status_code=304, headers=headers)
-    cache = docs.files(a, doc_id).dir / "cache" / f"thumb-v{THUMB_VERSION}-{width}.webp"
+    cache = docs.files(a, doc_id).dir / "cache" / f"thumb-v{THUMB_VERSION}-{width}{page}.webp"
     if not cache.exists():
         try:
             data = make_thumbnail(
                 a.paths.resolve(meta.original_relpath), meta.mime_type,
-                a.settings.max_image_megapixels, width,
+                a.settings.max_image_megapixels, width, cover,
             )  # fmt: skip
         except Exception:  # noqa: BLE001 - a broken original: no thumbnail
             return Response(status_code=404)
@@ -1096,6 +1114,19 @@ def _action_sync(a, doc_id: str, form) -> RedirectResponse:
         if str(form.get("review") or "") == "1":
             return redirect("/review/next?" + urlencode({"after": doc_id}))
         msg = _("Marked as reviewed.")
+    elif action == "page_blank":
+        try:
+            page = int(str(form.get("page") or ""))
+        except ValueError:
+            raise ApiError(400, "invalid", _("Unknown page.")) from None
+        blank = str(form.get("blank") or "") == "1"
+        try:
+            docs.set_page_blank(a, doc_id, page, blank)
+        except docs.EditError as e:
+            return redirect(_doc_url(doc_id, form, msg=str(e)))
+        msg = (_("Page %(num)s is hidden as blank.", num=page) if blank
+               else _("Page %(num)s is always shown.", num=page))  # fmt: skip
+        return redirect(_doc_url(doc_id, form, msg=msg, pages="all") + f"#page-{page}")
     elif action == "ocr_all_pages":
         ocr_all_pages(a, doc_id)
         msg = _("All pages are being recognized with AI and the document is classified again.")

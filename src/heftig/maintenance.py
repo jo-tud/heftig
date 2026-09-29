@@ -1005,3 +1005,55 @@ def status(archive: Archive) -> dict[str, Any]:
         "imap": [dict(r) for r in conn.execute("SELECT * FROM imap_state")],
         "ai_costs": ai_costs(conn),
     }
+
+
+# --- blank pages in documents processed before every page was checked --------------------------
+
+BLANK_CHECK_KEY = "blank_pages_checked"
+
+
+def detect_blank_pages(archive: Archive) -> dict[str, int]:
+    """Mark the blank pages (empty backs of duplex scans) of documents extracted before every
+    page was checked for them. Only pages without a text layer and with little text are
+    measured; the text itself stays as it is."""
+    from .processing import is_blank_page
+
+    report = {"documents": 0, "pages": 0}
+    ids = [r[0] for r in archive.conn.execute(
+        "SELECT id FROM documents WHERE page_count > 1 ORDER BY ingest_sequence")]  # fmt: skip
+    for doc_id in ids:
+        try:
+            meta = docs.load_meta(archive, doc_id)
+            tp = docs.load_text_pages(archive, doc_id)
+        except (docs.DocumentNotFound, OSError, ValueError):
+            continue
+        if tp is None:
+            continue
+        path = archive.paths.resolve(meta.original_relpath)
+        found = [
+            p.page
+            for p in tp.pages
+            if not p.blank and p.method != "embedded" and p.chars <= 200
+            and is_blank_page(path, meta.mime_type, p.page - 1, archive.settings)
+        ]  # fmt: skip
+        if not found:
+            continue
+        cover = docs.cover_page(archive, meta)
+        with write_tx(archive.conn):
+            tp = docs.load_text_pages(archive, doc_id)  # the worker may have extracted anew
+            if tp is None:
+                continue
+            for p in tp.pages:
+                if p.page in found:
+                    p.blank = True
+            docs.write_text(archive, doc_id, tp)
+            if docs.cover_page(archive, meta) != cover:
+                meta = docs.load_meta(archive, doc_id)
+                docs.persist(archive, meta)  # new revision: the lists fetch the new thumbnail
+        if docs.cover_page(archive, meta) != cover:
+            docs.refresh_preview(archive, meta)
+        report["documents"] += 1
+        report["pages"] += len(found)
+    with write_tx(archive.conn):
+        set_meta(archive.conn, BLANK_CHECK_KEY, now_iso())
+    return report

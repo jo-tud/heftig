@@ -290,10 +290,12 @@ def _even_paper(img: Image.Image) -> Image.Image:
     return flat.point(lambda v: max(0, min(255, round((v - 20) * 255 / 215))))
 
 
-def make_thumbnail(path: Path, mime: str, max_megapixels: int, width: int) -> bytes:
+def make_thumbnail(
+    path: Path, mime: str, max_megapixels: int, width: int, page_index: int = 0
+) -> bytes:
     from PIL import ImageFilter
 
-    img = render_width(path, mime, 0, width * 3, max_megapixels)
+    img = render_width(path, mime, page_index, width * 3, max_megapixels)
     img = _even_paper(_trim(img))
     img = img.resize((width, max(1, round(img.height * width / img.width))), Image.LANCZOS,
                      reducing_gap=2.0)  # fmt: skip
@@ -303,8 +305,10 @@ def make_thumbnail(path: Path, mime: str, max_megapixels: int, width: int) -> by
     return buf.getvalue()
 
 
-def make_preview(path: Path, mime: str, max_megapixels: int, width: int = PREVIEW_WIDTH) -> bytes:
-    return make_thumbnail(path, mime, max_megapixels, width)
+def make_preview(
+    path: Path, mime: str, max_megapixels: int, width: int = PREVIEW_WIDTH, page_index: int = 0
+) -> bytes:
+    return make_thumbnail(path, mime, max_megapixels, width, page_index)
 
 
 def page_sizes(path: Path, mime: str) -> list[tuple[float, float]]:

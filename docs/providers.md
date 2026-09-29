@@ -324,7 +324,8 @@ quality does not depend on the provider.
 - **Blank pages and large documents:** before a page goes to a paid OCR provider its ink is
   measured (40 dpi, margins trimmed). Pages below `HEFTIG_OCR_BLANK_MAX_INK` (default 0.001 =
   0.1 %: blank duplex back sides, filler pages, a lone footer line) are read by the local
-  Tesseract instead (free; nothing is lost if there is a line on it). At most
+  Tesseract instead (free; nothing is lost if there is a line on it). The same measure marks
+  blank pages for the page viewer, which hides them (see [guide.md](guide.md#blank-pages)). At most
   `HEFTIG_OCR_AI_MAX_PAGES` (default 30) pages per document go to the AI; further pages are read
   locally and the document shows a note with a button "Recognize all pages with AI". Files above
   `HEFTIG_MAX_PAGES` (500) or `HEFTIG_MAX_UPLOAD_MB` (100) are rejected at intake.

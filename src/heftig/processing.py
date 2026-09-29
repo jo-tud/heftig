@@ -181,6 +181,15 @@ def _ocr_cache_put(archive: Archive, meta, extractor, page: int, text: str) -> N
         log.warning("doc %s page %s: OCR cache not written: %s", meta.id, page, e)
 
 
+def is_blank_page(path, mime: str, index: int, s) -> bool:
+    """(Almost) no ink on the page - see media.ink_ratio. False if it cannot be measured."""
+    try:
+        return ink_ratio(path, mime, index, s.max_image_megapixels) <= s.ocr_blank_max_ink
+    except Exception as e:  # noqa: BLE001 - measuring is optional
+        log.warning("%s page %s: ink check failed: %s", path.name, index + 1, e)
+        return False
+
+
 def _local_extractor(archive: Archive):
     """Tesseract for pages that should not go to a paid AI (None if not installed)."""
     try:
@@ -264,19 +273,17 @@ def extract(archive: Archive, doc_id: str, progress: Progress, final_attempt: bo
             _ocr_cache_put(archive, meta, extractor, i + 1, text)
         return text
 
-    # 0) cost guards for paid OCR: blank pages and pages beyond the per-document budget are
+    # 0) blank pages (the empty backs of duplex scans): marked, so the viewer hides them.
+    #    Cost guards for paid OCR: blank pages and pages beyond the per-document budget are
     #    read locally (free); without a local OCR they stay empty / are reported
     local_only: dict[int, str] = {}  # page index -> reason ("blank" | "budget")
+    for i in need_ocr:
+        if is_blank_page(path, meta.mime_type, i, s):
+            pages[i].blank = True
+            # (a page the user called "not blank" is read like any other)
+            if (remote or extractor is None) and meta.page_blank.get(i + 1) is not False:
+                local_only[i] = "blank"
     if remote:
-        for i in need_ocr:
-            try:
-                if (
-                    ink_ratio(path, meta.mime_type, i, s.max_image_megapixels)
-                    <= s.ocr_blank_max_ink
-                ):
-                    local_only[i] = "blank"
-            except Exception as e:  # noqa: BLE001 - measuring is optional
-                log.warning("doc %s page %s: ink check failed: %s", doc_id, i + 1, e)
         ai_pages = [i for i in need_ocr if i not in local_only]
         budget = s.ocr_ai_max_pages
         if budget and not meta.ocr_all_pages and len(ai_pages) > budget:
@@ -290,7 +297,8 @@ def extract(archive: Archive, doc_id: str, progress: Progress, final_attempt: bo
                 % {"pages": len(ai_pages) - budget, "budget": budget}
             )
     ai_pages = [i for i in need_ocr if i not in local_only]
-    local_ocr = _local_extractor(archive) if local_only else None
+    # (without any OCR configured, blank pages simply stay empty)
+    local_ocr = _local_extractor(archive) if local_only and extractor is not None else None
 
     # 1) all pages with the configured provider - in parallel for remote providers
     results: dict[int, str | BaseException] = {}
@@ -302,8 +310,6 @@ def extract(archive: Archive, doc_id: str, progress: Progress, final_attempt: bo
 
     for n_local, (i, why) in enumerate(local_only.items(), 1):
         keep_lease(n_local)
-        page = pages[i]
-        page.blank = why == "blank"
         if local_ocr is None:
             results[i] = (
                 ""
@@ -416,7 +422,10 @@ def extract(archive: Archive, doc_id: str, progress: Progress, final_attempt: bo
 
     preview = None
     try:
-        preview = make_preview(path, meta.mime_type, s.max_image_megapixels)
+        hidden = set(docs.blank_pages(TextPages(page_count=len(pages), pages=pages,
+                                                extracted_at=started), meta.page_blank))  # fmt: skip
+        cover = next((i for i in range(len(pages)) if i + 1 not in hidden), 0)
+        preview = make_preview(path, meta.mime_type, s.max_image_megapixels, page_index=cover)
     except Exception as e:  # preview is optional and regenerable
         log.warning("doc %s: preview failed: %s", doc_id, type(e).__name__)
 

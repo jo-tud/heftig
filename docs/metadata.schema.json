@@ -675,6 +675,13 @@
       "title": "Ocr All Pages",
       "type": "boolean"
     },
+    "page_blank": {
+      "additionalProperties": {
+        "type": "boolean"
+      },
+      "title": "Page Blank",
+      "type": "object"
+    },
     "scan_session": {
       "anyOf": [
         {

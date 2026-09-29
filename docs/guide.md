@@ -79,6 +79,19 @@ Every paper document that arrives while the batch runs belongs to it; the binder
 the classifier. A batch ends by itself after 8 hours without a new scan. Scanner settings for
 this: [scanner-imap.md](scanner-imap.md#settings-for-digitising-old-folders).
 
+## Blank pages
+
+Scan everything duplex without sorting out the one-sided letters: the empty back sides are
+recognised (almost no ink on the page, measured locally) and hidden in the page viewer – the
+document header says e.g. *4 pages (2 blank)*, and a line above the pages says which ones are
+hidden, with *show all pages*. There every page has a button at its bottom right: *Not blank –
+show* for a page with something on it after all (a faint pencil note), *Blank – hide* for one
+the detection missed. Your decision is kept in the sidecar and survives reprocessing. Hidden
+pages are only hidden in the viewer: the original file stays as it was, their text stays
+searchable, and a page with a search hit is always shown. Blank pages never go to a paid OCR,
+and the thumbnail shows the first page that is not blank. Documents from before this existed
+are checked once in the background (`heftig blank-pages` does it again).
+
 ## Duplicates and combining
 
 The identical file never becomes a second document. The same letter in two forms – an e-mailed

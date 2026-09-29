@@ -172,6 +172,11 @@ def _carry_over(
                 meta.attachments.append(att)
     meta.not_duplicate_of = sorted({x for m in parts for x in m.not_duplicate_of} - ids - {meta.id})
     meta.ocr_all_pages = any(m.ocr_all_pages for m in parts)
+    offset = 0
+    meta.page_blank = {}
+    for m in parts:  # the user's blank-page decisions, on the pages' new numbers
+        meta.page_blank.update({offset + int(k): v for k, v in m.page_blank.items()})
+        offset += m.page_count or 1
     meta.source_details = {
         **meta.source_details,
         "combined_from": [
@@ -190,7 +195,7 @@ def _carry_over(
     try:
         preview = make_preview(
             archive.paths.resolve(meta.original_relpath), meta.mime_type,
-            archive.settings.max_image_megapixels,
+            archive.settings.max_image_megapixels, page_index=docs.cover_page(archive, meta),
         )  # fmt: skip
         docs.write_preview(archive, meta.id, preview)
     except Exception as e:  # noqa: BLE001 - the preview is optional and regenerable
@@ -298,7 +303,7 @@ def undo(archive: Archive, combined_id: str) -> dict[str, Any]:
 
 _ROW = (
     "SELECT d.id, d.title, d.original_filename, d.page_count, d.received_at, d.document_date, "
-    "d.ingest_sequence, t.name AS correspondent FROM documents d "
+    "d.ingest_sequence, d.revision, t.name AS correspondent FROM documents d "
     "LEFT JOIN taxonomy t ON t.id = d.correspondent_id "
 )
 

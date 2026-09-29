@@ -36,7 +36,7 @@
   </div>
   <p class="meta">
     <span id="doc-status">{{ status_badge(m.status) }}</span>
-    <span>{% if m.page_count %}{{ ngettext("%(num)d page", "%(num)d pages", m.page_count) }}{% else %}{{ _("? pages") }}{% endif %}</span>
+    <span>{% if m.page_count %}{{ ngettext("%(num)d page", "%(num)d pages", m.page_count) }}{% if blank_pages %} ({{ ngettext("%(num)d blank", "%(num)d blank", blank_pages | length) }}){% endif %}{% else %}{{ _("? pages") }}{% endif %}</span>
     <span>{{ SOURCE_LABELS.get(m.source, m.source) }}</span>
     {% if m.text_status != 'ok' %}<span>{{ _("Text: %(status)s", status=TEXT_STATUS.get(m.text_status, m.text_status)) }}</span>{% endif %}
   </p>
@@ -55,7 +55,7 @@
 <div class="doc-grid">
   <section class="preview card viewer-card" id="viewer-card" aria-label="{{ _("Document view") }}">
     <div class="viewer-bar" role="toolbar" aria-label="{{ _("View") }}">
-      {% set vp_cur %}<b id="vp-cur">1</b>{% endset %}
+      {% set vp_cur %}<b id="vp-cur">{{ (range(1, page_sizes | length + 1) | reject('in', hidden_pages) | first) or 1 }}</b>{% endset %}
       <span class="viewer-pos" aria-live="polite">{{ _("Page %(cur)s / %(total)s", cur=vp_cur, total=page_sizes | length) }}</span>
       <span class="viewer-tools">
         <button type="button" data-zoom="out" title="{{ _("Zoom out (−)") }}" aria-label="{{ _("Zoom out") }}">−</button>
@@ -73,22 +73,32 @@
       {% else %}<span class="muted">{{ _("“%(q)s” is not in the text – the match comes from the title, sender, tags, fields or notes.", q=q) }}</span>{% endif %}
     </p>
     {% endif %}
+    {% if hidden_pages %}
+    <p class="blankbar small" role="status">{{ ngettext("%(num)d blank page hidden (%(pages)s)", "%(num)d blank pages hidden (%(pages)s)", hidden_pages | length, pages=hidden_pages | join(', ')) }} – <a href="{{ url_all_pages }}">{{ _("show all pages") }}</a></p>
+    {% elif all_pages %}
+    <p class="blankbar small" role="status">{% if blank_pages %}{{ _("All pages, blank ones dimmed.") }} {% endif %}{{ _("Wrongly hidden or wrongly shown? Switch it at the bottom right of the page.") }} – <a href="{{ url_some_pages }}">{{ _("done") }}</a></p>
+    {% endif %}
     <div class="pv-media viewer-wrap">
       <div class="viewer" id="viewer" tabindex="0" aria-label="{{ _("Pages of the document") }}"{% if hit_pages %} data-q="{{ q }}" data-hit-pages="{{ hit_pages | map(attribute='page') | join(',') }}"{% endif %}>
-        {% for w, h in page_sizes %}
-        <figure class="vpage" id="page-{{ loop.index }}" data-page="{{ loop.index }}" data-ar="{{ '%.4f' % (w / h) }}">
+        {% for w, h in page_sizes %}{% if loop.index not in hidden_pages %}
+        {% set is_blank = loop.index in blank_pages %}
+        <figure class="vpage{% if is_blank %} blank{% endif %}" id="page-{{ loop.index }}" data-page="{{ loop.index }}" data-ar="{{ '%.4f' % (w / h) }}">
           <img alt="{{ _("Page %(num)s", num=loop.index) }}" draggable="false" loading="{{ 'eager' if loop.index <= 2 else 'lazy' }}" decoding="async"
                src="/documents/{{ m.id }}/pages/{{ loop.index }}.webp?w=960"
                srcset="/documents/{{ m.id }}/pages/{{ loop.index }}.webp?w=480 480w, /documents/{{ m.id }}/pages/{{ loop.index }}.webp?w=960 960w, /documents/{{ m.id }}/pages/{{ loop.index }}.webp?w=1440 1440w, /documents/{{ m.id }}/pages/{{ loop.index }}.webp?w=2048 2048w"
                sizes="(max-width: 800px) 100vw, 55vw">
-          <figcaption>{{ loop.index }}</figcaption>
+          <figcaption>{{ loop.index }}{% if all_pages %}
+            <form method="post" action="/documents/{{ m.id }}/action" class="inline">{{ csrf_field(csrf) }}{{ rv }}<input type="hidden" name="page" value="{{ loop.index }}">
+              {% if is_blank %}<span class="muted">· {{ _("blank") }} ·</span> <button name="action" value="page_blank" class="linklike">{{ _("Not blank – show") }}</button>
+              {% else %}<input type="hidden" name="blank" value="1"><button name="action" value="page_blank" class="linklike">{{ _("Blank – hide") }}</button>{% endif %}
+            </form>{% endif %}</figcaption>
         </figure>
-        {% endfor %}
+        {% endif %}{% endfor %}
       </div>
       <button type="button" class="pv-reveal">{{ _("Private – tap to show") }}</button>
       <button type="button" class="pv-hide" title="{{ _("Blur again") }}">{{ _("Hide") }}</button>
     </div>
-    <p class="muted small viewer-foot">{{ _("Double-tap to zoom.") }}</p>
+    <p class="muted small viewer-foot">{{ _("Double-tap to zoom.") }}{% if (m.page_count or 1) > 1 and not hidden_pages and not all_pages %} · <a href="{{ url_all_pages }}">{{ _("Hide blank pages") }}</a>{% endif %}</p>
   </section>
 
   <section class="card" aria-labelledby="meta-h">

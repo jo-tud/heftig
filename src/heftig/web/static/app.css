@@ -371,6 +371,12 @@ html.privacy .viewer-wrap:not(.pv-open) .dbox { display: none; }
 .vpage figcaption { position: absolute; right: 6px; bottom: 6px; font-size: .75rem; background: rgba(0,0,0,.55);
   color: #fff; padding: 0 .4rem; border-radius: 4px; }
 .viewer-foot { margin: 0; }
+/* blank pages: hidden, or dimmed while all pages are shown (with a button to change it) */
+.blankbar { margin: 0; }
+.vpage.blank img { opacity: .4; }
+.vpage figcaption form { display: inline; }
+.vpage figcaption .linklike, .vpage figcaption .muted { color: #fff; font-size: inherit; }
+.vpage figcaption .linklike { text-decoration: underline; padding: .2rem 0; }
 .vpage .hl { position: absolute; background: rgba(255, 214, 0, .42); outline: 2px solid rgba(230, 170, 0, .9);
   border-radius: 2px; pointer-events: none; mix-blend-mode: multiply; }
 .viewer.hl-off .hl { display: none; }

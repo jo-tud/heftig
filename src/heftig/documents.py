@@ -93,6 +93,65 @@ def load_text_pages(archive: Archive, doc_id: str) -> TextPages | None:
     return TextPages.model_validate(read_json(f.text_pages))
 
 
+# --- blank pages (empty backs of duplex scans) ------------------------------------------------
+
+
+def blank_pages(tp: TextPages | None, overrides: dict | None = None) -> list[int]:
+    """Pages (1-based) hidden as blank: detected ones, unless the user decided otherwise
+    (`DocumentMetadata.page_blank`). A document is never hidden completely."""
+    if tp is None:
+        return []
+    blank = {p.page for p in tp.pages if p.blank}
+    for k, v in (overrides or {}).items():
+        (blank.add if v else blank.discard)(int(k))
+    blank &= {p.page for p in tp.pages}
+    return sorted(blank) if len(blank) < len(tp.pages) else []
+
+
+def cover_page(archive: Archive, meta: DocumentMetadata) -> int:
+    """Index (0-based) of the first page that is not blank - for previews and thumbnails."""
+    if (meta.page_count or 1) < 2:
+        return 0
+    try:
+        hidden = set(blank_pages(load_text_pages(archive, meta.id), meta.page_blank))
+    except (OSError, ValueError):
+        return 0
+    return next((i for i in range(meta.page_count or 1) if i + 1 not in hidden), 0)
+
+
+def set_page_blank(archive: Archive, doc_id: str, page: int, blank: bool) -> DocumentMetadata:
+    """The user says a page is blank (hide it) or not (always show it)."""
+    with write_tx(archive.conn):
+        meta = load_meta(archive, doc_id)
+        tp = load_text_pages(archive, doc_id)
+        if tp is None or not any(p.page == page for p in tp.pages):
+            raise EditError(_("There is no page %(num)s.", num=page))
+        detected = any(p.page == page and p.blank for p in tp.pages)
+        before = cover_page(archive, meta)
+        if blank == detected:
+            meta.page_blank.pop(page, None)
+        else:
+            meta.page_blank[page] = blank
+        persist(archive, meta)
+    if cover_page(archive, meta) != before:
+        refresh_preview(archive, meta)
+    return meta
+
+
+def refresh_preview(archive: Archive, meta: DocumentMetadata) -> None:
+    from .media import make_preview
+
+    try:
+        data = make_preview(
+            archive.paths.resolve(meta.original_relpath), meta.mime_type,
+            archive.settings.max_image_megapixels, page_index=cover_page(archive, meta),
+        )  # fmt: skip
+    except Exception:  # noqa: BLE001 - the preview is optional and regenerable
+        return
+    with write_tx(archive.conn):
+        write_preview(archive, meta.id, data)
+
+
 def add_history(meta: DocumentMetadata, entry: HistoryEntry) -> None:
     meta.processing_history.append(entry)
     if len(meta.processing_history) > MAX_HISTORY:

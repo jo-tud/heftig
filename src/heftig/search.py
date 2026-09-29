@@ -1026,6 +1026,7 @@ def _hydrate(
             "text_status": d["text_status"],
             "mime_type": d["mime_type"],
             "page_count": d["page_count"],
+            "revision": d["revision"],  # in the thumbnail URL: a new cover page after edits
             "filing_section": d["filing_section"],
             "filing_binder": d["filing_binder"],
             "taken_out": d["filing_sequence"] is not None and d["paper_location"] is not None,

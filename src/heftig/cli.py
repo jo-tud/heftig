@@ -100,6 +100,14 @@ def cmd_recheck_dates(args) -> int:
     return 0
 
 
+def cmd_blank_pages(args) -> int:
+    from .maintenance import detect_blank_pages
+
+    r = detect_blank_pages(_archive())
+    print(f"{r['pages']} blank page(s) found in {r['documents']} document(s).")
+    return 0
+
+
 def cmd_mcp(args) -> int:
     from .mcp_server import run
 
@@ -409,6 +417,9 @@ def build_parser() -> argparse.ArgumentParser:
         "recheck-dates",
         help="Re-check suggested document dates with the current rules (no AI)",
     ).set_defaults(fn=cmd_recheck_dates)
+    sub.add_parser(
+        "blank-pages", help="Find blank pages (e.g. empty backs of duplex scans) in all documents"
+    ).set_defaults(fn=cmd_blank_pages)
 
     s = sub.add_parser(
         "mcp", help="MCP server (stdio) for Claude: search and read the archive, read-only"

@@ -14,7 +14,7 @@ from concurrent.futures import Future, ThreadPoolExecutor
 from . import jobs, maintenance, sessions, trash
 from .archive import Archive
 from .consume import ConsumeWatcher
-from .db import now_iso, set_meta, write_tx
+from .db import get_meta, now_iso, set_meta, write_tx
 from .documents import DocumentNotFound
 from .i18n import N_
 from .processing import mark_job_outcome, prune_raw_responses, run_process_job
@@ -152,6 +152,9 @@ class Worker:
                 sessions.end_idle(self.archive)  # a forgotten scan session must not grab mail
                 trash.purge_expired(self.archive)
                 maintenance.snapshot_if_due(self.archive)
+                if not get_meta(self.archive.conn, maintenance.BLANK_CHECK_KEY):
+                    r = maintenance.detect_blank_pages(self.archive)  # once, for older archives
+                    log.info("blank pages: %s found in %s document(s)", r["pages"], r["documents"])
         except Exception:
             log.exception("worker tick failed")
         for jid in [j for j, f in running.items() if f.done()]:

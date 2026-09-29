@@ -211,7 +211,7 @@
     {% set link = '/documents/' ~ it.id ~ ('?q=' ~ (params.q | urlencode) if params.q else '') %}
     <li class="result">
       <a class="thumb" href="{{ link }}" tabindex="-1" aria-hidden="true" data-preview="{{ it.id }}">
-        <img src="/documents/{{ it.id }}/preview.webp?w=72&amp;t={{ THUMB_VERSION }}" srcset="/documents/{{ it.id }}/preview.webp?w=72&amp;t={{ THUMB_VERSION }} 1x, /documents/{{ it.id }}/preview.webp?w=144&amp;t={{ THUMB_VERSION }} 2x, /documents/{{ it.id }}/preview.webp?w=216&amp;t={{ THUMB_VERSION }} 3x" alt="" loading="lazy" width="72" height="100">
+        <img src="/documents/{{ it.id }}/preview.webp?w=72&amp;t={{ THUMB_VERSION }}.{{ it.revision }}" srcset="/documents/{{ it.id }}/preview.webp?w=72&amp;t={{ THUMB_VERSION }}.{{ it.revision }} 1x, /documents/{{ it.id }}/preview.webp?w=144&amp;t={{ THUMB_VERSION }}.{{ it.revision }} 2x, /documents/{{ it.id }}/preview.webp?w=216&amp;t={{ THUMB_VERSION }}.{{ it.revision }} 3x" alt="" loading="lazy" width="72" height="100">
       </a>
       <div class="body">
         <h2><a href="{{ link }}">{{ it.title }}</a></h2>
