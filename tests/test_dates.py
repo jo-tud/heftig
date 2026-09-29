@@ -78,7 +78,49 @@ def test_revalidate_stored_suggestions_without_ai(archive):
                 "started_at, finished_at) VALUES(?, 'classify', 'x', 'ok', ?, 'a', 'b')",
                 (doc_id, json.dumps({"data": data})),
             )
-    assert revalidate_dates(archive) == {"checked": 2, "applied": 1}
+    assert revalidate_dates(archive) == {"checked": 2, "applied": 1, "as_of": 0}
     g, b = docs.load_meta(archive, good), docs.load_meta(archive, bad)
     assert g.document_date == "2021-06-04" and g.status == "done" and not g.suggestions
     assert b.document_date is None and b.status == "needs_review"  # quote not in its text
+
+
+STATEMENT = (
+    "Consorsbank Tagesgeldkonto Kontonummer 0973127515\n"
+    "** ABSCHLUSS FÜR KONTO 0973 127 515 VOM 30.06.2021 BIS 30.09.2021/EUR **\n"
+    "RECHNUNGSABSCHLUSSSALDO PER 30.09.2021 0,12 H\n"
+    "Preis- und Leistungsverzeichnis, Stand: 01.10.2021"
+)
+
+
+def test_as_of_date_of_documents_without_a_letter_date():
+    from heftig.classify import as_of_date
+
+    assert as_of_date(STATEMENT, "2026-09-29") == ("2021-09-30", "PER 30.09.2021")
+    no_per = STATEMENT.replace("PER 30.09.2021", "")
+    assert as_of_date(no_per, "2026-09-29") == ("2021-09-30", "VOM 30.06.2021 BIS 30.09.2021")
+    assert as_of_date("AGB der Bank, Stand: 01.10.2023", "2026-01-01")[0] == "2023-10-01"
+    # the end of a contract term after it arrived is not the contract's date
+    assert as_of_date("Laufzeit vom 01.01.2026 bis 31.12.2030", "2026-02-01") is None
+    assert as_of_date("Vertrag über die Lieferung von Waren", "2026-02-01") is None
+
+
+def test_as_of_date_applied_when_the_ai_finds_no_letter_date(archive):
+    registry.override(classifier=ScriptedClassifier(default={"title": "Kontoabschluss"}))
+    d = ingest_bytes(archive, text_pdf([STATEMENT]), "abschluss.pdf").doc_id
+    process_all(archive)
+    m = docs.load_meta(archive, d)
+    assert m.document_date == "2021-09-30" and m.document_date_status == "as_of"
+    assert "PER 30.09.2021" in m.document_date_reason
+
+
+def test_older_documents_without_a_date_get_their_as_of_date(archive):
+    registry.override(classifier=ScriptedClassifier(default={"title": "Kontoabschluss"}))
+    d = ingest_bytes(archive, text_pdf([STATEMENT]), "abschluss.pdf").doc_id
+    process_all(archive)
+    with write_tx(archive.conn):  # as classified by an older version
+        m = docs.load_meta(archive, d)
+        m.document_date, m.document_date_status = None, "none_found"
+        docs.persist(archive, m)
+    assert revalidate_dates(archive)["as_of"] == 1
+    assert docs.load_meta(archive, d).document_date == "2021-09-30"
+    assert revalidate_dates(archive)["as_of"] == 0

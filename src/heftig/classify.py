@@ -155,8 +155,50 @@ def dates_in(evidence: str) -> set[date]:
     return out
 
 
+# the date a document is made up to, when it has no letter date (account statements, terms):
+# "per 30.09.2021" before the end of "vom 30.06.2021 bis 30.09.2021" before "Stand: 01.10.2023"
+_AS_OF = (
+    re.compile(r"\b(?:per|as\s+of|as\s+at)\s*:?\s*(\d{1,2})\.(\d{1,2})\.(\d{4})(?!\d)", re.I),
+    re.compile(
+        r"\b(?:vom|zeitraum|abrechnungszeitraum|period)\s*:?\s*\d{1,2}\.\d{1,2}\.\d{4}\s*"
+        r"(?:bis|-|–|to)\s*(\d{1,2})\.(\d{1,2})\.(\d{4})(?!\d)",
+        re.I,
+    ),
+    re.compile(r"\b(?:stand|stichtag)\s*:?\s*(\d{1,2})\.(\d{1,2})\.(\d{4})(?!\d)", re.I),
+)
+
+
+def as_of_date(text: str, latest: str) -> tuple[str, str] | None:
+    """(ISO date, quote) of the date the document is made up to - not after `latest` (the day
+    it arrived: a contract's end date is not its date)."""
+    for rx in _AS_OF:
+        found = []
+        for m in rx.finditer(text[:200_000]):
+            try:
+                d = date(int(m[3]), int(m[2]), int(m[1])).isoformat()
+            except ValueError:
+                continue
+            if d <= latest[:10]:
+                found.append((d, " ".join(m[0].split())))
+        if found:
+            return max(found)
+    return None
+
+
 def _evidence_matches_date(evidence: str, iso: str) -> bool:
     return date.fromisoformat(iso) in dates_in(evidence)
+
+
+def apply_as_of_date(meta: DocumentMetadata, text: str) -> bool:
+    """No letter date: the date the document is made up to, if the text names one."""
+    found = as_of_date(text, meta.received_at)
+    if found is None:
+        return False
+    meta.document_date, quote = found
+    meta.document_date_status = "as_of"
+    meta.document_date_reason = found_in_text(quote)
+    meta.field_sources["document_date"] = "rule"
+    return True
 
 
 def apply(
@@ -238,7 +280,7 @@ def apply(
                     res.review_reasons.append(DATE_UNCERTAIN)
                 res.applied.append("document_date")
         elif raw_date is None:
-            if meta.document_date is None:
+            if meta.document_date is None and not apply_as_of_date(meta, text):
                 meta.document_date_status = "none_found"
                 meta.document_date_reason = N_("No date found in the document")
 

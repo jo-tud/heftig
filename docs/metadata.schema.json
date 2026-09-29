@@ -471,7 +471,8 @@
         "ai_uncertain",
         "user",
         "import",
-        "none_found"
+        "none_found",
+        "as_of"
       ],
       "title": "Document Date Status",
       "type": "string"

@@ -6,7 +6,7 @@ import json
 
 from .base import ClassifyRequest
 
-PROMPT_VERSION = "classify-v6"
+PROMPT_VERSION = "classify-v7"
 OCR_PROMPT_VERSION = "ocr-v1"
 
 OCR_SYSTEM = (
@@ -98,9 +98,11 @@ Return JSON matching the schema:
   apart, e.g. "{note}". If titles of similar documents are listed and this
   document is of the same kind, follow their wording and structure exactly - only the period
   or other specifics change.
-- document_date: the date printed on the document (letter/issue date) as YYYY-MM-DD, or null if
-  no such date is printed. Never guess and never use today's date. document_date_evidence must
-  quote the exact characters of that date from the text (or null).
+- document_date: the date printed on the document (letter/issue date) as YYYY-MM-DD. Without
+  one, the date the document is made up to, if printed (a statement "per 30.09.2021" or "from
+  30.06.2021 to 30.09.2021": the end; terms "as of 01.10.2023"); else null. Never guess and
+  never use today's date. document_date_evidence must quote the exact characters of that date
+  from the text (or null).
 - correspondent: the sender/issuing organisation or person. document_type: kind of document
   (e.g. {types}).
   PREFER an existing name from the lists below (including their aliases) when it fits; only

@@ -107,6 +107,7 @@ DATE_STATUS = i18n.Labels({
     "unknown": N_("unknown"), "ai": N_("detected automatically"),
     "ai_uncertain": N_("detected automatically – uncertain"), "user": N_("manual"),
     "import": N_("imported"), "none_found": N_("no date found"),
+    "as_of": N_("as-of date (no letter date)"),
 })  # fmt: skip
 STAGE_LABELS = i18n.Labels({
     "extract": N_("Text recognition"), "classify": N_("Classification"), "queued": N_("waiting"),

@@ -18,7 +18,7 @@ Source = Literal["scanner", "folder", "web", "api", "email", "import"]
 FieldSource = Literal["ai", "user", "import", "rule"]
 DocStatus = Literal["queued", "processing", "done", "needs_review", "failed"]
 TextStatus = Literal["pending", "ok", "partial", "failed", "empty"]
-DateStatus = Literal["unknown", "ai", "ai_uncertain", "user", "import", "none_found"]
+DateStatus = Literal["unknown", "ai", "ai_uncertain", "user", "import", "none_found", "as_of"]
 CustomFieldType = Literal["string", "number", "monetary", "date", "boolean"]
 
 LOCKABLE_FIELDS = (

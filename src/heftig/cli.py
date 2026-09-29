@@ -95,7 +95,8 @@ def cmd_recheck_dates(args) -> int:
 
     r = revalidate_dates(_archive())
     print(
-        f"{r['checked']} date suggestions checked, {r['applied']} now found in the text and accepted."
+        f"{r['checked']} date suggestions checked, {r['applied']} now found in the text and accepted; "
+        f"{r['as_of']} document(s) without a date got their as-of date."
     )
     return 0
 

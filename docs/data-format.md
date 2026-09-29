@@ -118,7 +118,7 @@ Fields marked * are additions to the minimal field list of the original specific
 | `ingest_sequence` | int | Unique, strictly increasing arrival counter; numbers of deleted documents are not reused. |
 | `paper`* | bool | The document exists on paper and can be filed. True for `scanner`, for uploads marked as paper, and once filed. |
 | `document_date` | date or null | Date printed on the document. |
-| `document_date_status`* | enum | `unknown`, `ai` (found in the text, confident), `ai_uncertain` (found, low confidence; flagged for review), `user`, `none_found` (classifier found no date), `import` (reserved). |
+| `document_date_status`* | enum | `unknown`, `ai` (found in the text, confident), `ai_uncertain` (found, low confidence; flagged for review), `user`, `none_found` (classifier found no date), `as_of` (no letter date: the date the document is made up to, e.g. "per 30.09.2021", found by a local rule), `import` (reserved). |
 | `document_date_reason`* | string or null | Human-readable reason, e.g. the quoted evidence or why a proposal was not applied. |
 | `filed_at` | timestamp or null | When the paper was filed. Null means: physical location not confirmed. |
 | `filing_sequence` | int or null | Unique, increasing filing counter. Within a section, higher = further up in the stack. |

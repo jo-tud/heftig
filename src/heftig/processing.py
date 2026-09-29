@@ -832,7 +832,8 @@ def catch_up_ai(archive: Archive) -> dict:
 
 def revalidate_dates(archive: Archive) -> dict[str, int]:
     """Re-check document dates that were only suggested ("not backed by the text") with the
-    current evidence rules, from the stored classifier answer - no new AI call.
+    current evidence rules, from the stored classifier answer - no new AI call. Documents
+    without a date get the date they are made up to, if the text names one.
 
     Applies the date where the quote now backs it (as the classification would have), removes
     the suggestion and settles the document status.
@@ -891,4 +892,22 @@ def revalidate_dates(archive: Archive) -> dict[str, int]:
             )  # fmt: skip
             docs.persist(archive, meta)
             report["applied"] += 1
+    # no date found: the date the document is made up to, if the text names one
+    report["as_of"] = 0
+    for (doc_id,) in conn.execute(
+        "SELECT id FROM documents WHERE document_date IS NULL"
+    ).fetchall():
+        text = docs.get_text(archive, doc_id)
+        with write_tx(conn):
+            meta = docs.load_meta(archive, doc_id)
+            if (meta.document_date or meta.locked("document_date")
+                    or meta.document_date_status != "none_found"
+                    or not cls.apply_as_of_date(meta, text)):  # fmt: skip
+                continue
+            docs.add_history(
+                meta, HistoryEntry(task="classify", at=now_iso(), status="date-as-of",
+                                   fields=["document_date"], by="system")
+            )  # fmt: skip
+            docs.persist(archive, meta)
+            report["as_of"] += 1
     return report

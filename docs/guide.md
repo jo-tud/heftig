@@ -59,7 +59,7 @@ Three dates are kept apart:
 
 | Field | Meaning | Set by |
 |---|---|---|
-| Document date | The date printed on the letter. May be empty, with a reason ("not found", "uncertain"). | The classifier (only if it appears in the text) or you |
+| Document date | The date printed on the letter; without one, the date the document is made up to (a statement "per 30.09.2021", terms "Stand: 01.10.2023" – shown as *as-of date*). May be empty, with a reason ("not found", "uncertain"). | The classifier or a local rule (only if it appears in the text) or you |
 | Received | When it first arrived in Heftig. Never changes. | Heftig |
 | Filed | When the paper went into the binder. Empty until you confirm it. | You, or automatically for scans |
 

@@ -65,6 +65,10 @@ def run_until_idle(archive: Archive, max_jobs: int = 10_000) -> int:
     return n
 
 
+DATE_RULES_KEY = "date_rules"
+DATE_RULES_VERSION = "2"  # 2: as-of dates for documents without a letter date
+
+
 class Worker:
     def __init__(self, archive: Archive):
         self.archive = archive
@@ -155,6 +159,14 @@ class Worker:
                 if get_meta(self.archive.conn, duplicates.RULES_KEY) != duplicates.RULES_VERSION:
                     n = duplicates.recheck_open(self.archive)
                     log.info("duplicate rules changed: %s open pair(s) no longer duplicates", n)
+                if get_meta(self.archive.conn, DATE_RULES_KEY) != DATE_RULES_VERSION:
+                    from .processing import revalidate_dates
+
+                    r = revalidate_dates(self.archive)  # once per rules version, no AI
+                    log.info("date rules: %s suggested, %s as-of date(s) applied",
+                             r["applied"], r["as_of"])  # fmt: skip
+                    with write_tx(self.archive.conn):
+                        set_meta(self.archive.conn, DATE_RULES_KEY, DATE_RULES_VERSION)
                 if not get_meta(self.archive.conn, maintenance.BLANK_CHECK_KEY):
                     r = maintenance.detect_blank_pages(self.archive)  # once, for older archives
                     log.info("blank pages: %s found in %s document(s)", r["pages"], r["documents"])
