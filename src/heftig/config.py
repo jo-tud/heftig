@@ -71,6 +71,10 @@ class Settings(BaseSettings):
     consume_dir: Path | None = None  # default: <archive>/consume
     # optional second watched folder for digital files (source "folder", no paper filing)
     folder_dir: Path | None = None
+    # in a container: where these folders are on the computer (shown on the settings page;
+    # the paths above are the ones inside the container)
+    host_scanner_dir: str = ""
+    host_folder_dir: str = ""
 
     # --- language ----------------------------------------------------------------------
     # interface language, and the language of AI-written titles, summaries and explanations

@@ -49,16 +49,19 @@
 </section>
 
 <section class="card" aria-labelledby="in-h">
-  <h2 id="in-h">{{ _("Scanner folder and email") }}</h2>
+  <h2 id="in-h">{{ _("Incoming: scanner, folder, e-mail") }}</h2>
   <dl class="kv">
-    <dt>{{ _("Incoming folder") }}</dt><dd><code>{{ s.consume_path }}</code> · {{ _("checked every %(num)s s", num=s.consume_poll_seconds) }} · {{ _("Status: %(status)s", status=(status.consume_status or '–') | reason) }}</dd>
-    <dt>{{ _("Local incoming folder") }}</dt><dd>{% if s.folder_path %}<code>{{ s.folder_path }}</code> · {{ _("digital files (source “Folder”, no paper filing)") }} · {{ _("Status: %(status)s", status=(status.folder_status or '–') | reason) }}{% else %}{{ _("not set up") }} (<code>HEFTIG_FOLDER_DIR</code>){% endif %}</dd>
-    <dt>{{ _("After import") }}</dt><dd>{{ _("delete source file") if s.consume_after == 'delete' else _("move to subfolder") }}</dd>
-    <dt>{{ _("Automatically marked as filed") }}</dt><dd>{{ s.auto_file_sources or _("no") }}</dd>
-    <dt>IMAP</dt><dd>{% if s.imap_host %}{{ _("%(user)s @ %(host)s:%(port)s (TLS), folder %(mailbox)s, every %(minutes)s min", user=s.imap_user, host=s.imap_host, port=s.imap_port, mailbox=s.imap_mailbox, minutes=s.imap_poll_seconds // 60) }}{% else %}{{ _("not set up") }}{% endif %}</dd>
+    <dt>{{ _("Scanner folder") }}</dt><dd><code>{{ s.host_scanner_dir or s.consume_path }}</code> · {{ _("Status: %(status)s", status=(status.consume_status or '–') | reason) }}
+      <br><span class="hint">{{ _("What the scanner saves here counts as paper – letters you file in a binder.") }}</span></dd>
+    <dt>{{ _("Folder for digital files") }}</dt><dd>{% if s.folder_path %}<code>{{ s.host_folder_dir or s.folder_path }}</code> · {{ _("Status: %(status)s", status=(status.folder_status or '–') | reason) }}
+      <br><span class="hint">{{ _("PDFs and images without paper (downloads, saved attachments): archived, nothing to file.") }}</span>{% else %}{{ _("not set up") }}{% endif %}</dd>
+    <dt>{{ _("After import") }}</dt><dd>{{ _("The file is removed from the folder – it is now in the archive.") if s.consume_after == 'delete' else _("The file is moved to the subfolder .heftig-verarbeitet.") }} {{ _("Both folders are checked every %(num)s s.", num=s.consume_poll_seconds) }}</dd>
+    <dt>{{ _("Scans filed automatically") }}</dt><dd>{{ _("yes – every scan counts as filed in the current binder") if 'scanner' in s.auto_file_source_set else _("no – the inbox asks you to file them") }}</dd>
+    <dt>{{ _("E-mail") }}</dt><dd>{% if s.imap_host %}{{ _("%(user)s @ %(host)s:%(port)s (TLS), folder %(mailbox)s, every %(minutes)s min", user=s.imap_user, host=s.imap_host, port=s.imap_port, mailbox=s.imap_mailbox, minutes=s.imap_poll_seconds // 60) }}{% else %}{{ _("not set up") }}{% endif %}</dd>
     {% for st in status.imap %}<dt>{{ _("Last check") }}</dt><dd>{{ time(st.last_poll_at) }} · UID {{ st.last_uid }}{% if st.last_error %} · <span class="error-text">{{ st.last_error | reason }}</span>{% endif %}</dd>{% endfor %}
   </dl>
-  <p class="hint">{% trans %}Configured with environment variables, instructions in <code>docs/scanner-imap.md</code>.{% endtrans %} {% trans %}Save multi-page letters as <em>one</em> PDF file on the scanner.{% endtrans %}</p>
+  <p class="buttons"><a class="button" href="/settings/scanner">{{ _("Scanner and phone") }}</a> <a class="button" href="/settings/mail">{{ _("E-mail import") }}</a></p>
+  <p class="hint">{% trans %}Save multi-page letters as <em>one</em> PDF file on the scanner.{% endtrans %}</p>
 </section>
 
 <section class="card" aria-labelledby="exp-h">

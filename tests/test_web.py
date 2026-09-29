@@ -564,3 +564,15 @@ def test_trash_in_the_review_goes_on_to_the_next(client, app):
     r = client.post(f"/documents/{ids[0]}/action", data={"csrf_token": csrf, "action": "delete",
                     "review": "1"}, follow_redirects=False)  # fmt: skip
     assert r.headers["location"].startswith("/inbox?undo=doc%3A")
+
+
+def test_settings_show_the_folders_as_seen_on_the_computer(tmp_path):
+    app = create_app(make_settings(tmp_path, host_scanner_dir="/mnt/scans",
+                                   folder_dir=tmp_path / "in", host_folder_dir="~/Eingang"))  # fmt: skip
+    auth.create_user(app.state.archive.conn, "jo", PASSWORD)
+    c = TestClient(app)
+    login(c)
+    page = c.get("/settings").text
+    assert "<code>/mnt/scans</code>" in page and "<code>~/Eingang</code>" in page
+    assert "Scanner-Ordner" in page and "Ordner für digitale Dateien" in page
+    app.state.archive.close()

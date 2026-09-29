@@ -457,7 +457,7 @@ def scanner_page(request: Request, p: Principal = Depends(require_user)):
     a = get_archive(request)
     q = request.query_params
     ctx = _ctx(request, "scanner", message=saved_message(q.get("saved"), a.settings),
-               host_dir=os.environ.get("HEFTIG_HOST_SCANNER_DIR", ""),
+               host_dir=a.settings.host_scanner_dir,
                consume_dir=str(a.settings.consume_path))  # fmt: skip
     ctx["locked"] = bool(ctx["fixed"] & SCANNER_KEYS)
     return render(request, "setup_scanner.html", **ctx)

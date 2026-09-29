@@ -154,11 +154,11 @@ msgstr "zusammengefügt zu „%(title)s“"
 msgid "Combining undone"
 msgstr "Zusammenfügen rückgängig gemacht"
 
-#: src/heftig/config.py:235
+#: src/heftig/config.py:239
 msgid "Cloud OCR is not allowed (set HEFTIG_ALLOW_CLOUD_OCR=true if documents may be sent to this provider)."
 msgstr "Cloud-OCR ist nicht freigegeben (HEFTIG_ALLOW_CLOUD_OCR=true setzen, wenn Dokumente an diesen Anbieter gesendet werden dürfen)."
 
-#: src/heftig/config.py:246
+#: src/heftig/config.py:250
 msgid "Cloud classification is not allowed (set HEFTIG_ALLOW_CLOUD_CLASSIFY=true if document texts may be sent to this provider)."
 msgstr "Cloud-Klassifikation ist nicht freigegeben (HEFTIG_ALLOW_CLOUD_CLASSIFY=true setzen, wenn Dokumenttexte an diesen Anbieter gesendet werden dürfen)."
 
@@ -1100,7 +1100,7 @@ msgstr "Zeitraum"
 msgid "filters by document date"
 msgstr "wird als Dokumentdatum gefiltert"
 
-#: src/heftig/search.py:886 src/heftig/web/templates/base.html:25 src/heftig/web/templates/documents.html:3 src/heftig/web/templates/settings.html:67
+#: src/heftig/search.py:886 src/heftig/web/templates/base.html:25 src/heftig/web/templates/documents.html:3 src/heftig/web/templates/settings.html:70
 msgid "Documents"
 msgstr "Dokumente"
 
@@ -1384,7 +1384,7 @@ msgstr "Sitzung"
 msgid "yes"
 msgstr "ja"
 
-#: src/heftig/web/search_view.py:35 src/heftig/web/templates/settings.html:57
+#: src/heftig/web/search_view.py:35
 msgid "no"
 msgstr "nein"
 
@@ -1634,7 +1634,7 @@ msgstr "Konto"
 msgid "AI"
 msgstr "KI"
 
-#: src/heftig/web/templates/_setup.html:4 src/heftig/web/templates/setup_mail.html:3
+#: src/heftig/web/templates/_setup.html:4 src/heftig/web/templates/settings.html:60 src/heftig/web/templates/setup_mail.html:3
 msgid "E-mail"
 msgstr "E-Mail"
 
@@ -2083,7 +2083,7 @@ msgstr "Zahl"
 msgid "Amount"
 msgstr "Betrag"
 
-#: src/heftig/web/templates/document.html:156 src/heftig/web/templates/documents.html:200 src/heftig/web/templates/settings.html:95
+#: src/heftig/web/templates/document.html:156 src/heftig/web/templates/documents.html:200 src/heftig/web/templates/settings.html:98
 msgid "Name"
 msgstr "Name"
 
@@ -3458,43 +3458,59 @@ msgstr "Nächstes Dokument"
 msgid "Scan"
 msgstr "Scannen"
 
-#: src/heftig/web/templates/settings.html:100
+#: src/heftig/web/templates/settings.html:101 src/heftig/web/templates/settings.html:108
+msgid "read only"
+msgstr "nur lesen"
+
+#: src/heftig/web/templates/settings.html:101
+msgid "full"
+msgstr "voll"
+
+#: src/heftig/web/templates/settings.html:102
+msgid "revoked"
+msgstr "widerrufen"
+
+#: src/heftig/web/templates/settings.html:102
+msgid "Revoke"
+msgstr "Widerrufen"
+
+#: src/heftig/web/templates/settings.html:103
 msgid "No tokens."
 msgstr "Keine Tokens."
 
-#: src/heftig/web/templates/settings.html:104
+#: src/heftig/web/templates/settings.html:107
 msgid "Name, e.g. Claude"
 msgstr "Name, z. B. Claude"
 
-#: src/heftig/web/templates/settings.html:104
+#: src/heftig/web/templates/settings.html:107
 msgid "Token name"
 msgstr "Token-Name"
 
-#: src/heftig/web/templates/settings.html:106
+#: src/heftig/web/templates/settings.html:109
 msgid "Create token"
 msgstr "Token erstellen"
-
-#: src/heftig/web/templates/settings.html:107
-msgid "“Read only” is enough for the connection to Claude (<code>heftig mcp</code>, see <code>docs/mcp.md</code>): the token can search and read, but not change or delete anything."
-msgstr "„Nur lesen“ reicht für die Verbindung zu Claude (<code>heftig mcp</code>, siehe <code>docs/mcp.md</code>): der Token kann suchen und lesen, aber nichts ändern oder löschen."
-
-#: src/heftig/web/templates/settings.html:108
-msgid "API documentation:"
-msgstr "API-Dokumentation:"
 
 #: src/heftig/web/templates/settings.html:11
 msgid "New API token:"
 msgstr "Neuer API-Token:"
 
-#: src/heftig/web/templates/settings.html:112
+#: src/heftig/web/templates/settings.html:110
+msgid "“Read only” is enough for the connection to Claude (<code>heftig mcp</code>, see <code>docs/mcp.md</code>): the token can search and read, but not change or delete anything."
+msgstr "„Nur lesen“ reicht für die Verbindung zu Claude (<code>heftig mcp</code>, siehe <code>docs/mcp.md</code>): der Token kann suchen und lesen, aber nichts ändern oder löschen."
+
+#: src/heftig/web/templates/settings.html:111
+msgid "API documentation:"
+msgstr "API-Dokumentation:"
+
+#: src/heftig/web/templates/settings.html:115
 msgid "Note"
 msgstr "Hinweis"
 
-#: src/heftig/web/templates/settings.html:113
+#: src/heftig/web/templates/settings.html:116
 msgid "Heftig is not a tamper-proof or legally certified archive."
 msgstr "Heftig ist kein revisionssicheres oder rechtlich zertifiziertes Archiv."
 
-#: src/heftig/web/templates/settings.html:113
+#: src/heftig/web/templates/settings.html:116
 msgid "Originals are kept byte for byte and checked with SHA-256; retention obligations come with additional requirements."
 msgstr "Originale werden bytegenau aufbewahrt und über SHA-256 geprüft; für Aufbewahrungspflichten gelten zusätzliche Anforderungen."
 
@@ -3535,11 +3551,11 @@ msgstr "fehlt"
 msgid "Change AI"
 msgstr "KI ändern"
 
-#: src/heftig/web/templates/settings.html:25
+#: src/heftig/web/templates/settings.html:25 src/heftig/web/templates/settings.html:63
 msgid "E-mail import"
 msgstr "E-Mail-Import"
 
-#: src/heftig/web/templates/settings.html:25 src/heftig/web/templates/setup_scanner.html:6
+#: src/heftig/web/templates/settings.html:25 src/heftig/web/templates/settings.html:63 src/heftig/web/templates/setup_scanner.html:6
 msgid "Scanner and phone"
 msgstr "Scanner und Handy"
 
@@ -3600,104 +3616,104 @@ msgid "Edit, merge, clean up"
 msgstr "Bearbeiten, zusammenführen, aufräumen"
 
 #: src/heftig/web/templates/settings.html:52
-msgid "Scanner folder and email"
-msgstr "Scanner-Ordner und E-Mail"
+msgid "Incoming: scanner, folder, e-mail"
+msgstr "Eingang: Scanner, Ordner, E-Mail"
 
 #: src/heftig/web/templates/settings.html:54
-msgid "Incoming folder"
-msgstr "Eingangsordner"
+msgid "Scanner folder"
+msgstr "Scanner-Ordner"
 
-#: src/heftig/web/templates/settings.html:54
-msgid "checked every %(num)s s"
-msgstr "alle %(num)s s geprüft"
-
-#: src/heftig/web/templates/settings.html:54 src/heftig/web/templates/settings.html:55
+#: src/heftig/web/templates/settings.html:54 src/heftig/web/templates/settings.html:56
 msgid "Status: %(status)s"
 msgstr "Status: %(status)s"
 
 #: src/heftig/web/templates/settings.html:55
-msgid "Local incoming folder"
-msgstr "Lokaler Eingangsordner"
+msgid "What the scanner saves here counts as paper – letters you file in a binder."
+msgstr "Was der Scanner hier ablegt, gilt als Papier – Briefe, die du in einen Ordner abheftest."
 
-#: src/heftig/web/templates/settings.html:55
-msgid "digital files (source “Folder”, no paper filing)"
-msgstr "digitale Dateien (Quelle „Ordner“, ohne Papierablage)"
+#: src/heftig/web/templates/settings.html:56
+msgid "Folder for digital files"
+msgstr "Ordner für digitale Dateien"
 
-#: src/heftig/web/templates/settings.html:55 src/heftig/web/templates/settings.html:58
+#: src/heftig/web/templates/settings.html:57
+msgid "PDFs and images without paper (downloads, saved attachments): archived, nothing to file."
+msgstr "PDFs und Bilder ohne Papier (Downloads, gespeicherte Anhänge): werden archiviert, nichts abzuheften."
+
+#: src/heftig/web/templates/settings.html:57 src/heftig/web/templates/settings.html:60
 msgid "not set up"
 msgstr "nicht eingerichtet"
 
-#: src/heftig/web/templates/settings.html:56 src/heftig/web/templates/setup_mail.html:31
+#: src/heftig/web/templates/settings.html:58 src/heftig/web/templates/setup_mail.html:31
 msgid "After import"
 msgstr "Nach Übernahme"
 
-#: src/heftig/web/templates/settings.html:56
-msgid "delete source file"
-msgstr "Quelldatei löschen"
-
-#: src/heftig/web/templates/settings.html:56
-msgid "move to subfolder"
-msgstr "in Unterordner verschieben"
-
-#: src/heftig/web/templates/settings.html:57
-msgid "Automatically marked as filed"
-msgstr "Automatisch als abgeheftet"
+#: src/heftig/web/templates/settings.html:58
+msgid "The file is removed from the folder – it is now in the archive."
+msgstr "Die Datei wird aus dem Ordner entfernt – sie liegt dann im Archiv."
 
 #: src/heftig/web/templates/settings.html:58
+msgid "The file is moved to the subfolder .heftig-verarbeitet."
+msgstr "Die Datei wird in den Unterordner .heftig-verarbeitet verschoben."
+
+#: src/heftig/web/templates/settings.html:58
+msgid "Both folders are checked every %(num)s s."
+msgstr "Beide Ordner werden alle %(num)s s geprüft."
+
+#: src/heftig/web/templates/settings.html:59
+msgid "Scans filed automatically"
+msgstr "Scans automatisch abgeheftet"
+
+#: src/heftig/web/templates/settings.html:59
+msgid "yes – every scan counts as filed in the current binder"
+msgstr "ja – jeder Scan gilt als abgeheftet im aktuellen Ordner"
+
+#: src/heftig/web/templates/settings.html:59
+msgid "no – the inbox asks you to file them"
+msgstr "nein – der Eingang erinnert ans Abheften"
+
+#: src/heftig/web/templates/settings.html:60
 msgid "%(user)s @ %(host)s:%(port)s (TLS), folder %(mailbox)s, every %(minutes)s min"
 msgstr "%(user)s @ %(host)s:%(port)s (TLS), Ordner %(mailbox)s, alle %(minutes)s min"
 
-#: src/heftig/web/templates/settings.html:59
+#: src/heftig/web/templates/settings.html:61
 msgid "Last check"
 msgstr "Letzter Abruf"
 
-#: src/heftig/web/templates/settings.html:61
-msgid "Configured with environment variables, instructions in <code>docs/scanner-imap.md</code>."
-msgstr "Einstellung per Umgebungsvariablen, Anleitung in <code>docs/scanner-imap.md</code>."
-
-#: src/heftig/web/templates/settings.html:61
+#: src/heftig/web/templates/settings.html:64
 msgid "Save multi-page letters as <em>one</em> PDF file on the scanner."
 msgstr "Mehrseitige Briefe am Scanner als <em>eine</em> PDF-Datei speichern."
 
-#: src/heftig/web/templates/settings.html:65
+#: src/heftig/web/templates/settings.html:68
 msgid "Export, backup, index"
 msgstr "Export, Backup, Index"
 
-#: src/heftig/web/templates/settings.html:68
+#: src/heftig/web/templates/settings.html:71
 msgid "Last export"
 msgstr "Letzter Export"
 
-#: src/heftig/web/templates/settings.html:69
+#: src/heftig/web/templates/settings.html:72
 msgid "Last backup"
 msgstr "Letztes Backup"
 
-#: src/heftig/web/templates/settings.html:70
+#: src/heftig/web/templates/settings.html:73
 msgid "Last DB snapshot"
 msgstr "Letzter DB-Snapshot"
 
-#: src/heftig/web/templates/settings.html:73
+#: src/heftig/web/templates/settings.html:76
 msgid "as ZIP"
 msgstr "als ZIP"
 
-#: src/heftig/web/templates/settings.html:74
+#: src/heftig/web/templates/settings.html:77
 msgid "Create export"
 msgstr "Export erstellen"
 
-#: src/heftig/web/templates/settings.html:75
+#: src/heftig/web/templates/settings.html:78
 msgid "DB snapshot for backup software"
 msgstr "DB-Snapshot für Backup-Programm"
 
-#: src/heftig/web/templates/settings.html:76
+#: src/heftig/web/templates/settings.html:79
 msgid "Rebuild search index"
 msgstr "Suchindex neu aufbauen"
-
-#: src/heftig/web/templates/settings.html:78
-msgid "Exports go to <code>archive/exports/</code> (open format, without passwords/tokens)."
-msgstr "Export landet in <code>archive/exports/</code> (offenes Format, ohne Passwörter/Tokens)."
-
-#: src/heftig/web/templates/settings.html:78
-msgid "Full backup: <code>heftig backup TARGET</code>, see <code>docs/operations.md</code>."
-msgstr "Vollständiges Backup: <code>heftig backup ZIEL</code>, siehe <code>docs/operations.md</code>."
 
 #: src/heftig/web/templates/settings.html:8
 msgid "Signed in as %(user)s"
@@ -3707,69 +3723,61 @@ msgstr "Angemeldet als %(user)s"
 msgid "Sign out"
 msgstr "Abmelden"
 
-#: src/heftig/web/templates/settings.html:82
+#: src/heftig/web/templates/settings.html:81
+msgid "Exports go to <code>archive/exports/</code> (open format, without passwords/tokens)."
+msgstr "Export landet in <code>archive/exports/</code> (offenes Format, ohne Passwörter/Tokens)."
+
+#: src/heftig/web/templates/settings.html:81
+msgid "Full backup: <code>heftig backup TARGET</code>, see <code>docs/operations.md</code>."
+msgstr "Vollständiges Backup: <code>heftig backup ZIEL</code>, siehe <code>docs/operations.md</code>."
+
+#: src/heftig/web/templates/settings.html:85
 msgid "Reprocess all documents"
 msgstr "Alle Dokumente neu verarbeiten"
 
-#: src/heftig/web/templates/settings.html:83
+#: src/heftig/web/templates/settings.html:86
 msgid "Classification:"
 msgstr "Einordnung:"
 
-#: src/heftig/web/templates/settings.html:84
+#: src/heftig/web/templates/settings.html:87
 msgid "Really reprocess all documents? This can take a while and sends data to the cloud provider (cost)."
 msgstr "Wirklich alle Dokumente neu verarbeiten? Das kann dauern und sendet Daten an den Cloud-Anbieter (Kosten)."
 
-#: src/heftig/web/templates/settings.html:84
+#: src/heftig/web/templates/settings.html:87
 msgid "Really reprocess all documents? This can take a while."
 msgstr "Wirklich alle Dokumente neu verarbeiten? Das kann dauern."
 
-#: src/heftig/web/templates/settings.html:86
+#: src/heftig/web/templates/settings.html:89
 msgid "Redo text recognition for all documents"
 msgstr "Text aller Dokumente neu erkennen"
 
-#: src/heftig/web/templates/settings.html:87
+#: src/heftig/web/templates/settings.html:90
 msgid "Reclassify all"
 msgstr "Alle neu einordnen"
 
-#: src/heftig/web/templates/settings.html:89
+#: src/heftig/web/templates/settings.html:92
 msgid "Locked fields and manual tag decisions are kept."
 msgstr "Gesperrte Felder und manuelle Tag-Entscheidungen bleiben erhalten."
 
-#: src/heftig/web/templates/settings.html:93
+#: src/heftig/web/templates/settings.html:96
 msgid "API tokens"
 msgstr "API-Tokens"
 
-#: src/heftig/web/templates/settings.html:95
+#: src/heftig/web/templates/settings.html:98
 msgid "Starts with"
 msgstr "Beginn"
 
-#: src/heftig/web/templates/settings.html:95
+#: src/heftig/web/templates/settings.html:98
 msgid "Permissions"
 msgstr "Rechte"
 
-#: src/heftig/web/templates/settings.html:95
+#: src/heftig/web/templates/settings.html:98
 msgid "Created"
 msgstr "Erstellt"
 
-#: src/heftig/web/templates/settings.html:95
+#: src/heftig/web/templates/settings.html:98
 msgid "Last used"
 msgstr "Zuletzt benutzt"
-
-#: src/heftig/web/templates/settings.html:105 src/heftig/web/templates/settings.html:98
-msgid "read only"
-msgstr "nur lesen"
-
-#: src/heftig/web/templates/settings.html:98
-msgid "full"
-msgstr "voll"
-
-#: src/heftig/web/templates/settings.html:99
-msgid "revoked"
-msgstr "widerrufen"
-
-#: src/heftig/web/templates/settings.html:99
-msgid "Revoke"
-msgstr "Widerrufen"
 
 #: src/heftig/web/templates/setup_account.html:13
 msgid "Setup code"

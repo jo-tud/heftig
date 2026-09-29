@@ -17,6 +17,9 @@ x-heftig: &heftig
     HEFTIG_ARCHIVE_DIR: /archive
     HEFTIG_CONSUME_DIR: /consume
     HEFTIG_FOLDER_DIR: /folder
+    # the same folders as seen on this computer, for the settings page
+    HEFTIG_HOST_SCANNER_DIR: ${HEFTIG_CONSUME_HOST_DIR:-./consume}
+    HEFTIG_HOST_FOLDER_DIR: ${HEFTIG_FOLDER_HOST_DIR:-./folder}
   volumes:
     - ${HEFTIG_ARCHIVE_HOST_DIR:-./archive}:/archive:z
     - ${HEFTIG_CONSUME_HOST_DIR:-./consume}:/consume:z
