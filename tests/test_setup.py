@@ -180,3 +180,18 @@ def test_stored_keys_never_go_to_another_server(signed_in, monkeypatch):
     r = c.post("/settings/mail", data={"csrf_token": csrf, "imap_user": "a@example.org",
                                        "imap_host": "imap.other.example", "after": "seen"})  # fmt: skip
     assert "enter the password" in r.text and arch.settings.imap_host == "imap.example.org"
+
+
+def test_a_rejected_key_is_reported_as_such(monkeypatch):
+    from heftig.providers import registry
+    from heftig.providers.base import ProviderError
+
+    class Refusing:
+        model = "m"
+
+        def complete_json(self, *a, **k):
+            raise ProviderError("anthropic: HTTP 401")
+
+    monkeypatch.setattr(registry, "get_classifier", lambda s: Refusing())
+    with pytest.raises(connections.ConnectionProblem, match="key was not accepted"):
+        connections.test_ai(Settings(_env_file=None))

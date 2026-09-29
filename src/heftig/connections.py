@@ -81,6 +81,8 @@ def test_ai(settings: Settings) -> str:
         # room for models that think first (reasoning tokens count against the limit)
         data = ask('Answer with the JSON object {"ok": true}.', "Test", schema, 2000)
     except ProviderError as e:
+        if re.search(r"\b(401|403)\b", str(e)):
+            raise ConnectionProblem(_("The key was not accepted.") + f" ({e})") from e
         raise ConnectionProblem(str(e)) from e
     except Exception as e:  # noqa: BLE001 - SDK errors of all kinds: one sentence for the page
         raise ConnectionProblem(f"{type(e).__name__}: {str(e)[:200]}") from e

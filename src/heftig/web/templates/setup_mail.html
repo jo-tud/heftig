@@ -34,7 +34,7 @@
     <label class="choice"><input type="radio" name="after" value="delete" {% if form.after == 'delete' %}checked{% endif %}> <span>{{ _("Delete it (only for a mailbox used just for Heftig)") }}</span></label>
   </fieldset>
   <p class="buttons"><button type="submit" class="primary" name="action" value="save">{{ _("Save and test") if not wizard else _("Save and continue") }}</button>
-  {% if s.imap_host and not wizard %}<button type="submit" name="action" value="off">{{ _("Turn off e-mail import") }}</button>{% endif %}
+  {% if s.imap_host %}<button type="submit" name="action" value="off">{{ _("Turn off e-mail import") }}</button>{% endif %}
   {% if wizard %}<a href="{{ next_url }}">{{ _("Skip") }}</a>{% endif %}</p>
 </form>
 </section>
