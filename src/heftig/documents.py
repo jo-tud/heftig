@@ -705,6 +705,27 @@ def filing_position(archive: Archive, meta: DocumentMetadata, n: int = 2) -> Fil
     )
 
 
+def reverse_stack(archive: Archive, doc_ids: list[str]) -> int:
+    """A stack that went into the binder the other way round: the sheets swap their places
+    (the top one gets the place of the bottom one ...); the places of other sheets stay."""
+    with write_tx(archive.conn):
+        metas = [load_meta(archive, d) for d in doc_ids]
+        metas = [m for m in metas if m.filing_sequence is not None]
+        places = sorted((m.filing_sequence, m.filing_section, m.filing_binder) for m in metas)
+        # places are unique: free them first (same transaction), then hand them out again
+        archive.conn.executemany(
+            "UPDATE documents SET filing_sequence=NULL WHERE id=?", [(m.id,) for m in metas]
+        )
+        for m, (seq, section, binder) in zip(
+            sorted(metas, key=lambda m: m.filing_sequence or 0), reversed(places), strict=True
+        ):
+            m.filing_sequence, m.filing_section, m.filing_binder = seq, section, binder
+            add_history(m, HistoryEntry(task="filing", at=now_iso(), status="stack reversed",
+                                        by="user"))  # fmt: skip
+            persist(archive, m)
+    return len(metas)
+
+
 def take_filing(archive: Archive, doc_id: str, placed: DocumentMetadata) -> DocumentMetadata:
     """Give ``doc_id`` the binder place of ``placed`` (a copy that is being deleted): the paper
     lying there now belongs to this document. ``placed`` must be out of the table already."""

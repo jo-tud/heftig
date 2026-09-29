@@ -238,3 +238,13 @@ def test_a_kept_duplicate_takes_over_the_binder_place(web, monkeypatch):
     assert kept.filing_sequence == filed.filing_sequence and kept.filing_binder == "Ordner 1"
     page = c.get(r.headers["location"]).text
     assert "übernimmt ihren Platz" in page and "herausnehmen" not in page
+
+
+def test_a_stack_filed_the_other_way_round_is_reversed(archive):
+    a, b, c, d = (paper(archive, t) for t in ("Erster", "Zweiter", "Dritter", "Später"))
+    process_all(archive)
+    for x in (a, b, c, d):
+        docs.mark_filed(archive, x)
+    assert docs.reverse_stack(archive, [a, b, c]) == 3
+    # the later sheet on top keeps its place; the stack below is turned round
+    assert [place(archive, x)[1] for x in (d, a, b, c)] == [1, 2, 3, 4]

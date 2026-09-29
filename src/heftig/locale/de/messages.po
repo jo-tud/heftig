@@ -54,59 +54,59 @@ msgstr "Ordner %(num)s"
 msgid "Please enter a name for the binder."
 msgstr "Bitte einen Namen für den Ordner eingeben."
 
-#: src/heftig/classify.py:253
+#: src/heftig/classify.py:269
 msgid "document_date (invalid format)"
 msgstr "document_date (ungültiges Format)"
 
-#: src/heftig/classify.py:255
+#: src/heftig/classify.py:271
 msgid "document_date (implausible year)"
 msgstr "document_date (unplausibles Jahr)"
 
-#: src/heftig/classify.py:271
+#: src/heftig/classify.py:287
 msgid "Suggestion not backed by the text"
 msgstr "Vorschlag nicht im Text belegt"
 
-#: src/heftig/classify.py:285
+#: src/heftig/classify.py:301
 msgid "No date found in the document"
 msgstr "Kein Datum im Dokument erkannt"
 
-#: src/heftig/classify.py:302
+#: src/heftig/classify.py:318
 msgid "Uncertain match"
 msgstr "Zuordnung unsicher"
 
-#: src/heftig/classify.py:312
+#: src/heftig/classify.py:328
 msgid "AI suggested “%(name)s” – similar to “%(similar)s”"
 msgstr "KI schlug „%(name)s“ vor – ähnlich zu „%(similar)s“"
 
-#: src/heftig/classify.py:316
+#: src/heftig/classify.py:332
 msgid "New entry (not created automatically)"
 msgstr "Neuer Eintrag (nicht automatisch angelegt)"
 
-#: src/heftig/classify.py:318
+#: src/heftig/classify.py:334
 msgid "%(field)s: a similar name already exists"
 msgstr "%(field)s: ähnlicher Name existiert schon"
 
-#: src/heftig/classify.py:321
+#: src/heftig/classify.py:337
 msgid "New entry from an email – please confirm"
 msgstr "Neuer Eintrag aus einer E-Mail – bitte bestätigen"
 
-#: src/heftig/classify.py:327
+#: src/heftig/classify.py:343
 msgid "New entry, uncertain match"
 msgstr "Neuer Eintrag, Zuordnung unsicher"
 
-#: src/heftig/classify.py:352
+#: src/heftig/classify.py:368
 msgid "AI suggested the tag “%(name)s” – similar to “%(similar)s”"
 msgstr "KI schlug Tag „%(name)s“ vor – ähnlich zu „%(similar)s“"
 
-#: src/heftig/classify.py:356
+#: src/heftig/classify.py:372
 msgid "New tag from an email – please confirm"
 msgstr "Neuer Tag aus einer E-Mail – bitte bestätigen"
 
-#: src/heftig/classify.py:412 src/heftig/search.py:52 src/heftig/search.py:781 src/heftig/suggestions.py:21 src/heftig/web/search_view.py:212 src/heftig/web/search_view.py:28
+#: src/heftig/classify.py:428 src/heftig/search.py:52 src/heftig/search.py:781 src/heftig/suggestions.py:21 src/heftig/web/search_view.py:212 src/heftig/web/search_view.py:28
 msgid "Sender"
 msgstr "Absender"
 
-#: src/heftig/classify.py:412 src/heftig/search.py:53 src/heftig/suggestions.py:22 src/heftig/web/search_view.py:213 src/heftig/web/templates/document.html:119 src/heftig/web/ui.py:97
+#: src/heftig/classify.py:428 src/heftig/search.py:53 src/heftig/suggestions.py:22 src/heftig/web/search_view.py:213 src/heftig/web/templates/document.html:119 src/heftig/web/ui.py:97
 msgid "Document type"
 msgstr "Dokumenttyp"
 
@@ -346,11 +346,19 @@ msgstr "letzte Woche"
 msgid "the week before last"
 msgstr "vorletzte Woche"
 
-#: src/heftig/documents.py:1025
+#: src/heftig/documents.py:1009
+msgid "Invalid attachment."
+msgstr "Ungültiger Anhang."
+
+#: src/heftig/documents.py:1013 src/heftig/documents.py:1092 src/heftig/web/api.py:658
+msgid "Attachment not found."
+msgstr "Anhang nicht gefunden."
+
+#: src/heftig/documents.py:1042
 msgid "The file is empty."
 msgstr "Die Datei ist leer."
 
-#: src/heftig/documents.py:1046
+#: src/heftig/documents.py:1063
 msgid "Checksum conflict in the attachment store – run `heftig check`."
 msgstr "Prüfsummenkonflikt im Anhangspeicher – `heftig check` ausführen."
 
@@ -386,45 +394,37 @@ msgstr "Das Papier ist nicht abgeheftet."
 msgid "taken out"
 msgstr "herausgenommen"
 
-#: src/heftig/documents.py:756
+#: src/heftig/documents.py:773
 msgid "Document “%(title)s” deleted"
 msgstr "Dokument „%(title)s“ gelöscht"
 
-#: src/heftig/documents.py:783
+#: src/heftig/documents.py:800
 msgid "Merging is only possible within the same kind."
 msgstr "Zusammenführen nur innerhalb derselben Art möglich."
 
-#: src/heftig/documents.py:828
+#: src/heftig/documents.py:845
 msgid "The new name must not be empty."
 msgstr "Der neue Name darf nicht leer sein."
 
-#: src/heftig/documents.py:832 src/heftig/documents.py:893 src/heftig/taxonomy.py:155
+#: src/heftig/documents.py:849 src/heftig/documents.py:910 src/heftig/taxonomy.py:155
 msgid "Unknown entry"
 msgstr "Unbekannter Eintrag"
 
-#: src/heftig/documents.py:835
+#: src/heftig/documents.py:852
 msgid "“%(name)s” already exists – please merge."
 msgstr "„%(name)s“ existiert bereits – bitte zusammenführen."
 
-#: src/heftig/documents.py:950
+#: src/heftig/documents.py:967
 msgid "The note is empty."
 msgstr "Die Notiz ist leer."
 
-#: src/heftig/documents.py:952 src/heftig/documents.py:966
+#: src/heftig/documents.py:969 src/heftig/documents.py:983
 msgid "Note too long (max. %(num)s characters)."
 msgstr "Notiz zu lang (max. %(num)s Zeichen)."
 
-#: src/heftig/documents.py:971 src/heftig/documents.py:984
+#: src/heftig/documents.py:1001 src/heftig/documents.py:988
 msgid "Note not found."
 msgstr "Notiz nicht gefunden."
-
-#: src/heftig/documents.py:992
-msgid "Invalid attachment."
-msgstr "Ungültiger Anhang."
-
-#: src/heftig/documents.py:1075 src/heftig/documents.py:996 src/heftig/web/api.py:658
-msgid "Attachment not found."
-msgstr "Anhang nicht gefunden."
 
 #: src/heftig/duplicates.py:200
 msgid "different numbers in the text (date, amount, number)"
@@ -1120,35 +1120,35 @@ msgstr "Dokumente"
 msgid "same type"
 msgstr "gleicher Typ"
 
-#: src/heftig/sessions.py:129
+#: src/heftig/sessions.py:130
 msgid "Binder %(name)s"
 msgstr "Ordner %(name)s"
 
-#: src/heftig/sessions.py:141
+#: src/heftig/sessions.py:142
 msgid "Document type %(name)s"
 msgstr "Dokumenttyp %(name)s"
 
-#: src/heftig/sessions.py:216
+#: src/heftig/sessions.py:219
 msgid "Still being processed – please wait until the suggestion is ready."
 msgstr "Es wird noch verarbeitet – bitte warten, bis der Vorschlag steht."
 
-#: src/heftig/sessions.py:34 src/heftig/web/templates/inbox.html:204
+#: src/heftig/sessions.py:35 src/heftig/web/templates/inbox.html:204
 msgid "back into the binder"
 msgstr "zurück in den Ordner"
 
-#: src/heftig/sessions.py:35 src/heftig/web/templates/inbox.html:205
+#: src/heftig/sessions.py:36 src/heftig/web/templates/inbox.html:205
 msgid "into the Heftig filing"
 msgstr "in die Heftig-Ablage"
 
-#: src/heftig/sessions.py:36
+#: src/heftig/sessions.py:37
 msgid "sort out"
 msgstr "aussortieren"
 
-#: src/heftig/sessions.py:75
+#: src/heftig/sessions.py:76
 msgid "Please name the binder, e.g. “Insurance”."
 msgstr "Bitte den Ordner benennen, z. B. „Versicherungen“."
 
-#: src/heftig/sessions.py:77
+#: src/heftig/sessions.py:78
 msgid "Unknown paper handling."
 msgstr "Unbekannte Papier-Behandlung."
 
@@ -3352,8 +3352,8 @@ msgid "All paper scans (scanner, phone, upload as paper) belong to this batch un
 msgstr "Alle Papier-Scans (Scanner, Handy, Upload als Papier) gehören bis zum Beenden zu dieser Sitzung; nach 8 Stunden ohne neuen Scan endet sie von selbst."
 
 #: src/heftig/web/templates/inbox.html:21
-msgid "All %(num)s filed in scan order"
-msgstr "Alle %(num)s in Scan-Reihenfolge abgeheftet"
+msgid "All %(num)s filed as they came out of the scanner"
+msgstr "Alle %(num)s abgeheftet, so wie sie aus dem Scanner kamen"
 
 #: src/heftig/web/templates/inbox.html:21
 msgid "into binder <strong>%(binder)s</strong> (<a href=\"/binders\">full?</a>)"
@@ -4749,10 +4749,10 @@ msgid "Hidden – open paper is listed under “Paper still to file”."
 msgstr "Ausgeblendet – offenes Papier steht unter „Papier noch abzuheften“."
 
 #: src/heftig/web/ui.py:1629
-msgid "%(num)d document filed in scan order."
-msgid_plural "%(num)d documents filed in scan order."
-msgstr[0] "%(num)d Dokument in Scan-Reihenfolge abgeheftet."
-msgstr[1] "%(num)d Dokumente in Scan-Reihenfolge abgeheftet."
+msgid "%(num)d document filed."
+msgid_plural "%(num)d documents filed – the first scanned on top."
+msgstr[0] "%(num)d Dokument abgeheftet."
+msgstr[1] "%(num)d Dokumente abgeheftet – das zuerst gescannte oben."
 
 #: src/heftig/web/ui.py:1634
 msgid "%(kept)s originals filed, %(gone)s marked as discarded."

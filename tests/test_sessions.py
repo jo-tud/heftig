@@ -38,14 +38,15 @@ def test_folder_mode_records_where_the_paper_is(archive):
     assert ids(archive, session=s["id"]) == [a]
 
 
-def test_refile_mode_files_everything_in_scan_order(archive):
+def test_refile_mode_files_the_stack_as_it_comes_out_of_the_scanner(archive):
     s = sessions.start(archive, "Bank", "refile")
     first, second = scan(archive, "Eins", "1.pdf"), scan(archive, "Zwei", "2.pdf")
     assert set(ids(archive, filed="no")) == {first, second}
     assert sessions.summary(archive, s["id"])["pending"][0]["id"] == first
     assert sessions.file_all(archive, s["id"]) == 2
     f1, f2 = docs.load_meta(archive, first), docs.load_meta(archive, second)
-    assert f1.filing_sequence < f2.filing_sequence  # scan order = filing order
+    assert f1.filing_sequence > f2.filing_sequence  # the first scanned sheet lies on top
+    assert docs.filing_position(archive, f1).position_from_top == 1
     assert sessions.summary(archive, s["id"])["done"]
 
 
@@ -155,7 +156,7 @@ def test_inbox_card_flow(tmp_path):
     assert r.status_code == 303 and r.headers["location"].startswith("/inbox")
     scan(arch, "Bescheid", "s.pdf")
     page = c.get("/inbox").text
-    assert "Scan-Sitzung „Steuer“" in page and "Alle 1 in Scan-Reihenfolge abgeheftet" in page
+    assert "Scan-Sitzung „Steuer“" in page and "Alle 1 abgeheftet, so wie sie aus dem Scanner kamen" in page
     assert "Steuer" in c.get("/scan").text
     sid = sessions.active(arch.conn)["id"]
     assert "Sitzung: Steuer" in c.get(f"/?session={sid}").text

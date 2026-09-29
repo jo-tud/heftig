@@ -1627,7 +1627,7 @@ def _session_sync(a, form) -> RedirectResponse:
         elif action == "file_all":
             n = sessions.file_all(a, sid, shown)
             msg = ngettext(
-                "%(num)d document filed in scan order.", "%(num)d documents filed in scan order.", n
+                "%(num)d document filed.", "%(num)d documents filed – the first scanned on top.", n
             )
         elif action == "apply_sort":
             kept, gone = sessions.apply_sort(a, sid, shown)

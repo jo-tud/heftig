@@ -70,7 +70,8 @@ Before scanning a stack from an old binder, start a **batch** in the inbox: name
 
 - **back into the binder** – every scan remembers "binder Insurance" as the paper's place;
 - **into the Heftig filing** – at the end one click files all of them into the current binder,
-  in scan order;
+  the stack as it comes out of the scanner (a document feeder keeps the order: the first
+  scanned sheet on top);
 - **away, except what matters** – the AI suggests per document whether to keep the original
   (contracts, certificates, assessments, policies …); the inbox lists the few to keep with their
   position in the stack, and one click files those and marks the rest as discarded.

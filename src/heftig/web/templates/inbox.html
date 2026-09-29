@@ -18,7 +18,7 @@
 
   {% for d in session.pending %}<input type="hidden" name="shown" value="{{ d.id }}">{% endfor %}
   {% if session.mode == 'refile' and session.pending %}
-    <p><button name="action" value="file_all" class="primary">{{ _("All %(num)s filed in scan order", num=session.pending | length) }}</button> <span class="small muted">{% trans binder=current_binder %}into binder <strong>{{ binder }}</strong> (<a href="/binders">full?</a>){% endtrans %}</span></p>
+    <p><button name="action" value="file_all" class="primary">{{ _("All %(num)s filed as they came out of the scanner", num=session.pending | length) }}</button> <span class="small muted">{% trans binder=current_binder %}into binder <strong>{{ binder }}</strong> (<a href="/binders">full?</a>){% endtrans %}</span></p>
   {% elif session.mode == 'sort' and session.pending %}
     {% if session.busy %}
     <p class="muted">{{ _("The sorting suggestion appears once everything is processed.") }}</p>

@@ -6,7 +6,8 @@ marked as paper) belongs to it. What happens to the paper is chosen once when st
 - ``folder``: the paper goes back into the old folder - each document records it
   (``paper_location``), nothing to file afterwards
 - ``refile``: the paper moves into Heftig's own filing - at the end, all of them are marked
-  filed in scan order with one action
+  filed with one action, as the stack comes out of the scanner: a document feeder keeps the
+  order, so the first scanned sheet lies on top
 - ``sort``: sort out - the classifier suggests per document whether to keep the original
   (contracts, certificates, assessments ...); at the end the kept ones are filed and the rest
   marked as shredded, again with one action
@@ -199,23 +200,25 @@ def _shown(items: list[dict[str, Any]], shown: set[str] | None) -> list[dict[str
 
 
 def file_all(archive: Archive, session_id: str, shown: set[str] | None = None) -> int:
-    """refile: mark all open paper of the session as filed, in scan order."""
+    """refile: mark all open paper of the session as filed - the stack from the scanner goes
+    into the binder as it is, the first scanned sheet on top (so it is filed last)."""
     sm = summary(archive, session_id)
     items = _shown(sm["pending"], shown) if sm else []
-    for item in items:
+    for item in reversed(items):
         docs.mark_filed(archive, item["id"])
     return len(items)
 
 
 def apply_sort(archive: Archive, session_id: str, shown: set[str] | None = None) -> tuple[int, int]:
-    """sort: file the originals to keep (scan order), mark the rest as shredded."""
+    """sort: file the originals to keep (the first scanned on top, see file_all), mark the
+    rest as shredded."""
     sm = summary(archive, session_id)
     if sm is None:
         return 0, 0
     if sm["busy"]:
         raise SessionError(_("Still being processed – please wait until the suggestion is ready."))
     keep, discard = _shown(sm["keep"], shown), _shown(sm["discard"], shown)
-    for item in keep:
+    for item in reversed(keep):
         docs.mark_filed(archive, item["id"])
     for item in discard:
         docs.set_paper_state(archive, item["id"], discarded=True)
