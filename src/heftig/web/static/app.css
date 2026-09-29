@@ -573,3 +573,4 @@ html.privacy .pv-media.pv-open .pv-hide:hover { opacity: 1; }
 .setup .card h2 { margin-top: 0; font-size: 1.1rem; }
 /* long file names (titles before classification) must not widen lists and cards */
 .card a:not(.button), .combine-list li, .upload-list li { overflow-wrap: anywhere; }
+.reviewbar form { margin: 0; display: inline; }

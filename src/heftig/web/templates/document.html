@@ -10,6 +10,8 @@
   <span class="rb-count">{% trans n=review.remaining %}Review · <strong>{{ n }}</strong> left{% endtrans %}</span>
   <button type="submit" form="meta-form" name="then" value="review_next" class="primary" title="{{ _("Save changes, mark as reviewed and go to the next one") }}">{{ _("Reviewed → next") }}</button>
   <a class="button" href="/review/next?after={{ m.id }}">{{ _("Skip") }}</a>
+  <form method="post" action="/documents/{{ m.id }}/action" class="inline">{{ csrf_field(csrf) }}{{ rv }}
+    <button name="action" value="delete" class="secondary" title="{{ _("Move to the trash (restorable) and go to the next one") }}">{{ _("Trash → next") }}</button></form>
   <a class="small" href="/inbox">{{ _("Stop") }}</a>
   {% if m.suggestions %}<span class="small muted rb-note">{{ ngettext("%(num)d open suggestion – dismissed unless accepted", "%(num)d open suggestions – those not accepted are dismissed", m.suggestions | length) }}</span>{% endif %}
 </div>

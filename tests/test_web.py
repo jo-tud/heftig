@@ -537,3 +537,30 @@ def test_paper_not_kept_leaves_the_filing_list(client, app):
     meta = docs.load_meta(app.state.archive, doc_id)
     assert meta.paper_discarded_at and meta.filing_sequence is None
     assert "Papier nicht aufbewahrt" in client.get(f"/documents/{doc_id}").text
+
+
+def test_trash_in_the_review_goes_on_to_the_next(client, app):
+    from heftig.db import write_tx
+
+    csrf = login(client)
+    ids = [upload(client, csrf, text_pdf([f"Werbung {n}"]), f"w{n}.pdf").json()["results"][0]
+           ["document_id"] for n in range(2)]  # fmt: skip
+    process_all(app.state.archive)
+    a = app.state.archive
+    for d in ids:
+        with write_tx(a.conn):
+            m = docs.load_meta(a, d)
+            m.status = "needs_review"
+            docs.persist(a, m)
+    page = client.get(f"/documents/{ids[1]}?review=1").text
+    assert "Papierkorb → nächstes" in page
+    r = client.post(f"/documents/{ids[1]}/action", data={"csrf_token": csrf, "action": "delete",
+                    "review": "1"}, follow_redirects=False)  # fmt: skip
+    loc = r.headers["location"]
+    assert loc.startswith(f"/documents/{ids[0]}?review=1&undo=doc%3A{ids[1]}")
+    page = client.get(loc).text
+    assert "in den Papierkorb verschoben" in page and "Rückgängig" in page
+    # the last one: back to the inbox, with the undo bar
+    r = client.post(f"/documents/{ids[0]}/action", data={"csrf_token": csrf, "action": "delete",
+                    "review": "1"}, follow_redirects=False)  # fmt: skip
+    assert r.headers["location"].startswith("/inbox?undo=doc%3A")

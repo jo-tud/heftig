@@ -621,7 +621,13 @@ def _review_remaining(conn) -> int:
 def review_next(request: Request, after: str = "", p: Principal = Depends(require_user)):
     """The next document to check (newest first); `after`: continue behind that document,
     even if it just left the list."""
-    conn = get_archive(request).conn
+    nxt = _next_to_review(get_archive(request).conn, after)
+    if nxt is None:
+        return redirect("/inbox?" + urlencode({"msg": _("All reviewed – nothing left open.")}))
+    return redirect(f"/documents/{nxt}?review=1")
+
+
+def _next_to_review(conn, after: str = "") -> str | None:
     order = "ORDER BY received_at DESC, ingest_sequence DESC LIMIT 1"
     row = None
     ref = conn.execute(
@@ -637,9 +643,7 @@ def review_next(request: Request, after: str = "", p: Principal = Depends(requir
         row = conn.execute(
             f"SELECT id FROM documents WHERE {REVIEW_WHERE} AND id != ? {order}", (after,)
         ).fetchone()
-    if row is None:
-        return redirect("/inbox?" + urlencode({"msg": _("All reviewed – nothing left open.")}))
-    return redirect(f"/documents/{row[0]}?review=1")
+    return row[0] if row else None
 
 
 def _search_back(request: Request) -> str:
@@ -973,6 +977,14 @@ def _action_sync(a, doc_id: str, form) -> RedirectResponse:
             fn(a, doc_id, int(idx))
         except (docs.EditError, ValueError) as e:
             msg = str(e)
+    elif action == "delete" and str(form.get("review") or "") == "1":
+        # in the review: on to the next document (found before this one leaves the list)
+        nxt = _next_to_review(a.conn, doc_id)
+        trash.trash_document(a, doc_id)
+        undo = urlencode({"undo": f"doc:{doc_id}"})
+        if nxt is None:
+            return redirect("/inbox?" + undo)
+        return redirect(f"/documents/{nxt}?review=1&{undo}")
     elif action == "delete":
         trash.trash_document(a, doc_id)
         back = _safe_next(_form_val(form, "back") or "/")
