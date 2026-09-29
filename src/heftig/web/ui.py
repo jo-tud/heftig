@@ -22,7 +22,18 @@ from fastapi.responses import (
 from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 
-from .. import auth, binders, combine, i18n, jobs, maintenance, saved_searches, sessions, trash
+from .. import (
+    auth,
+    binders,
+    combine,
+    i18n,
+    jobs,
+    maintenance,
+    saved_searches,
+    sessions,
+    settings_store,
+    trash,
+)
 from .. import documents as docs
 from .. import taxonomy as tax
 from ..consume import list_quarantine
@@ -1659,11 +1670,23 @@ def settings_page(request: Request, p: Principal = Depends(require_user)):
         providers=describe(s),
         terms={k: tax.list_terms(a.conn, k) for k in tax.KINDS},
         tokens=auth.list_tokens(a.conn),
+        language_fixed="language" in settings_store.fixed(a.base_settings),
         status=maintenance.status(a),
         s=s,
         new_token=None,
         message=request.query_params.get("msg"),
     )
+
+
+@router.post("/settings/language")
+async def settings_language(request: Request, p: Principal = Depends(require_write)):
+    form = await request.form()
+    a = get_archive(request)
+    lang = _form_val(form, "language")
+    if lang in i18n.LANGUAGES and "language" not in settings_store.fixed(a.base_settings):
+        await run_in_threadpool(settings_store.save, a.conn, a.base_settings, {"language": lang})
+        a.refresh_settings()
+    return redirect("/settings")
 
 
 @router.post("/settings/action")

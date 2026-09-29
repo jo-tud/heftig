@@ -112,6 +112,12 @@ def plan_document(root: Path, meta: dict[str, Any]) -> Plan:
             "filed_at": meta.get("filed_at"),
             "filing_section": meta.get("filing_section"),
             "filing_sequence": meta.get("filing_sequence"),
+            "filing_binder": meta.get("filing_binder"),
+        }
+    if meta.get("paper_location") or meta.get("paper_discarded_at"):
+        not_mapped["paper"] = {
+            "paper_location": meta.get("paper_location"),
+            "paper_discarded_at": meta.get("paper_discarded_at"),
         }
     if meta.get("custom_fields"):
         not_mapped["custom_fields"] = meta["custom_fields"]

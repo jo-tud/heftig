@@ -64,8 +64,8 @@
       const domain = (user.value.split("@")[1] || "").trim().toLowerCase();
       const p = presets[domain];
       document.getElementById("app-password").hidden = !(p && p.app_password);
-      document.getElementById("bridge").hidden = !(p && p.bridge);
-      if (p && (!mail.elements.imap_host.value || mail.elements.imap_host.dataset.auto)) {
+      document.getElementById("bridge").hidden = !(p && p.unsupported);
+      if (p && p.host && (!mail.elements.imap_host.value || mail.elements.imap_host.dataset.auto)) {
         mail.elements.imap_host.value = p.host;
         mail.elements.imap_host.dataset.auto = "1";
         mail.elements.imap_port.value = p.port || 993;

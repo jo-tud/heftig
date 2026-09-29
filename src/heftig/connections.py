@@ -40,8 +40,10 @@ IMAP_PRESETS: dict[str, dict[str, Any]] = {
     "gmx.com": {"host": "imap.gmx.com"},
     "web.de": {"host": "imap.web.de"},
     "t-online.de": {"host": "secureimap.t-online.de"},
-    "proton.me": {"host": "127.0.0.1", "port": 1143, "bridge": True},
-    "protonmail.com": {"host": "127.0.0.1", "port": 1143, "bridge": True},
+    # Proton's IMAP only runs through its Bridge (STARTTLS with its own certificate), which the
+    # verified TLS connection here does not accept
+    "proton.me": {"host": "", "unsupported": True},
+    "protonmail.com": {"host": "", "unsupported": True},
 }
 
 

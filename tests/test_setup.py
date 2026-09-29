@@ -195,3 +195,10 @@ def test_a_rejected_key_is_reported_as_such(monkeypatch):
     monkeypatch.setattr(registry, "get_classifier", lambda s: Refusing())
     with pytest.raises(connections.ConnectionProblem, match="key was not accepted"):
         connections.test_ai(Settings(_env_file=None))
+
+
+def test_language_can_be_changed_later(signed_in):
+    arch, c, csrf = signed_in  # set up in English
+    assert 'name="language"' in c.get("/settings").text
+    c.post("/settings/language", data={"csrf_token": csrf, "language": "de"})
+    assert arch.settings.language == "de" and "Einstellungen" in c.get("/settings").text

@@ -38,7 +38,7 @@ How to answer questions well:
 - Learn the vocabulary first: `archive_overview` lists correspondents (senders), document types,
   tags, years and custom fields with counts. Use these exact names as filters.
 - `search_documents` finds documents (full text with typo tolerance, plus filters). The query also
-  understands German date phrases ("März 2025", "letztes Jahr", "seit 2023").
+  understands date phrases in German and English ("März 2025", "letztes Jahr", "since 2023").
 - For questions across many documents - amounts per merchant, all bookings of a subscription,
   every mention of a contract number - use `find_text` with filters (document_type,
   correspondent, date range). It returns only the matching text lines with document, date and
@@ -213,8 +213,8 @@ def build_server(client: HeftigClient) -> MCPServer:
         limit: int = 20,
         offset: int = 0,
     ) -> dict[str, Any]:
-        """Find documents: full-text query (typo-tolerant, exact for numbers; German date
-        phrases such as "März 2025" become a date filter) combined with filters. Filters take
+        """Find documents: full-text query (typo-tolerant, exact for numbers; date phrases such
+        as "März 2025" or "last year" become a date filter) combined with filters. Filters take
         the exact names from archive_overview. Dates: YYYY, YYYY-MM or YYYY-MM-DD (document date).
         Returns id, title, date, correspondent, type, tags, snippet and a link per document."""
         limit = max(1, min(int(limit), 100))

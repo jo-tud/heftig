@@ -14,7 +14,7 @@
     <label>{{ _("E-mail address (user name)") }} <input name="imap_user" value="{{ form.imap_user }}" autocomplete="off" spellcheck="false"></label>
     <label>{{ _("Password") }} <input name="imap_password" type="password" autocomplete="off" placeholder="{{ _('stored – enter a new one to replace it') if has_password else '' }}"></label>
     <p class="hint" id="app-password" hidden>{{ _("This provider needs an app password (created in its security settings), not your normal password.") }}</p>
-    <p class="hint" id="bridge" hidden>{{ _("Proton Mail needs the Proton Mail Bridge running on this computer.") }}</p>
+    <p class="hint" id="bridge" hidden>{{ _("Proton Mail can’t be used directly (its Bridge uses a connection Heftig doesn’t accept). Use another mailbox for Heftig and forward from Proton.") }}</p>
     <details {% if form.imap_host %}open{% endif %}><summary>{{ _("Server (filled in automatically for common providers)") }}</summary>
       <label>{{ _("IMAP server") }} <input name="imap_host" value="{{ form.imap_host }}" spellcheck="false" placeholder="imap.example.org"></label>
       <label>{{ _("Port") }} <input name="imap_port" value="{{ form.imap_port or 993 }}" inputmode="numeric"></label>

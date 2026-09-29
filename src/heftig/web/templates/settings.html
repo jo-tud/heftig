@@ -27,6 +27,18 @@
     {{ _("Keys are never shown, logged or exported.") }}</p>
 </section>
 
+<section class="card" aria-labelledby="lang-h">
+  <h2 id="lang-h">{{ _("Language") }}</h2>
+  <form method="post" action="/settings/language" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf }}">
+    <select name="language" aria-label="{{ _("Language") }}" {% if language_fixed %}disabled{% endif %}>
+      {% for code, name in LANGUAGES.items() %}<option value="{{ code }}" {% if s.language == code %}selected{% endif %}>{{ name }}</option>{% endfor %}
+    </select>
+    {% if not language_fixed %}<button>{{ _("Save") }}</button>{% endif %}
+  </form>
+  <p class="hint">{{ _("The interface, and the titles and summaries the AI writes from now on.") }}{% if language_fixed %} {{ _("Set by the environment variable HEFTIG_LANGUAGE.") }}{% endif %}</p>
+</section>
+
 <section class="card" aria-labelledby="binders-h">
   <h2 id="binders-h">{{ _("Binders") }}</h2>
   <p>{{ _("Which binder the paper goes into, and what to do when it is full.") }} <a href="/binders">{{ _("Binders") }}</a></p>

@@ -524,6 +524,18 @@
       "default": null,
       "title": "Filing Section"
     },
+    "filing_binder": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Filing Binder"
+    },
     "title": {
       "default": "",
       "title": "Title",

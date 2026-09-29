@@ -1,4 +1,5 @@
-"""German date phrases in the search text: "März 2025", "letztes Jahr", "seit 2023", ...
+"""Date phrases in the search text, German and English: "März 2025", "letztes Jahr",
+"since 2023", "last 3 months", "between January and March 2025", ...
 
 A recognised phrase is removed from the query and becomes a document-date range, so
 ``Rechnung letztes Jahr`` searches for "Rechnung" among documents dated last year. A bare year
