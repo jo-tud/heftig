@@ -1,0 +1,53 @@
+{% from "_macros.html" import csrf_field, time %}
+{# The review parts of the document page; also rendered on their own after an autosave. #}
+
+{% macro review_count(review) -%}
+{% if review %}{% trans n=review.remaining %}Review · <strong>{{ n }}</strong> left{% endtrans %}{% endif %}
+{%- endmacro %}
+
+{% macro review_note(m) -%}
+{% if m.suggestions %}{{ ngettext("%(num)d open suggestion – dismissed unless accepted", "%(num)d open suggestions – those not accepted are dismissed", m.suggestions | length) }}{% endif %}
+{%- endmacro %}
+
+{% macro review_card(m, csrf, rv, review, budget_pages) -%}
+{% if m.review_reasons or m.suggestions %}
+<section class="card review" aria-labelledby="review-h">
+  <h2 id="review-h">{{ _("Please review") }}</h2>
+  {% if m.review_reasons %}<ul>{% for r in m.review_reasons %}<li>{{ r | reason }}</li>{% endfor %}</ul>{% endif %}
+  {% if m.suggestions %}
+  <form method="post" action="/documents/{{ m.id }}/action">
+    {{ csrf_field(csrf) }}{{ rv }}<input type="hidden" name="revision" value="{{ m.revision }}">
+    <table class="suggestions">
+      <thead><tr><th>{{ _("Field") }}</th><th>{{ _("Suggestion") }}</th><th>{{ _("Reason") }}</th><th></th></tr></thead>
+      <tbody>
+      {% for s in m.suggestions %}
+        <tr>
+          <td>{{ FIELD_LABELS.get(s.field, s.field) }}</td>
+          <td><strong>{% if s.value is iterable and s.value is not string %}{{ s.value | join(', ') }}{% else %}{{ s.value }}{% endif %}</strong>
+            {% if s.confidence is not none %}<span class="muted">({{ _("%(pct)s%%", pct='%.0f' % (s.confidence * 100)) }})</span>{% endif %}</td>
+          <td>{{ s.reason | reason }}</td>
+          <td class="nowrap">
+            <button name="action" value="accept_{{ loop.index0 }}">{{ _("Accept") }}</button>
+            <button name="action" value="dismiss_{{ loop.index0 }}" class="secondary">{{ _("Dismiss") }}</button>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </form>
+  {% endif %}
+  <form method="post" action="/documents/{{ m.id }}/action" class="inline">
+    {{ csrf_field(csrf) }}{{ rv }}<input type="hidden" name="revision" value="{{ m.revision }}">{% if not review %}<button name="action" value="reviewed">{{ _("All reviewed") }}</button>{% endif %}
+    {% if budget_pages and not m.ocr_all_pages %}
+    <button name="action" value="ocr_all_pages" title="{{ ngettext("Reads the remaining %(num)d page with the AI instead of locally", "Reads the remaining %(num)d pages with the AI instead of locally", budget_pages) }}">{{ _("Recognize all pages with AI (approx. $%(cost)s)", cost='%.2f' % (budget_pages * 0.02)) }}</button>
+    {% endif %}
+  </form>
+</section>
+{% endif %}
+{%- endmacro %}
+
+{% macro date_hint(m) -%}
+<p class="hint {% if m.document_date_status == 'ai_uncertain' %}warn{% endif %}">
+  {{ DATE_STATUS.get(m.document_date_status, m.document_date_status) }}{% if m.document_date_reason %} – {{ m.document_date_reason | reason }}{% endif %}.
+  {{ _("Independently of that: received %(when)s.", when=time(m.received_at)) }}</p>
+{%- endmacro %}

@@ -581,3 +581,4 @@ html.privacy .pv-media.pv-open .pv-hide:hover { opacity: 1; }
 .meta-form.autosaving .noscript-hint, .meta-form.autosaving .save-button { display: none; }
 .autosave-note { margin: .2rem 0 0; color: var(--ok); }
 .autosave-note.error-text { color: var(--err); }
+.reviewbar .rb-note:empty { display: none; }

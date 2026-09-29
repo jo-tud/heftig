@@ -161,10 +161,15 @@ def asset_version(static_dir: Path) -> str:
     return h.hexdigest()[:10]
 
 
+_ENV: Any = None  # the template environment (set by make_templates), for page fragments
+
+
 def make_templates(path: Path) -> Jinja2Templates:
     t = Jinja2Templates(directory=str(path))
     t.env.globals["asset_v"] = asset_version(path.parent / "static")
     t.env.autoescape = True
+    global _ENV
+    _ENV = t.env
     t.env.add_extension("jinja2.ext.i18n")
     t.env.install_gettext_callables(  # type: ignore[attr-defined]
         i18n.raw_gettext, i18n.raw_ngettext, newstyle=True, pgettext=i18n.raw_pgettext
@@ -692,10 +697,7 @@ def document_page(request: Request, doc_id: str, p: Principal = Depends(require_
     ]
     for e in events:
         e["source_details"] = json.loads(e["source_details"] or "{}")
-    budget_pages = sum(
-        1 for pg in (tp.pages if tp else [])
-        if "Seitenbudget" in pg.provider or "page budget" in pg.provider
-    )  # fmt: skip
+    budget_pages = _budget_pages(tp)
     # coming from a search: pages with hits (the viewer jumps there and marks the words)
     q = request.query_params.get("q", "")[:500]
     hit_terms = highlight_terms(a.conn, q) if q else []
@@ -931,6 +933,37 @@ def _edit_sync(a, doc_id: str, form) -> Response:
     return redirect(_doc_url(doc_id, form, saved="1"))
 
 
+def _budget_pages(tp) -> int:
+    """Pages read locally because of the AI page budget (offered to be read with AI)."""
+    return sum(
+        1 for pg in (tp.pages if tp else [])
+        if "Seitenbudget" in pg.provider or "page budget" in pg.provider
+    )  # fmt: skip
+
+
+def _review_parts(a, doc_id: str, form) -> dict[str, str]:
+    """The review box, the review bar's texts and the status badge as they are now - the
+    page swaps them in after an autosave, so what it shows (and the suggestion buttons,
+    which refer to positions in the list) always matches the saved document."""
+    from markupsafe import Markup
+
+    meta = docs.load_meta(a, doc_id)
+    m = meta.model_dump(mode="json")
+    in_review = str(form.get("review") or "") == "1"
+    review = {"remaining": _review_remaining(a.conn)} if in_review else None
+    rv = Markup('<input type="hidden" name="review" value="1">') if in_review else Markup("")
+    macros = _ENV.get_template("_review.html").module
+    badge = _ENV.get_template("_macros.html").module.status_badge
+    return {
+        "review_html": str(macros.review_card(m, _form_val(form, "csrf_token"), rv, review,
+                                              _budget_pages(docs.load_text_pages(a, doc_id)))),
+        "review_count_html": str(macros.review_count(review)),
+        "review_note_html": str(macros.review_note(m)),
+        "status_html": str(badge(meta.status)),
+        "date_hint_html": str(macros.date_hint(m)),
+    }  # fmt: skip
+
+
 def _autosave(a, doc_id: str, form, meta) -> JSONResponse:
     """One field saved as soon as the user leaves it (or its lock toggled, or an undo).
     Answers with the new revision and what is needed to undo the change."""
@@ -940,14 +973,17 @@ def _autosave(a, doc_id: str, form, meta) -> JSONResponse:
         if form.get("undo"):
             snap = json.loads(str(form.get("undo")))
             meta = docs.restore_field(a, doc_id, snap)
-            return JSONResponse({"ok": True, "revision": meta.revision})
+            return JSONResponse(
+                {"ok": True, "revision": meta.revision, **_review_parts(a, doc_id, form)}
+            )
         field = _form_val(form, "field")
         if field.startswith("lock:"):
             name = field[5:]
             if name not in LOCKABLE_FIELDS:
                 raise docs.EditError(_("Field “%(field)s” cannot be locked.", field=name))
             meta = docs.update_fields(a, doc_id, {}, {name: form.get(f"lock_{name}") == "on"})
-            return JSONResponse({"ok": True, "revision": meta.revision, "undo": None})
+            return JSONResponse({"ok": True, "revision": meta.revision, "undo": None,
+                                 **_review_parts(a, doc_id, form)})  # fmt: skip
         if field not in LOCKABLE_FIELDS:
             raise docs.EditError(_("Field “%(field)s” cannot be edited.", field=field))
         changes, error = _form_changes(form, meta)
@@ -960,7 +996,8 @@ def _autosave(a, doc_id: str, form, meta) -> JSONResponse:
     except (docs.EditError, ValueError) as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
     return JSONResponse({"ok": True, "revision": meta.revision, "undo": snap,
-                         "locked": bool(meta.field_locks.get(field))})  # fmt: skip
+                         "locked": bool(meta.field_locks.get(field)),
+                         **_review_parts(a, doc_id, form)})  # fmt: skip
 
 
 @router.post("/documents/{doc_id}/edit")

@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros.html" import status_badge, time, csrf_field, provider_line %}
+{% from "_review.html" import review_card, review_count, review_note, date_hint %}
 {% block title %}{{ m.title or m.original_filename }}{% endblock %}
 {% block content %}
 {% set rv %}{% if review %}<input type="hidden" name="review" value="1">{% endif %}{% endset %}
@@ -7,13 +8,13 @@
 <script type="application/json" id="pv-values">{{ m.custom_fields.values() | map(attribute='value') | map('string') | list | tojson }}</script>
 {% if review %}
 <div class="reviewbar" role="region" aria-label="{{ _("Review") }}">
-  <span class="rb-count">{% trans n=review.remaining %}Review · <strong>{{ n }}</strong> left{% endtrans %}</span>
+  <span class="rb-count" id="rb-count">{{ review_count(review) }}</span>
   <button type="submit" form="meta-form" name="then" value="review_next" class="primary" title="{{ _("Save changes, mark as reviewed and go to the next one") }}">{{ _("Reviewed → next") }}</button>
   <a class="button" href="/review/next?after={{ m.id }}">{{ _("Skip") }}</a>
   <form method="post" action="/documents/{{ m.id }}/action" class="inline">{{ csrf_field(csrf) }}{{ rv }}
     <button name="action" value="delete" class="secondary" title="{{ _("Move to the trash (restorable) and go to the next one") }}">{{ _("Trash → next") }}</button></form>
   <a class="small" href="/inbox">{{ _("Stop") }}</a>
-  {% if m.suggestions %}<span class="small muted rb-note">{{ ngettext("%(num)d open suggestion – dismissed unless accepted", "%(num)d open suggestions – those not accepted are dismissed", m.suggestions | length) }}</span>{% endif %}
+  <span class="small muted rb-note" id="rb-note">{{ review_note(m) }}</span>
 </div>
 {% else %}
 <nav class="crumbs"><a href="/" data-back>{{ _("← Documents") }}</a></nav>
@@ -34,7 +35,7 @@
     </details>
   </div>
   <p class="meta">
-    {{ status_badge(m.status) }}
+    <span id="doc-status">{{ status_badge(m.status) }}</span>
     <span>{% if m.page_count %}{{ ngettext("%(num)d page", "%(num)d pages", m.page_count) }}{% else %}{{ _("? pages") }}{% endif %}</span>
     <span>{{ SOURCE_LABELS.get(m.source, m.source) }}</span>
     {% if m.text_status != 'ok' %}<span>{{ _("Text: %(status)s", status=TEXT_STATUS.get(m.text_status, m.text_status)) }}</span>{% endif %}
@@ -49,40 +50,7 @@
 {% if saved %}<p class="notice ok" role="status">{{ _("Saved. Changed fields are now locked and won't be overwritten when reprocessing.") }}</p>{% endif %}
 {% if message %}<p class="notice info" role="status">{{ message }}</p>{% endif %}
 
-{% if m.review_reasons or m.suggestions %}
-<section class="card review" aria-labelledby="review-h">
-  <h2 id="review-h">{{ _("Please review") }}</h2>
-  {% if m.review_reasons %}<ul>{% for r in m.review_reasons %}<li>{{ r | reason }}</li>{% endfor %}</ul>{% endif %}
-  {% if m.suggestions %}
-  <form method="post" action="/documents/{{ m.id }}/action">
-    {{ csrf_field(csrf) }}{{ rv }}<input type="hidden" name="revision" value="{{ m.revision }}">
-    <table class="suggestions">
-      <thead><tr><th>{{ _("Field") }}</th><th>{{ _("Suggestion") }}</th><th>{{ _("Reason") }}</th><th></th></tr></thead>
-      <tbody>
-      {% for s in m.suggestions %}
-        <tr>
-          <td>{{ FIELD_LABELS.get(s.field, s.field) }}</td>
-          <td><strong>{% if s.value is iterable and s.value is not string %}{{ s.value | join(', ') }}{% else %}{{ s.value }}{% endif %}</strong>
-            {% if s.confidence is not none %}<span class="muted">({{ _("%(pct)s%%", pct='%.0f' % (s.confidence * 100)) }})</span>{% endif %}</td>
-          <td>{{ s.reason | reason }}</td>
-          <td class="nowrap">
-            <button name="action" value="accept_{{ loop.index0 }}">{{ _("Accept") }}</button>
-            <button name="action" value="dismiss_{{ loop.index0 }}" class="secondary">{{ _("Dismiss") }}</button>
-          </td>
-        </tr>
-      {% endfor %}
-      </tbody>
-    </table>
-  </form>
-  {% endif %}
-  <form method="post" action="/documents/{{ m.id }}/action" class="inline">
-    {{ csrf_field(csrf) }}{{ rv }}<input type="hidden" name="revision" value="{{ m.revision }}">{% if not review %}<button name="action" value="reviewed">{{ _("All reviewed") }}</button>{% endif %}
-    {% if budget_pages and not m.ocr_all_pages %}
-    <button name="action" value="ocr_all_pages" title="{{ ngettext("Reads the remaining %(num)d page with the AI instead of locally", "Reads the remaining %(num)d pages with the AI instead of locally", budget_pages) }}">{{ _("Recognize all pages with AI (approx. $%(cost)s)", cost='%.2f' % (budget_pages * 0.02)) }}</button>
-    {% endif %}
-  </form>
-</section>
-{% endif %}
+<div id="review-box">{{ review_card(m, csrf, rv, review, budget_pages) }}</div>
 
 <div class="doc-grid">
   <section class="preview card viewer-card" id="viewer-card" aria-label="{{ _("Document view") }}">
@@ -135,9 +103,7 @@
         <input id="f-title" name="title" value="{{ m.title }}" maxlength="200"></div>
       <div class="field"><label for="f-date">{{ _("Document date") }}</label>{{ lockbox('document_date') }}
         <input id="f-date" name="document_date" type="date" value="{{ m.document_date or '' }}">
-        <p class="hint {% if m.document_date_status == 'ai_uncertain' %}warn{% endif %}">
-          {{ DATE_STATUS.get(m.document_date_status, m.document_date_status) }}{% if m.document_date_reason %} – {{ m.document_date_reason | reason }}{% endif %}.
-          {{ _("Independently of that: received %(when)s.", when=time(m.received_at)) }}</p></div>
+        <div id="date-hint">{{ date_hint(m) }}</div></div>
       <div class="field"><label for="f-corr">{{ pgettext("document field", "Sender") }}</label>{{ lockbox('correspondent') }}
         <input id="f-corr" name="correspondent" value="{{ m.correspondent or '' }}" list="dl-corr" autocomplete="off"></div>
       <div class="field"><label for="f-type">{{ _("Document type") }}</label>{{ lockbox('document_type') }}

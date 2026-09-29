@@ -628,3 +628,36 @@ def test_autosave_one_field_and_undo(client, app):
                     "cf_type_0": "monetary", "cf_value_0": "zwölf"})  # fmt: skip
     assert r.status_code == 400 and "Betrag" in r.json()["error"]
     assert "autosave.js" in client.get(f"/documents/{doc}").text
+
+
+def test_autosave_updates_the_review_on_the_page(client, app):
+    """Correcting the field a suggestion was about settles it - the page gets the review box,
+    the counters and the status as they are now (the suggestion buttons count positions)."""
+    from heftig.db import write_tx
+    from heftig.models import Suggestion
+
+    csrf = login(client)
+    doc = upload(client, csrf, text_pdf(["Brief vom Amt"]), "b.pdf").json()["results"][0][
+        "document_id"
+    ]
+    process_all(app.state.archive)
+    a = app.state.archive
+    with write_tx(a.conn):
+        m = docs.load_meta(a, doc)
+        m.suggestions = [Suggestion(field="correspondent", value="Amt A", reason="unsicher"),
+                         Suggestion(field="document_type", value="Bescheid", reason="unsicher")]  # fmt: skip
+        m.status = "needs_review"
+        docs.persist(a, m)
+    m = docs.load_meta(a, doc)
+    data = client.post(f"/documents/{doc}/edit", data={
+        "csrf_token": csrf, "autosave": "1", "review": "1", "revision": str(m.revision),
+        "field": "correspondent", "correspondent": "Stadtverwaltung"}).json()  # fmt: skip
+    assert data["ok"] and "Amt A" not in data["review_html"] and "Bescheid" in data["review_html"]
+    assert 'value="accept_0"' in data["review_html"]  # the remaining one is now number 0
+    assert "1 offener Vorschlag" in data["review_note_html"] and "noch" in data["review_count_html"]
+    m = docs.load_meta(a, doc)
+    data = client.post(f"/documents/{doc}/edit", data={
+        "csrf_token": csrf, "autosave": "1", "review": "1", "revision": str(m.revision),
+        "field": "document_type", "document_type": "Bescheid"}).json()  # fmt: skip
+    assert data["review_html"].strip() == "" and data["review_note_html"] == ""
+    assert "st-done" in data["status_html"]

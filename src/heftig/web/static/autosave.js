@@ -44,6 +44,18 @@
   }
   const text = (s) => document.createTextNode(s);
 
+  // the review box, the review bar and the status badge as the server has them now (a
+  // saved field can settle a suggestion or the whole review)
+  function applyReview(data) {
+    if (data.review_html === undefined) return;
+    const put = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+    put("review-box", data.review_html);
+    put("rb-count", data.review_count_html);
+    put("rb-note", data.review_note_html);
+    put("doc-status", data.status_html);
+    put("date-hint", data.date_hint_html);
+  }
+
   // every form on the page sends the revision it was made for: keep them all current
   function setRevision(rev) {
     document.querySelectorAll('input[name="revision"]').forEach((i) => { i.value = rev; });
@@ -69,6 +81,7 @@
         return;
       }
       setRevision(data.revision);
+      applyReview(data);
       now.forEach((v, el) => saved.set(el, v));
       if (!data.undo) { note(field, [text(t("Saved"))]); return; }
       const undo = document.createElement("button");
@@ -87,6 +100,7 @@
     pending = pending.then(() => send({ undo: JSON.stringify(snap) })).then(({ data }) => {
       if (!data.ok) { note(field, [text(data.error || t("Could not undo."))], true); return; }
       setRevision(data.revision);
+      applyReview(data);
       before.forEach((v, el) => {
         if (el.type === "checkbox") el.checked = v === "on"; else el.value = v;
         saved.set(el, v);
