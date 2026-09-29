@@ -38,6 +38,11 @@ section is the month you *filed* the letter, not its date.
 
 The everyday cases:
 
+- **One letter:** put it on top of the current binder and click *Filed just now* on its page
+  (or *Filed now* in the inbox list).
+- **A scanned stack** (several letters at once): see
+  [Filing a scanned stack](#filing-a-scanned-stack) below – the whole stack goes on top, in the
+  order it comes out of the scanner.
 - **Binder full:** *Settings → Binders → This binder is full – start the next one* (the name
   is suggested: "Heftig 1" → "Heftig 2"). From then on everything goes into the new binder;
   positions in the full one stay as they are.
@@ -75,6 +80,24 @@ Before scanning a stack from an old binder, start a **batch** in the inbox: name
 - **away, except what matters** – the AI suggests per document whether to keep the original
   (contracts, certificates, assessments, policies …); the inbox lists the few to keep with their
   position in the stack, and one click files those and marks the rest as discarded.
+
+### Filing a scanned stack
+
+A document feeder keeps the order of the stack: what comes out is in the order you put in, the
+first scanned sheet on top once the stack lies face up (with an output tray that stacks face
+down, turn the stack over as a whole). Heftig counts on exactly that:
+
+1. Start a batch *into the Heftig filing* in the inbox.
+2. Scan the stack (duplex is fine, see [Blank pages](#blank-pages)).
+3. Take the stack out of the scanner as it is – don't reorder it – and put it **as a whole on
+   top** of the current binder.
+4. Sheets you throw away instead: *Not kept* on their page (or in the inbox) before the next step.
+5. Click *All N filed as they came out of the scanner*.
+
+Heftig then records the new sheets above everything already in the binder, the first scanned
+one on top. Don't tick *I file every scanned letter right away* for this routine: that setting
+is for scanning and filing one letter at a time and puts every scan on top as it arrives – the
+last scanned sheet would be on top.
 
 Every paper document that arrives while the batch runs belongs to it; the binder's name also helps
 the classifier. A batch ends by itself after 8 hours without a new scan. Scanner settings for

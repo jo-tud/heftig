@@ -346,19 +346,19 @@ msgstr "letzte Woche"
 msgid "the week before last"
 msgstr "vorletzte Woche"
 
-#: src/heftig/documents.py:1009
+#: src/heftig/documents.py:1013
 msgid "Invalid attachment."
 msgstr "Ungültiger Anhang."
 
-#: src/heftig/documents.py:1013 src/heftig/documents.py:1092 src/heftig/web/api.py:658
+#: src/heftig/documents.py:1017 src/heftig/documents.py:1096 src/heftig/web/api.py:658
 msgid "Attachment not found."
 msgstr "Anhang nicht gefunden."
 
-#: src/heftig/documents.py:1042
+#: src/heftig/documents.py:1046
 msgid "The file is empty."
 msgstr "Die Datei ist leer."
 
-#: src/heftig/documents.py:1063
+#: src/heftig/documents.py:1067
 msgid "Checksum conflict in the attachment store – run `heftig check`."
 msgstr "Prüfsummenkonflikt im Anhangspeicher – `heftig check` ausführen."
 
@@ -394,35 +394,35 @@ msgstr "Das Papier ist nicht abgeheftet."
 msgid "taken out"
 msgstr "herausgenommen"
 
-#: src/heftig/documents.py:773
+#: src/heftig/documents.py:777
 msgid "Document “%(title)s” deleted"
 msgstr "Dokument „%(title)s“ gelöscht"
 
-#: src/heftig/documents.py:800
+#: src/heftig/documents.py:804
 msgid "Merging is only possible within the same kind."
 msgstr "Zusammenführen nur innerhalb derselben Art möglich."
 
-#: src/heftig/documents.py:845
+#: src/heftig/documents.py:849
 msgid "The new name must not be empty."
 msgstr "Der neue Name darf nicht leer sein."
 
-#: src/heftig/documents.py:849 src/heftig/documents.py:910 src/heftig/taxonomy.py:155
+#: src/heftig/documents.py:853 src/heftig/documents.py:914 src/heftig/taxonomy.py:155
 msgid "Unknown entry"
 msgstr "Unbekannter Eintrag"
 
-#: src/heftig/documents.py:852
+#: src/heftig/documents.py:856
 msgid "“%(name)s” already exists – please merge."
 msgstr "„%(name)s“ existiert bereits – bitte zusammenführen."
 
-#: src/heftig/documents.py:967
+#: src/heftig/documents.py:971
 msgid "The note is empty."
 msgstr "Die Notiz ist leer."
 
-#: src/heftig/documents.py:969 src/heftig/documents.py:983
+#: src/heftig/documents.py:973 src/heftig/documents.py:987
 msgid "Note too long (max. %(num)s characters)."
 msgstr "Notiz zu lang (max. %(num)s Zeichen)."
 
-#: src/heftig/documents.py:1001 src/heftig/documents.py:988
+#: src/heftig/documents.py:1005 src/heftig/documents.py:992
 msgid "Note not found."
 msgstr "Notiz nicht gefunden."
 
@@ -4162,8 +4162,8 @@ msgid "I file every scanned letter right away"
 msgstr "Ich hefte jeden gescannten Brief sofort ab"
 
 #: src/heftig/web/templates/setup_scanner.html:36
-msgid "Scans from the scanner folder are marked as filed on arrival; Heftig shows where each one lies in the binder (month sections, newest on top). Without it, the inbox asks you to file them."
-msgstr "Scans aus dem Scanner-Ordner gelten beim Eintreffen als abgeheftet; Heftig zeigt, wo jeder im Ordner liegt (Monatsabschnitte, neueste oben). Ohne diese Option erinnert der Eingang ans Abheften."
+msgid "Scans from the scanner folder are marked as filed on arrival; Heftig shows where each one lies in the binder (month sections, newest on top). Only for filing letter by letter – for a whole stack, start a batch in the inbox. Without it, the inbox asks you to file them."
+msgstr "Scans aus dem Scanner-Ordner gelten beim Eintreffen als abgeheftet; Heftig zeigt, wo jeder im Ordner liegt (Monatsabschnitte, neueste oben). Nur fürs Abheften Brief für Brief – für einen ganzen Stapel im Eingang eine Scan-Sitzung starten. Ohne diese Option erinnert der Eingang ans Abheften."
 
 #: src/heftig/web/templates/setup_scanner.html:37
 msgid "Finish"

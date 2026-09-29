@@ -162,8 +162,9 @@ record the filing at arrival: tick *I file every scanned letter right away* on
 HEFTIG_AUTO_FILE_SOURCES=scanner
 ```
 
-The filing time is then the arrival time. Only use this if the physical order really matches
-the scan order. For born-digital files use the folder for digital files (`HEFTIG_FOLDER_DIR`,
+The filing time is then the arrival time, and every scan goes on top as it arrives. Only use
+this if you file letter by letter; for a whole stack scanned at once use a batch instead (see
+[guide.md](guide.md#filing-a-scanned-stack)). For born-digital files use the folder for digital files (`HEFTIG_FOLDER_DIR`,
 `./folder` with Compose; source `folder`, not marked as paper) or
 `heftig ingest --source folder <files>`.
 

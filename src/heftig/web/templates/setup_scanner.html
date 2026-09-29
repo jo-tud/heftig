@@ -33,7 +33,7 @@
   <h2>{{ _("Paper filing") }}</h2>
   {{ locked_note(locked) }}
   <label class="choice"><input type="checkbox" name="auto_file" value="1" {% if 'scanner' in s.auto_file_source_set %}checked{% endif %} {% if locked %}disabled{% endif %}>
-    <span>{{ _("I file every scanned letter right away") }}<br><span class="hint">{{ _("Scans from the scanner folder are marked as filed on arrival; Heftig shows where each one lies in the binder (month sections, newest on top). Without it, the inbox asks you to file them.") }}</span></span></label>
+    <span>{{ _("I file every scanned letter right away") }}<br><span class="hint">{{ _("Scans from the scanner folder are marked as filed on arrival; Heftig shows where each one lies in the binder (month sections, newest on top). Only for filing letter by letter – for a whole stack, start a batch in the inbox. Without it, the inbox asks you to file them.") }}</span></span></label>
   <p class="buttons"><button type="submit" class="primary">{{ _("Save") if not wizard else _("Finish") }}</button></p>
 </form>
 </section>
