@@ -902,7 +902,7 @@ def revalidate_dates(archive: Archive) -> dict[str, int]:
             meta = docs.load_meta(archive, doc_id)
             if (meta.document_date or meta.locked("document_date")
                     or meta.document_date_status != "none_found"
-                    or not cls.apply_as_of_date(meta, text)):  # fmt: skip
+                    or not cls.apply_as_of_date(archive, meta, text)):  # fmt: skip
                 continue
             docs.add_history(
                 meta, HistoryEntry(task="classify", at=now_iso(), status="date-as-of",

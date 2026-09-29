@@ -189,9 +189,25 @@ def _evidence_matches_date(evidence: str, iso: str) -> bool:
     return date.fromisoformat(iso) in dates_in(evidence)
 
 
-def apply_as_of_date(meta: DocumentMetadata, text: str) -> bool:
-    """No letter date: the date the document is made up to, if the text names one."""
-    found = as_of_date(text, meta.received_at)
+AS_OF_PAGES = 2  # the date a document is made up to stands at its beginning (not in an
+# enclosure or a travel-expense list on page 53)
+
+
+def _first_pages(archive: Archive, meta: DocumentMetadata, text: str) -> str:
+    from . import documents as docs
+
+    try:
+        tp = docs.load_text_pages(archive, meta.id)
+    except (OSError, ValueError):
+        tp = None
+    if tp is None:
+        return text[:8000]
+    return "\n\n".join(p.text for p in tp.pages[:AS_OF_PAGES])
+
+
+def apply_as_of_date(archive: Archive, meta: DocumentMetadata, text: str) -> bool:
+    """No letter date: the date the document is made up to, if its first pages name one."""
+    found = as_of_date(_first_pages(archive, meta, text), meta.received_at)
     if found is None:
         return False
     meta.document_date, quote = found
@@ -280,7 +296,7 @@ def apply(
                     res.review_reasons.append(DATE_UNCERTAIN)
                 res.applied.append("document_date")
         elif raw_date is None:
-            if meta.document_date is None and not apply_as_of_date(meta, text):
+            if meta.document_date is None and not apply_as_of_date(archive, meta, text):
                 meta.document_date_status = "none_found"
                 meta.document_date_reason = N_("No date found in the document")
 

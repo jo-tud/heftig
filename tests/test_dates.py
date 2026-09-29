@@ -113,6 +113,17 @@ def test_as_of_date_applied_when_the_ai_finds_no_letter_date(archive):
     assert "PER 30.09.2021" in m.document_date_reason
 
 
+def test_as_of_date_only_from_the_first_pages(archive):
+    """A travel-expense list on a later page is not the date of a tax return."""
+    registry.override(classifier=ScriptedClassifier(default={"title": "Steuererklärung"}))
+    later = ["Einkommensteuererklärung 2015 Steuerberechnung", "Anlagen zur Erklärung",
+             "Reisekosten Zürich Zeitraum: 07.09.2015 - 10.09.2015"]  # fmt: skip
+    d = ingest_bytes(archive, text_pdf(later), "est.pdf").doc_id
+    process_all(archive)
+    m = docs.load_meta(archive, d)
+    assert m.document_date is None and m.document_date_status == "none_found"
+
+
 def test_older_documents_without_a_date_get_their_as_of_date(archive):
     registry.override(classifier=ScriptedClassifier(default={"title": "Kontoabschluss"}))
     d = ingest_bytes(archive, text_pdf([STATEMENT]), "abschluss.pdf").doc_id
