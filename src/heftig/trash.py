@@ -220,6 +220,10 @@ def restore(archive: Archive, doc_id: str) -> DocumentMetadata:
             if original_sidecar is not None:
                 atomic_write_bytes(src / "metadata.json", original_sidecar)
         raise
+    # back in the archive: if its paper had stayed in the binder, the document holds the place
+    from . import binders
+
+    binders.sheet_taken_out(archive, doc_id)
     return meta
 
 

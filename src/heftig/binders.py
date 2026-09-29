@@ -45,8 +45,10 @@ def load(paths: ArchivePaths) -> list[dict[str, Any]]:
     out = []
     for b in data.get("binders", []) if isinstance(data, dict) else []:
         if isinstance(b, dict) and isinstance(b.get("name"), str) and b["name"].strip():
+            stays = [e for e in b.get("stays") or [] if isinstance(e, dict)
+                     and isinstance(e.get("sequence"), int) and isinstance(e.get("section"), str)]
             out.append({"name": b["name"].strip()[:60], "started_at": str(b.get("started_at") or ""),
-                        "full_at": b.get("full_at") or None})  # fmt: skip
+                        "full_at": b.get("full_at") or None, "stays": stays})  # fmt: skip
     return out
 
 
@@ -147,7 +149,7 @@ def overview(archive) -> list[dict[str, Any]]:
     binders = load(archive.paths)
     for b in reversed(binders):
         n, first, last = counts.get(b["name"], (0, None, None))
-        out.append({**b, "sheets": n, "first_section": first, "last_section": last,
+        out.append({**b, "sheets": n + len(b["stays"]), "first_section": first, "last_section": last,
                     "current": not b["full_at"] and b is binders[-1]})  # fmt: skip
     return out
 
@@ -168,6 +170,54 @@ def adopt_unassigned(archive) -> int:
             meta.filing_binder = name
             docs.persist(archive, meta, bump=False)
     return len(ids)
+
+
+# --- sheets that stay in a binder although their document was deleted -----------------------
+
+
+def keep_sheet(archive, meta) -> bool:
+    """The document is deleted, its paper stays in the binder: the sheet keeps its place, so
+    the positions of the others stay right. Kept in binders.json (also after the trash is
+    emptied) until the sheet is taken out."""
+    if meta.filing_sequence is None or not meta.filing_section:
+        return False
+    with _LOCK:
+        binders = load(archive.paths)
+        name = meta.filing_binder or (binders[0]["name"] if binders else None)
+        b = next((b for b in binders if b["name"] == name), None)
+        if b is None:
+            return False
+        if not any(e.get("doc_id") == meta.id for e in b["stays"]):
+            b["stays"].append({"doc_id": meta.id, "title": meta.title or meta.original_filename,
+                               "section": meta.filing_section, "sequence": meta.filing_sequence,
+                               "at": now_iso()})  # fmt: skip
+            _write(archive.paths, binders)
+        return True
+
+
+def sheet_taken_out(archive, doc_id: str) -> bool:
+    """The sheet of a deleted document was taken out after all (or its document restored)."""
+    with _LOCK:
+        binders = load(archive.paths)
+        found = False
+        for b in binders:
+            left = [e for e in b["stays"] if e.get("doc_id") != doc_id]
+            found = found or len(left) != len(b["stays"])
+            b["stays"] = left
+        if found:
+            _write(archive.paths, binders)
+        return found
+
+
+def kept_sheets(paths: ArchivePaths, binder: str | None, section: str | None = None) -> list[dict]:
+    for b in load(paths):
+        if b["name"] == binder:
+            return [e for e in b["stays"] if section is None or e["section"] == section]
+    return []
+
+
+def sheet_kept(paths: ArchivePaths, doc_id: str) -> bool:
+    return any(e.get("doc_id") == doc_id for b in load(paths) for e in b["stays"])
 
 
 def merge(paths: ArchivePaths, incoming: list[dict[str, Any]]) -> int:

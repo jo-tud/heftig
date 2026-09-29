@@ -610,40 +610,52 @@ def set_keep_original(archive: Archive, doc_id: str, keep: bool) -> DocumentMeta
 
 def filing_position(archive: Archive, meta: DocumentMetadata, n: int = 2) -> FilingPosition | None:
     """Where the sheet lies: binder, section, position counted from the top among the sheets
-    that are there (taken-out and not-kept ones don't count; a taken-out sheet keeps its place)."""
+    that are there. Taken-out and not-kept sheets don't count (a taken-out one keeps its
+    place); sheets of deleted documents that stayed in the binder do count."""
+    from . import binders
+
     if meta.filing_sequence is None or not meta.filing_section:
         return None
     conn = archive.conn
     sec, seq, binder = meta.filing_section, meta.filing_sequence, meta.filing_binder
-    here = (
-        "filing_section=? AND filing_binder IS ? AND paper_location IS NULL "
-        "AND paper_discarded_at IS NULL"
-    )
-    total = conn.execute(f"SELECT COUNT(*) FROM documents WHERE {here}", (sec, binder)).fetchone()[
-        0
+    rows = [
+        dict(r)
+        for r in conn.execute(
+            "SELECT id, title, original_filename, filing_sequence FROM documents "
+            "WHERE filing_section=? AND filing_binder IS ? AND paper_location IS NULL "
+            "AND paper_discarded_at IS NULL AND id != ?",
+            (sec, binder, meta.id),
+        )
     ]
-    newer = conn.execute(
-        f"SELECT COUNT(*) FROM documents WHERE {here} AND filing_sequence>?", (sec, binder, seq)
-    ).fetchone()[0]
-    cols = "id, title, original_filename, filing_sequence"
-    above = conn.execute(
-        f"SELECT {cols} FROM documents WHERE {here} AND filing_sequence>? "
-        "ORDER BY filing_sequence ASC LIMIT ?",
-        (sec, binder, seq, n),
-    ).fetchall()
-    below = conn.execute(
-        f"SELECT {cols} FROM documents WHERE {here} AND filing_sequence<? "
-        "ORDER BY filing_sequence DESC LIMIT ?",
-        (sec, binder, seq, n),
-    ).fetchall()
+    for e in binders.kept_sheets(archive.paths, binder, sec):
+        if e.get("doc_id") != meta.id:
+            rows.append({"id": None, "title": e.get("title") or "", "original_filename": "",
+                         "filing_sequence": e["sequence"], "kept": True})  # fmt: skip
+    above = sorted((r for r in rows if r["filing_sequence"] > seq), key=lambda r: r["filing_sequence"])
+    below = sorted((r for r in rows if r["filing_sequence"] < seq),
+                   key=lambda r: r["filing_sequence"], reverse=True)  # fmt: skip
     return FilingPosition(
         binder=binder,
         section=sec,
-        position_from_top=newer + 1,
-        total_in_section=total if meta.paper_location is None else total + 1,
-        above=[dict(r) for r in reversed(above)],
-        below=[dict(r) for r in below],
+        position_from_top=len(above) + 1,
+        total_in_section=len(rows) + 1,
+        above=above[:n],
+        below=below[:n],
     )
+
+
+def take_filing(archive: Archive, doc_id: str, placed: DocumentMetadata) -> DocumentMetadata:
+    """Give ``doc_id`` the binder place of ``placed`` (a copy that is being deleted): the paper
+    lying there now belongs to this document. ``placed`` must be out of the table already."""
+    with write_tx(archive.conn):
+        meta = load_meta(archive, doc_id)
+        meta.filed_at, meta.filing_sequence = placed.filed_at, placed.filing_sequence
+        meta.filing_section, meta.filing_binder = placed.filing_section, placed.filing_binder
+        meta.paper_location, meta.paper_discarded_at = placed.paper_location, placed.paper_discarded_at
+        meta.paper = True
+        add_history(meta, HistoryEntry(task="filing", at=now_iso(), status="taken over", by="user"))
+        persist(archive, meta)
+        return meta
 
 
 # --- deletion --------------------------------------------------------------------------

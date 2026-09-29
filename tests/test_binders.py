@@ -159,3 +159,82 @@ def test_pages(web):
                                  "name": "Heftig 2"})  # fmt: skip
     assert r.status_code == 400 and "schon einen Ordner" in r.text
     assert c.get("/?filing_binder=Ordner+1").status_code == 200
+
+
+def test_deleted_sheet_taken_out_or_left_in_the_binder(archive):
+    from heftig import trash
+
+    a, b, c = (paper(archive, t) for t in ("Unten", "Mitte", "Oben"))
+    process_all(archive)
+    for d in (a, b, c):
+        docs.mark_filed(archive, d)
+    trash.trash_document(archive, b)
+    # default: the sheet is out - the one below moves up
+    assert place(archive, a) == ("Ordner 1", 2, 2)
+    # "leave it in the binder": its place keeps counting, even after the trash is emptied
+    gone = docs.DocumentMetadata.model_validate_json(archive.conn.execute(
+        "SELECT metadata_json FROM trash WHERE id=?", (b,)).fetchone()[0])  # fmt: skip
+    assert binders.keep_sheet(archive, gone)
+    assert place(archive, a) == ("Ordner 1", 3, 3)
+    pos = docs.filing_position(archive, docs.load_meta(archive, a))
+    assert pos.above[0]["kept"] and pos.above[0]["title"]
+    trash.purge(archive, b)
+    assert place(archive, a) == ("Ordner 1", 3, 3)
+    assert binders.overview(archive)[0]["sheets"] == 3
+    binders.sheet_taken_out(archive, b)
+    assert place(archive, a) == ("Ordner 1", 2, 2)
+
+
+def test_restoring_a_left_sheet_gives_the_place_back_to_the_document(archive):
+    from heftig import trash
+
+    a, b = paper(archive, "Brief A"), paper(archive, "Brief B")
+    process_all(archive)
+    docs.mark_filed(archive, a)
+    docs.mark_filed(archive, b)
+    trash.trash_document(archive, a)
+    gone = docs.DocumentMetadata.model_validate_json(archive.conn.execute(
+        "SELECT metadata_json FROM trash WHERE id=?", (a,)).fetchone()[0])  # fmt: skip
+    binders.keep_sheet(archive, gone)
+    trash.restore(archive, a)
+    assert not binders.sheet_kept(archive.paths, a)
+    assert place(archive, a) == ("Ordner 1", 2, 2) and place(archive, b) == ("Ordner 1", 1, 2)
+
+
+def test_pages_for_deleted_filed_documents(web):
+    arch, c, csrf = web
+    d = paper(arch, "Werbung im Ordner")
+    process_all(arch)
+    docs.mark_filed(arch, d)
+    r = c.post(f"/documents/{d}/action", data={"csrf_token": csrf, "action": "delete"},
+               follow_redirects=False)  # fmt: skip
+    loc = r.headers["location"]
+    page = c.get(loc).text
+    assert "Papier aus Ordner <strong>Ordner 1</strong> herausnehmen" in page
+    assert 'value="paper_stays"' in page
+    r = c.post("/trash/action", data={"csrf_token": csrf, "target": f"doc:{d}",
+               "action": "paper_stays", "back": loc}, follow_redirects=False)  # fmt: skip
+    assert binders.sheet_kept(arch.paths, d)
+    assert "Das Papier bleibt in Ordner" in c.get(r.headers["location"]).text
+    assert "Papier bleibt in Ordner" in c.get("/trash").text
+    assert "1 Blatt ohne Dokument im Archiv" in c.get("/binders").text
+
+
+def test_a_kept_duplicate_takes_over_the_binder_place(web, monkeypatch):
+    arch, c, csrf = web
+    monkeypatch.setattr(arch.settings, "auto_resolve_identical", False)
+    text = "\n".join(f"Paragraph {n}: Vertragsbedingung und Kündigungsfrist" for n in range(12))
+    a = ingest_bytes(arch, text_pdf([text]), "a.pdf", source="scanner").doc_id
+    b = ingest_bytes(arch, text_pdf([text]) + b"\n%x", "b.pdf").doc_id
+    process_all(arch)
+    filed = docs.mark_filed(arch, a)
+    from heftig.duplicates import open_pairs
+
+    pair = open_pairs(arch.conn)[0]
+    victim = "delete_a" if pair["a"]["id"] == a else "delete_b"
+    r = c.post("/duplicates/action", data={"csrf_token": csrf, "a": pair["a"]["id"],
+               "b": pair["b"]["id"], "action": victim}, follow_redirects=False)  # fmt: skip
+    kept = docs.load_meta(arch, b)
+    assert kept.filing_sequence == filed.filing_sequence and kept.filing_binder == "Ordner 1"
+    page = c.get(r.headers["location"]).text
+    assert "übernimmt ihren Platz" in page and "herausnehmen" not in page

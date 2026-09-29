@@ -39,6 +39,11 @@
   <span>{{ undo_label or _("Moved to the trash.") }}</span>
   <button name="action" value="restore" class="primary">{{ _("Undo") }}</button>
   <a href="/trash" class="small">{{ _("Trash") }}</a>
+  {% if undo_paper %}<input type="hidden" name="back" value="{{ undo_back }}">
+  <span class="undo-paper">{% if undo_paper.kept %}{% trans binder=undo_paper.binder, section=undo_paper.section, n=undo_paper.n %}The paper stays in binder <strong>{{ binder }}</strong> (section {{ section }}, position {{ n }} from the top) – its place keeps counting.{% endtrans %}
+    <button name="action" value="paper_out" class="linklike small">{{ _("Taken out after all") }}</button>
+  {% else %}{% trans binder=undo_paper.binder, section=undo_paper.section, n=undo_paper.n %}Take the paper out of binder <strong>{{ binder }}</strong>: section {{ section }}, position {{ n }} from the top.{% endtrans %}
+    <button name="action" value="paper_stays" class="linklike small">{{ _("Leave it in the binder") }}</button>{% endif %}</span>{% endif %}
 </form>
 {% endif %}
 {% block content %}{% endblock %}

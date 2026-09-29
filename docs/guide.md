@@ -45,6 +45,11 @@ The everyday cases:
   page, optionally with where it is. It keeps its place; *Put back in its place* returns it.
 - **Moving a letter to another binder:** *Into another binder …* – it goes on top of that
   binder's current section.
+- **Deleting a filed document:** the undo bar says where its paper lies ("take the paper out of
+  binder Heftig 1: section 2026-09, position 3 from the top"). *Leave it in the binder* keeps
+  the sheet's place counting instead, so the positions of the other letters stay right – also
+  after the trash is emptied; such sheets are listed under *Settings → Binders*. When you keep
+  one of two duplicates and the deleted one was filed, the kept copy takes over its place.
 - **Paper that is never filed** (a referral left at the doctor's): *Not kept*, in the inbox
   list or on the document page.
 - **Paper somewhere else entirely** (an old binder you don't file into): *Somewhere else …*

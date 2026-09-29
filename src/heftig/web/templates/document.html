@@ -158,9 +158,9 @@
     {% elif pos %}
       <p>{% trans binder=pos.binder or "–", section=pos.section, n=pos.position_from_top, total=pos.total_in_section %}Binder <strong>{{ binder }}</strong>, section <strong>{{ section }}</strong> – position <strong>{{ n }}</strong> of {{ total }}, counted from the top (newest on top).{% endtrans %} <span class="muted small">{{ _("Filed on %(when)s.", when=time(m.filed_at)) }}</span></p>
       <ol class="stack">
-        {% for n in pos.above %}<li class="muted"><a href="/documents/{{ n.id }}">{{ n.title or n.original_filename }}</a></li>{% endfor %}
+        {% for n in pos.above %}<li class="muted">{% if n.kept %}{{ n.title }} <span class="small">({{ _("document deleted – the paper is still here") }})</span>{% else %}<a href="/documents/{{ n.id }}">{{ n.title or n.original_filename }}</a>{% endif %}</li>{% endfor %}
         <li class="current"><strong>{{ m.title or m.original_filename }}</strong> {{ _("← this document") }}</li>
-        {% for n in pos.below %}<li class="muted"><a href="/documents/{{ n.id }}">{{ n.title or n.original_filename }}</a></li>{% endfor %}
+        {% for n in pos.below %}<li class="muted">{% if n.kept %}{{ n.title }} <span class="small">({{ _("document deleted – the paper is still here") }})</span>{% else %}<a href="/documents/{{ n.id }}">{{ n.title or n.original_filename }}</a>{% endif %}</li>{% endfor %}
       </ol>
       <details><summary class="small">{{ _("Taken out …") }}</summary>
         <form method="post" action="/documents/{{ m.id }}/action" class="inline-form">{{ csrf_field(csrf) }}{{ rv }}

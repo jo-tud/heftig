@@ -20,6 +20,18 @@
     <button name="action" value="next" class="primary" data-confirm-click="{{ _("Close %(name)s as full? New filings go into the next binder from now on.", name=b.name) }}">{{ _("This binder is full – start the next one") }}</button>
   </form>
   {% endif %}
+  {% if b.stays %}
+  <details><summary class="small">{{ ngettext("%(num)d sheet without a document in the archive", "%(num)d sheets without a document in the archive", b.stays | length) }}</summary>
+    <form method="post" action="/binders">
+      <input type="hidden" name="csrf_token" value="{{ csrf }}">
+      <ul class="small">{% for e in b.stays | sort(attribute='sequence', reverse=true) %}
+        <li>{{ e.title }} <span class="muted">({{ _("section %(section)s", section=e.section) }})</span>
+          <button name="sheet_out" value="{{ e.doc_id }}" class="linklike">{{ _("Taken out") }}</button></li>{% endfor %}</ul>
+      <input type="hidden" name="action" value="sheet_out">
+    </form>
+    <p class="hint">{{ _("Documents you deleted while leaving the paper in the binder. Their places keep counting, so the positions of the other letters stay right.") }}</p>
+  </details>
+  {% endif %}
   <details><summary class="small">{{ _("Rename …") }}</summary>
     <form method="post" action="/binders" class="inline-form">
       <input type="hidden" name="csrf_token" value="{{ csrf }}"><input type="hidden" name="old" value="{{ b.name }}">

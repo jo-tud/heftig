@@ -1,6 +1,12 @@
 {% extends "base.html" %}
 {% from "_macros.html" import time, csrf_field %}
 {% block title %}{{ _("Trash") }}{% endblock %}
+{% macro paper_line(it) -%}
+{% if it.paper.kept %}{% trans binder=it.paper.binder, section=it.paper.section, n=it.paper.n %}Paper stays in binder {{ binder }} (section {{ section }}, position {{ n }}).{% endtrans %}
+  <button name="target" value="doc:{{ it.id }}" formaction="/trash/action?action=paper_out" class="linklike">{{ _("Taken out after all") }}</button>
+{% else %}{% trans binder=it.paper.binder, section=it.paper.section, n=it.paper.n %}Paper: binder {{ binder }}, section {{ section }}, position {{ n }} from the top – take it out.{% endtrans %}
+  <button name="target" value="doc:{{ it.id }}" formaction="/trash/action?action=paper_stays" class="linklike">{{ _("Leave it in the binder") }}</button>{% endif %}
+{%- endmacro %}
 {% block content %}
 <nav class="crumbs"><a href="/settings">← {{ _("Settings") }}</a></nav>
 <h1>{{ _("Trash") }}</h1>
@@ -16,11 +22,12 @@
       <div class="trash-row"><span><strong>{% if g.batch.startswith('auto-') %}{{ _("Automatically resolved duplicates") }}{% else %}{{ _("Bulk delete") }}{% endif %}: {{ ngettext("%(num)d document", "%(num)d documents", g['items'] | length) }}</strong>
         <span class="muted small">{% if g.reason %}{{ g.reason | reason }} · {% endif %}{{ time(g.trashed_at) }} · {{ _("deleted permanently on %(date)s", date=g.purge_at | date) }}</span></span>
         <button name="target" value="batch:{{ g.batch }}" formaction="/trash/action?action=restore">{{ _("Restore all") }}</button></div>
-      <details><summary class="small">{{ _("Show documents") }}</summary><ul class="small">{% for it in g['items'] %}<li>{{ it.title }}</li>{% endfor %}</ul></details>
+      <details {% if g['items'] | selectattr('paper') | list %}open{% endif %}><summary class="small">{{ _("Show documents") }}</summary><ul class="small">{% for it in g['items'] %}<li>{{ it.title }}{% if it.paper %} – {{ paper_line(it) }}{% endif %}</li>{% endfor %}</ul></details>
     </li>
     {% else %}{% set it = g['items'][0] %}
     <li><div class="trash-row"><span>{{ it.title }}
-        <span class="muted small">{% if it.reason %}{{ it.reason | reason }} · {% endif %}{{ time(g.trashed_at) }} · {{ _("deleted permanently on %(date)s", date=g.purge_at | date) }}</span></span>
+        <span class="muted small">{% if it.reason %}{{ it.reason | reason }} · {% endif %}{{ time(g.trashed_at) }} · {{ _("deleted permanently on %(date)s", date=g.purge_at | date) }}</span>
+        {% if it.paper %}<span class="small">{{ paper_line(it) }}</span>{% endif %}</span>
       <span class="buttons"><button name="target" value="doc:{{ it.id }}" formaction="/trash/action?action=restore">{{ _("Restore") }}</button>
         <button name="target" value="purge:{{ it.id }}" formaction="/trash/action?action=purge" class="secondary" data-confirm-click="{{ _("Delete “%(title)s” permanently? The original will be removed.", title=it.title) }}">{{ _("Delete permanently") }}</button></span></div></li>
     {% endif %}

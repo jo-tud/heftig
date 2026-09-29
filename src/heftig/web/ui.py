@@ -213,8 +213,35 @@ def render(request: Request, name: str, *, http_status: int = 200, **ctx: Any) -
             ).fetchone()
             if row and row[0]:
                 ctx["undo_label"] = _("“%(title)s” moved to the trash.", title=row[0][:80])
+            ctx["undo_paper"] = _trashed_paper(request.app.state.archive, undo[4:])
+            ctx["undo_back"] = request.url.path + (
+                "?" + request.url.query if request.url.query else ""
+            )
 
     return request.app.state.templates.TemplateResponse(request, name, ctx, status_code=http_status)
+
+
+def _trashed_paper(a, doc_id: str) -> dict[str, Any] | None:
+    """Where the paper of a deleted, filed document lies - to take it out, or to leave it in
+    the binder (then its place keeps counting). None if there is nothing to do: not filed,
+    already elsewhere, or its place was taken over by another copy."""
+    from ..models import DocumentMetadata
+
+    row = a.conn.execute("SELECT metadata_json FROM trash WHERE id=?", (doc_id,)).fetchone()
+    if row is None:
+        return None
+    meta = DocumentMetadata.model_validate_json(row[0])
+    if meta.filing_sequence is None or meta.paper_location or meta.paper_discarded_at:
+        return None
+    if a.conn.execute(
+        "SELECT 1 FROM documents WHERE filing_sequence=?", (meta.filing_sequence,)
+    ).fetchone():
+        return None
+    pos = docs.filing_position(a, meta)
+    if pos is None:
+        return None
+    return {"doc_id": doc_id, "binder": pos.binder or "–", "section": pos.section,
+            "n": pos.position_from_top, "kept": binders.sheet_kept(a.paths, doc_id)}  # fmt: skip
 
 
 def _open_tasks(request: Request) -> int:
@@ -414,6 +441,9 @@ BULK_LIMIT = 2000
 def trash_page(request: Request, p: Principal = Depends(require_user)):
     a = get_archive(request)
     groups = trash.listing(a)
+    for g in groups:
+        for it in g["items"]:
+            it["paper"] = _trashed_paper(a, it["id"])
     return render(
         request, "trash.html", nav="settings", groups=groups,
         total=sum(len(g["items"]) for g in groups), days=a.settings.trash_retention_days,
@@ -445,6 +475,20 @@ def _trash_sync(a, form, query_action: str) -> RedirectResponse:
         elif action == "restore" and target.startswith("doc:"):
             meta = trash.restore(a, target[4:])
             return redirect(f"/documents/{meta.id}?" + urlencode({"msg": _("Restored.")}))
+        elif action in ("paper_stays", "paper_out") and target.startswith("doc:"):
+            row = a.conn.execute(
+                "SELECT metadata_json FROM trash WHERE id=?", (target[4:],)
+            ).fetchone()
+            if row is None:
+                raise trash.TrashError(_("No longer in the trash."))
+            from ..models import DocumentMetadata
+
+            if action == "paper_stays":
+                binders.keep_sheet(a, DocumentMetadata.model_validate_json(row[0]))
+                msg = _("The sheet stays in the binder – its place keeps counting.")
+            else:
+                binders.sheet_taken_out(a, target[4:])
+                msg = _("Noted: the sheet is out of the binder.")
         elif action == "purge" and target.startswith("purge:"):
             trash.purge(a, target[6:])
             msg = _("Deleted permanently.")
@@ -457,7 +501,8 @@ def _trash_sync(a, form, query_action: str) -> RedirectResponse:
             msg = ""
     except trash.TrashError as e:
         msg = str(e)
-    return redirect(back + "?" + urlencode({"msg": msg}))
+    back = _safe_next(back)
+    return redirect(back + ("&" if "?" in back else "?") + urlencode({"msg": msg}))
 
 
 @router.post("/trash/action")
@@ -1293,8 +1338,18 @@ def _duplicate_sync(a, form) -> RedirectResponse:
         keeper = docs.load_meta(a, idb if victim == ida else ida)
         with i18n.language("en"):  # stored in English; shown translated
             reason = _("Duplicate of “%(title)s”", title=keeper.title or keeper.original_filename)
+        gone = docs.load_meta(a, victim)
+        placed = gone.filing_sequence is not None and not (
+            keeper.filing_sequence is not None or keeper.paper_location or keeper.paper_discarded_at
+        )
         trash.trash_document(a, victim, reason=reason)
-        return _next_duplicate(a, _("Duplicate moved to the trash."), undo=f"doc:{victim}")
+        msg = _("Duplicate moved to the trash.")
+        if placed:
+            # the paper in the binder is the same letter: the kept copy takes over its place
+            docs.take_filing(a, keeper.id, gone)
+            msg = _("Duplicate moved to the trash; the kept copy takes over its place in the "
+                    "binder.")  # fmt: skip
+        return _next_duplicate(a, msg, undo=f"doc:{victim}")
     if action == "combine":
         # the recommended copy (signed, annotated ...) comes first
         order = [idb, ida] if str(form.get("first") or "") == idb else [ida, idb]
@@ -1805,6 +1860,9 @@ def _binders_sync(request: Request, form) -> Any:
         if action == "rename":
             binders.rename(a, _form_val(form, "old"), _form_val(form, "name"))
             return redirect("/binders?done=renamed")
+        if action == "sheet_out":
+            binders.sheet_taken_out(a, _form_val(form, "sheet_out"))
+            return redirect("/binders")
     except binders.BinderError as e:
         return render(request, "binders.html", http_status=400, nav="settings",
                       binders=binders.overview(a), error=str(e),
