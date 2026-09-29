@@ -62,6 +62,8 @@
         <button type="button" data-zoom="fit" title="{{ _("Page width (0)") }}" id="vp-zoom">{{ _("%(pct)s%%", pct=100) }}</button>
         <button type="button" data-zoom="in" title="{{ _("Zoom in (+)") }}" aria-label="{{ _("Zoom in") }}">+</button>
         <button type="button" data-fullscreen title="{{ _("Full screen (F)") }}" aria-label="{{ _("Full screen") }}">⛶</button>
+        {% if (m.page_count or 1) > 1 %}<form method="post" action="/documents/{{ m.id }}/action" class="inline turn-all">{{ csrf_field(csrf) }}{{ rv }}<input type="hidden" name="page" value="all">{% if all_pages %}<input type="hidden" name="pages" value="all">{% endif %}
+          <button name="action" value="rotate_back" title="{{ _("Turn all pages to the left") }}" aria-label="{{ _("Turn all pages to the left") }}">↺ {{ _("all") }}</button><button name="action" value="rotate" title="{{ _("Turn all pages to the right") }}" aria-label="{{ _("Turn all pages to the right") }}">{{ _("all") }} ↻</button></form>{% endif %}
         <a class="button" href="/documents/{{ m.id }}/original?inline=1" target="_blank" rel="noopener" title="{{ _("Open the original in the browser") }}">{{ _("Original") }}</a>
       </span>
     </div>
@@ -73,6 +75,11 @@
       {% else %}<span class="muted">{{ _("“%(q)s” is not in the text – the match comes from the title, sender, tags, fields or notes.", q=q) }}</span>{% endif %}
     </p>
     {% endif %}
+    {% if read_turned %}
+    <form method="post" action="/documents/{{ m.id }}/action" class="blankbar small">{{ csrf_field(csrf) }}{{ rv }}
+      {{ ngettext("Page %(pages)s was read before it was turned.", "Pages %(pages)s were read before they were turned.", read_turned | length, pages=read_turned | join(', ')) }}
+      <button name="action" value="reprocess_extract" class="linklike">{{ _("Recognise the text again") }}</button></form>
+    {% endif %}
     {% if hidden_pages %}
     <p class="blankbar small" role="status">{{ ngettext("%(num)d blank page hidden (%(pages)s)", "%(num)d blank pages hidden (%(pages)s)", hidden_pages | length, pages=hidden_pages | join(', ')) }} – <a href="{{ url_all_pages }}">{{ _("show all pages") }}</a></p>
     {% elif all_pages %}
@@ -81,13 +88,16 @@
     <div class="pv-media viewer-wrap">
       <div class="viewer" id="viewer" tabindex="0" aria-label="{{ _("Pages of the document") }}"{% if hit_pages %} data-q="{{ q }}" data-hit-pages="{{ hit_pages | map(attribute='page') | join(',') }}"{% endif %}>
         {% for w, h in page_sizes %}{% if loop.index not in hidden_pages %}
-        {% set is_blank = loop.index in blank_pages %}
+        {% set is_blank = loop.index in blank_pages %}{% set turn = m.page_rotation.get(loop.index ~ '', 0) %}{% set rq = '&r=' ~ turn if turn else '' %}
         <figure class="vpage{% if is_blank %} blank{% endif %}" id="page-{{ loop.index }}" data-page="{{ loop.index }}" data-ar="{{ '%.4f' % (w / h) }}">
           <img alt="{{ _("Page %(num)s", num=loop.index) }}" draggable="false" loading="{{ 'eager' if loop.index <= 2 else 'lazy' }}" decoding="async"
-               src="/documents/{{ m.id }}/pages/{{ loop.index }}.webp?w=960"
-               srcset="/documents/{{ m.id }}/pages/{{ loop.index }}.webp?w=480 480w, /documents/{{ m.id }}/pages/{{ loop.index }}.webp?w=960 960w, /documents/{{ m.id }}/pages/{{ loop.index }}.webp?w=1440 1440w, /documents/{{ m.id }}/pages/{{ loop.index }}.webp?w=2048 2048w"
+               src="/documents/{{ m.id }}/pages/{{ loop.index }}.webp?w=960{{ rq }}"
+               srcset="/documents/{{ m.id }}/pages/{{ loop.index }}.webp?w=480{{ rq }} 480w, /documents/{{ m.id }}/pages/{{ loop.index }}.webp?w=960{{ rq }} 960w, /documents/{{ m.id }}/pages/{{ loop.index }}.webp?w=1440{{ rq }} 1440w, /documents/{{ m.id }}/pages/{{ loop.index }}.webp?w=2048{{ rq }} 2048w"
                sizes="(max-width: 800px) 100vw, 55vw">
-          <figcaption>{{ loop.index }}{% if all_pages %}
+          <figcaption>{{ loop.index }}
+            <form method="post" action="/documents/{{ m.id }}/action" class="inline turn">{{ csrf_field(csrf) }}{{ rv }}<input type="hidden" name="page" value="{{ loop.index }}">{% if all_pages %}<input type="hidden" name="pages" value="all">{% endif %}
+              <button name="action" value="rotate_back" class="linklike" title="{{ _("Turn page %(num)s to the left", num=loop.index) }}" aria-label="{{ _("Turn page %(num)s to the left", num=loop.index) }}">↺</button><button name="action" value="rotate" class="linklike" title="{{ _("Turn page %(num)s to the right", num=loop.index) }}" aria-label="{{ _("Turn page %(num)s to the right", num=loop.index) }}">↻</button>
+            </form>{% if all_pages %}
             <form method="post" action="/documents/{{ m.id }}/action" class="inline">{{ csrf_field(csrf) }}{{ rv }}<input type="hidden" name="page" value="{{ loop.index }}">
               {% if is_blank %}<span class="muted">· {{ _("blank") }} ·</span> <button name="action" value="page_blank" class="linklike">{{ _("Not blank – show") }}</button>
               {% else %}<input type="hidden" name="blank" value="1"><button name="action" value="page_blank" class="linklike">{{ _("Blank – hide") }}</button>{% endif %}

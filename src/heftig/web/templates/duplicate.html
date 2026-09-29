@@ -76,10 +76,10 @@
       <h2 class="small"><a href="/documents/{{ s.m.id }}" target="_blank" rel="noopener">{{ _("Left: %(title)s", title=s.m.title or s.m.original_filename) if loop.first else _("Right: %(title)s", title=s.m.title or s.m.original_filename) }}</a></h2>
       <div class="pv-media viewer-wrap">
         <div class="viewer cviewer" tabindex="0">
-          {% for w, h in s.sizes %}{% set pg = diff.pages[loop.index0] if loop.index0 < diff.pages | length else none %}
+          {% for w, h in s.sizes %}{% set pg = diff.pages[loop.index0] if loop.index0 < diff.pages | length else none %}{% set turn = s.m.page_rotation.get(loop.index ~ '', 0) %}{% set rq = '&r=' ~ turn if turn else '' %}
           <figure class="vpage" data-page="{{ loop.index }}" data-ar="{{ '%.4f' % (w / h) }}">
-            <img alt="{{ _("Page %(num)s", num=loop.index) }}" draggable="false" loading="lazy" decoding="async" src="/documents/{{ s.m.id }}/pages/{{ loop.index }}.webp?w=960"
-                 srcset="/documents/{{ s.m.id }}/pages/{{ loop.index }}.webp?w=960 960w, /documents/{{ s.m.id }}/pages/{{ loop.index }}.webp?w=1440 1440w, /documents/{{ s.m.id }}/pages/{{ loop.index }}.webp?w=2048 2048w"
+            <img alt="{{ _("Page %(num)s", num=loop.index) }}" draggable="false" loading="lazy" decoding="async" src="/documents/{{ s.m.id }}/pages/{{ loop.index }}.webp?w=960{{ rq }}"
+                 srcset="/documents/{{ s.m.id }}/pages/{{ loop.index }}.webp?w=960{{ rq }} 960w, /documents/{{ s.m.id }}/pages/{{ loop.index }}.webp?w=1440{{ rq }} 1440w, /documents/{{ s.m.id }}/pages/{{ loop.index }}.webp?w=2048{{ rq }} 2048w"
                  sizes="(max-width: 800px) 50vw, 45vw">
             {% if pg and pg.status == 'different' %}{% for bx in (pg.words_a if side == 'a' else pg.words_b) or [] %}<span class="dbox dword" data-box="{{ bx | join(',') }}"></span>{% endfor %}{% for bx in (pg.boxes_a if side == 'a' else pg.boxes_b) %}<span class="dbox" data-box="{{ bx | join(',') }}"></span>{% endfor %}{% endif %}
             <figcaption>{{ loop.index }}</figcaption>

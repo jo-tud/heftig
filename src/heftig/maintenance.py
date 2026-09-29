@@ -766,7 +766,8 @@ def _import_one(archive: Archive, root: Path, meta: DocumentMetadata, report: di
         with write_tx(conn):
             docs.write_preview(
                 archive, meta.id,
-                make_preview(dest, meta.mime_type, archive.settings.max_image_megapixels),
+                make_preview(dest, meta.mime_type, archive.settings.max_image_megapixels,
+                             rotation=docs.rotation(meta, 1)),
             )  # fmt: skip
     except Exception:
         log.warning("preview for imported %s failed", meta.id)

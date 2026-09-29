@@ -5,7 +5,8 @@ from Tesseract on the rendered page - computed on the first request and cached n
 rendered page images (``documents/<id>/cache/``, regenerable like them). Without Tesseract there
 are no boxes; the viewer still jumps to the pages with hits.
 
-Boxes are normalised to 0..1 (x from the left, y from the top of the page as displayed).
+Boxes are normalised to 0..1 (x from the left, y from the top of the page as displayed - a page
+the user turned is read and measured turned).
 """
 
 from __future__ import annotations
@@ -19,7 +20,7 @@ import pypdfium2 as pdfium
 
 from . import documents as docs
 from .archive import Archive
-from .media import PDFIUM_LOCK, render_width, to_png_bytes
+from .media import PDFIUM_LOCK, render_width, rotate_box, to_png_bytes
 from .models import DocumentMetadata
 from .storage import atomic_write_json, read_json
 
@@ -82,7 +83,7 @@ def pdf_words(path: Path, index: int) -> list[Word] | None:
     return words if nchars >= MIN_TEXT_CHARS else None
 
 
-def _ocr_words(archive: Archive, meta: DocumentMetadata, index: int) -> list[Word]:
+def _ocr_words(archive: Archive, meta: DocumentMetadata, index: int, turn: int = 0) -> list[Word]:
     if not shutil.which("tesseract"):
         return []
     from .providers.base import ProviderError, ProviderUnavailable
@@ -90,7 +91,7 @@ def _ocr_words(archive: Archive, meta: DocumentMetadata, index: int) -> list[Wor
 
     img = render_width(
         archive.paths.resolve(meta.original_relpath), meta.mime_type, index, OCR_WIDTH,
-        archive.settings.max_image_megapixels,
+        archive.settings.max_image_megapixels, turn,
     )  # fmt: skip
     w, h = img.size
     try:
@@ -109,13 +110,15 @@ def _ocr_words(archive: Archive, meta: DocumentMetadata, index: int) -> list[Wor
 def page_words(archive: Archive, meta: DocumentMetadata, page: int) -> tuple[list[Word], str]:
     """Words of one page (1-based) and where they come from: "pdf", "ocr" or "none"."""
     cache = docs.files(archive, meta.id).dir / "cache" / f"words-p{page}.json"
+    turn = docs.rotation(meta, page)
 
     def cached() -> tuple[list[Word], str] | None:
         try:
             data = read_json(cache)
         except (OSError, ValueError):
             return None
-        if data.get("v") == CACHE_VERSION and data.get("sha256") == meta.sha256:
+        if (data.get("v") == CACHE_VERSION and data.get("sha256") == meta.sha256
+                and data.get("turn", 0) == turn):  # fmt: skip
             return data["words"], data["source"]
         return None
 
@@ -125,16 +128,19 @@ def page_words(archive: Archive, meta: DocumentMetadata, page: int) -> tuple[lis
     words = None
     if meta.mime_type == "application/pdf":
         words = pdf_words(archive.paths.resolve(meta.original_relpath), page - 1)
+        if words and turn:
+            words = [[w[0], *rotate_box(w[1:], turn)] for w in words]
     source = "pdf"
     if words is None:
         with _OCR_LOCK:
             hit = cached()
             if hit is not None:
                 return hit
-            words = _ocr_words(archive, meta, page - 1)
+            words = _ocr_words(archive, meta, page - 1, turn)
         source = "ocr" if words else "none"
     if docs.cache_writable(archive, meta.id):
         atomic_write_json(
-            cache, {"v": CACHE_VERSION, "sha256": meta.sha256, "source": source, "words": words}
-        )
+            cache, {"v": CACHE_VERSION, "sha256": meta.sha256, "turn": turn, "source": source,
+                    "words": words},
+        )  # fmt: skip
     return words, source

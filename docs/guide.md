@@ -116,6 +116,15 @@ searchable, and a page with a search hit is always shown. Blank pages never go t
 and the thumbnail shows the first page that is not blank. Documents from before this existed
 are checked once in the background (`heftig blank-pages` does it again).
 
+## Pages the wrong way round
+
+A page scanned upside down or sideways: ↺ ↻ at the bottom right of the page turn it by a
+quarter; *↺ all* and *all ↻* in the viewer's toolbar turn every page. The turn is stored with
+the document (the original file stays as it is) and applies wherever the page is shown: viewer,
+thumbnails, comparison, search marks, and the next text recognition. If the page's text was
+read from the image before it was turned, a line above the pages offers *Recognise the text
+again* (pages read before stay cached, so only the turned ones are read anew).
+
 ## Duplicates and combining
 
 The identical file never becomes a second document. The same letter in two forms – an e-mailed

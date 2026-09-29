@@ -611,13 +611,16 @@ async def saved_search_action(request: Request, p: Principal = Depends(require_w
 
 
 def _page_sizes(a, m: dict) -> list[tuple[float, float]]:
+    """Width/height of every page as shown - turned pages swap them."""
     from ..media import page_sizes
 
     try:
         sizes = page_sizes(a.paths.resolve(m["original_relpath"]), m["mime_type"])
     except Exception:  # broken or missing original: the viewer falls back to A4 boxes
         sizes = []
-    return sizes or [(595.0, 842.0)] * (m.get("page_count") or 1)
+    sizes = sizes or [(595.0, 842.0)] * (m.get("page_count") or 1)
+    turned = {int(k): v for k, v in (m.get("page_rotation") or {}).items()}
+    return [(h, w) if turned.get(n) in (90, 270) else (w, h) for n, (w, h) in enumerate(sizes, 1)]
 
 
 # --- AI search: a request in plain words becomes filters -------------------------------------
@@ -756,6 +759,12 @@ def document_page(request: Request, doc_id: str, p: Principal = Depends(require_
     # blank pages (empty backs of duplex scans) are hidden - except pages with search hits
     # and when all pages are asked for
     blank = docs.blank_pages(tp, detail["metadata"].get("page_blank"))
+    # pages turned after their text was read from the image: offer to read them again
+    turned = {int(k): v for k, v in (detail["metadata"].get("page_rotation") or {}).items()}
+    read_turned = [
+        pg.page for pg in (tp.pages if tp and not tp.user_confirmed else [])
+        if pg.method in ("ocr", "none") and not pg.blank and turned.get(pg.page, 0) != pg.turn
+    ]  # fmt: skip
     all_pages = request.query_params.get("pages") == "all"
     hits = {h["page"] for h in hit_pages}
     keep = {k: v for k, v in request.query_params.items() if k in ("q", "review")}
@@ -764,6 +773,7 @@ def document_page(request: Request, doc_id: str, p: Principal = Depends(require_
         "document.html",
         nav="inbox" if request.query_params.get("review") == "1" else "documents",
         blank_pages=blank,
+        read_turned=read_turned,
         hidden_pages=[] if all_pages else [n for n in blank if n not in hits],
         all_pages=all_pages,
         url_all_pages=f"/documents/{doc_id}?"
@@ -824,17 +834,19 @@ def document_page_image(
     if not 1 <= page <= (meta.page_count or 1):
         return Response(status_code=404)
     width = min(PAGE_WIDTHS, key=lambda x: (x < w, abs(x - w)))  # smallest step >= w
-    cache = docs.files(a, doc_id).dir / "cache" / f"p{page}-{width}.webp"
+    turn = docs.rotation(meta, page)
+    rot = f"-r{turn}" if turn else ""
+    cache = docs.files(a, doc_id).dir / "cache" / f"p{page}-{width}{rot}.webp"
     headers = {
         "Cache-Control": "private, max-age=604800",
-        "ETag": f'"{meta.sha256[:16]}-{page}-{width}"',
+        "ETag": f'"{meta.sha256[:16]}-{page}-{width}{rot}"',
     }
     if request.headers.get("if-none-match") == headers["ETag"]:
         return Response(status_code=304, headers=headers)
     if not cache.exists():
         img = render_width(
             a.paths.resolve(meta.original_relpath), meta.mime_type, page - 1, width,
-            a.settings.max_image_megapixels,
+            a.settings.max_image_megapixels, turn,
         )  # fmt: skip
         buf = io.BytesIO()
         img.save(buf, format="WEBP", quality=82, method=4)
@@ -885,7 +897,8 @@ def document_preview(
     except (docs.DocumentNotFound, ValueError):
         return Response(status_code=404)
     cover = docs.cover_page(a, meta)
-    page = f"-p{cover + 1}" if cover else ""
+    turn = docs.rotation(meta, cover + 1)
+    page = (f"-p{cover + 1}" if cover else "") + (f"-r{turn}" if turn else "")
     headers = {
         "Cache-Control": "private, max-age=604800",
         "ETag": f'"{meta.sha256[:16]}-t{THUMB_VERSION}-{width}{page}"',
@@ -897,7 +910,7 @@ def document_preview(
         try:
             data = make_thumbnail(
                 a.paths.resolve(meta.original_relpath), meta.mime_type,
-                a.settings.max_image_megapixels, width, cover,
+                a.settings.max_image_megapixels, width, cover, turn,
             )  # fmt: skip
         except Exception:  # noqa: BLE001 - a broken original: no thumbnail
             return Response(status_code=404)
@@ -1115,6 +1128,16 @@ def _action_sync(a, doc_id: str, form) -> RedirectResponse:
         if str(form.get("review") or "") == "1":
             return redirect("/review/next?" + urlencode({"after": doc_id}))
         msg = _("Marked as reviewed.")
+    elif action in ("rotate", "rotate_back"):
+        which = str(form.get("page") or "")
+        degrees = 90 if action == "rotate" else -90
+        try:
+            docs.rotate_pages(a, doc_id, None if which == "all" else [int(which)], degrees)
+        except (ValueError, docs.EditError):
+            raise ApiError(400, "invalid", _("Unknown page.")) from None
+        keep = {"pages": "all"} if str(form.get("pages") or "") == "all" else {}
+        anchor = "#viewer-card" if which == "all" else f"#page-{which}"
+        return redirect(_doc_url(doc_id, form, **keep) + anchor)
     elif action == "page_blank":
         try:
             page = int(str(form.get("page") or ""))

@@ -145,6 +145,7 @@ Fields marked * are additions to the minimal field list of the original specific
 | `processing_history` | list | Extraction, classification, edits, filing and merges: `{task, at, status, provider, model, target, adapter_version, prompt_version, fields, error, by}`. `task`: `extract`, `classify`, `edit`, `filing`, `import`, `merge`, `note`, `attachment`; `by`: `ai`, `user`, `rule`, `import`, `system`. The last 200 entries are kept. |
 | `ai_pending`* | list | AI stages (`extract`, `classify`) that ran with the local fallback and are redone once the provider answers again ([providers.md](providers.md#when-the-ai-provider-is-unreachable)). |
 | `ocr_all_pages`* | bool | The user asked for AI text recognition of every page, beyond `HEFTIG_OCR_AI_MAX_PAGES`. |
+| `page_rotation`* | object | Pages the user turned, degrees clockwise (`{"2": 180}`: 90, 180 or 270). Applied when showing and reading the page; the original file is never changed. |
 | `page_blank`* | object | The user's decision per page (`{"2": false, "5": true}`): `true` hides the page as blank, `false` always shows it – overrides `blank` in `text_pages.json`. |
 | `trashed_at`*, `trash_reason`*, `trash_batch`* | string or null | Set while the document is in the trash (`trash/<uuid>/`); documents deleted together (a bulk deletion, the parts of a combined document) share a batch and can be restored together. |
 | `revision`* | int | Incremented on every write; used by `heftig repair` to decide whether the sidecar or the database is newer. |
@@ -175,7 +176,7 @@ Ihre Rechnung für September 2026
   "page_count": 1,
   "pages": [
     {"page": 1, "method": "embedded", "provider": "", "text": "Telekom Deutschland GmbH\n...",
-     "chars": 157, "error": null, "blank": false}
+     "chars": 157, "error": null, "blank": false, "turn": 0}
   ],
   "extracted_at": "2026-09-28T08:51:55Z",
   "user_confirmed": false
@@ -185,7 +186,8 @@ Ihre Rechnung für September 2026
 `method` is `embedded` (PDF text layer), `ocr`, `none` (no text; `error` explains why) or `user`
 (reserved for user-edited text). `blank` marks a page without ink (e.g. the empty back of a duplex
 scan): not sent to a paid OCR and hidden in the page viewer, unless `page_blank` in
-`metadata.json` says otherwise. `user_confirmed: true` makes re-extraction keep the text; V1 has
+`metadata.json` says otherwise. `turn` is how the page was turned (`page_rotation`) when its
+image was read. `user_confirmed: true` makes re-extraction keep the text; V1 has
 no UI for editing text yet.
 
 ## saved_searches.json

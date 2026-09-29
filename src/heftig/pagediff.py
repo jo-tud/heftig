@@ -278,7 +278,7 @@ def _components(grid: list[list[bool]]) -> list[tuple[int, int, int, int]]:
 def _render(archive: Archive, meta: DocumentMetadata, page: int) -> Image.Image:
     return render_width(
         archive.paths.resolve(meta.original_relpath), meta.mime_type, page - 1, WIDTH,
-        archive.settings.max_image_megapixels,
+        archive.settings.max_image_megapixels, docs.rotation(meta, page),
     ).convert("L")  # fmt: skip
 
 
@@ -286,15 +286,21 @@ def _text_layer(archive: Archive, meta: DocumentMetadata, page: int) -> list | N
     """Words of the page's text layer (born-digital PDF), None for scans and photos."""
     if meta.mime_type != "application/pdf":
         return None
+    from .media import rotate_box
     from .wordboxes import pdf_words
 
-    return pdf_words(archive.paths.resolve(meta.original_relpath), page - 1)
+    words = pdf_words(archive.paths.resolve(meta.original_relpath), page - 1)
+    turn = docs.rotation(meta, page)
+    if words and turn:
+        words = [[w[0], *rotate_box(w[1:], turn)] for w in words]
+    return words
 
 
 def compare_documents(archive: Archive, a: DocumentMetadata, b: DocumentMetadata) -> dict[str, Any]:
     """Page-by-page comparison, cached next to document a (keyed by both file hashes)."""
     cache = docs.files(archive, a.id).dir / "cache" / f"pagediff-{b.id}.json"
-    key = {"v": CACHE_VERSION, "a": a.sha256, "b": b.sha256}
+    key = {"v": CACHE_VERSION, "a": a.sha256, "b": b.sha256,
+           "turned": [dict(sorted(a.page_rotation.items())), dict(sorted(b.page_rotation.items()))]}  # fmt: skip
     try:
         data = read_json(cache)
         if data.get("key") == key:

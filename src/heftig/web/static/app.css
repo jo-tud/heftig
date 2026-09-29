@@ -379,6 +379,8 @@ html.privacy .viewer-wrap:not(.pv-open) .dbox { display: none; }
 .blankbar { margin: 0; }
 .vpage.blank img { opacity: .4; }
 .vpage figcaption form { display: inline; }
+.vpage figcaption .turn .linklike { text-decoration: none; font-size: 1rem; padding: 0 .15rem; }
+.viewer-tools .turn-all { display: inline-flex; gap: .3rem; }
 .vpage figcaption .linklike, .vpage figcaption .muted { color: #fff; font-size: inherit; }
 .vpage figcaption .linklike { text-decoration: underline; padding: .2rem 0; }
 .vpage .hl { position: absolute; background: rgba(255, 214, 0, .42); outline: 2px solid rgba(230, 170, 0, .9);

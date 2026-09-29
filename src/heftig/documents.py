@@ -138,13 +138,44 @@ def set_page_blank(archive: Archive, doc_id: str, page: int, blank: bool) -> Doc
     return meta
 
 
+def rotation(meta: DocumentMetadata, page: int) -> int:
+    """Degrees clockwise the user turned page `page` (1-based)."""
+    return int(meta.page_rotation.get(page, 0))
+
+
+def rotate_pages(
+    archive: Archive, doc_id: str, pages: list[int] | None, degrees: int = 90
+) -> DocumentMetadata:
+    """Turn pages clockwise by `degrees` (-90 turns back); None: every page. Only the display
+    changes (viewer, previews, comparison, text recognition) - never the original file."""
+    with write_tx(archive.conn):
+        meta = load_meta(archive, doc_id)
+        count = meta.page_count or 1
+        todo = list(range(1, count + 1)) if pages is None else pages
+        if not todo or any(not 1 <= p <= count for p in todo):
+            raise EditError(_("There is no page %(num)s.", num=max(todo or [0])))
+        cover = cover_page(archive, meta) + 1
+        for p in todo:
+            turned = (rotation(meta, p) + degrees) % 360
+            if turned:
+                meta.page_rotation[p] = turned  # type: ignore[assignment]
+            else:
+                meta.page_rotation.pop(p, None)
+        persist(archive, meta)  # a new revision: the lists fetch the turned thumbnail
+    if cover in todo:
+        refresh_preview(archive, meta)
+    return meta
+
+
 def refresh_preview(archive: Archive, meta: DocumentMetadata) -> None:
     from .media import make_preview
 
+    cover = cover_page(archive, meta)
     try:
         data = make_preview(
             archive.paths.resolve(meta.original_relpath), meta.mime_type,
-            archive.settings.max_image_megapixels, page_index=cover_page(archive, meta),
+            archive.settings.max_image_megapixels, page_index=cover,
+            rotation=rotation(meta, cover + 1),
         )  # fmt: skip
     except Exception:  # noqa: BLE001 - the preview is optional and regenerable
         return

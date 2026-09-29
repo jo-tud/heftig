@@ -132,10 +132,39 @@ def pdf_embedded_text(path: Path) -> list[str]:
     return out
 
 
+ROTATIONS = (0, 90, 180, 270)  # clockwise, as the user turned the page (DocumentMetadata)
+_TURN = {90: Image.Transpose.ROTATE_270, 180: Image.Transpose.ROTATE_180,
+         270: Image.Transpose.ROTATE_90}  # fmt: skip
+
+
+def rotate(img: Image.Image, rotation: int) -> Image.Image:
+    """Turn a rendered page clockwise by 90/180/270 degrees (lossless)."""
+    return img.transpose(_TURN[rotation]) if rotation in _TURN else img
+
+
+def rotate_box(box: list[float], rotation: int) -> list[float]:
+    """A box [x0, y0, x1, y1] (0..1 of the page) on the page turned clockwise."""
+    x0, y0, x1, y1 = box
+    if rotation == 90:
+        return [1 - y1, x0, 1 - y0, x1]
+    if rotation == 180:
+        return [1 - x1, 1 - y1, 1 - x0, 1 - y0]
+    if rotation == 270:
+        return [y0, 1 - x1, y1, 1 - x0]
+    return [x0, y0, x1, y1]
+
+
 def render_page(
+    path: Path, mime: str, page_index: int, dpi: int, max_megapixels: int, rotation: int = 0
+) -> Image.Image:
+    """Render one page (PDF) or frame (image) to an RGB PIL image, size-capped; turned
+    clockwise by `rotation` degrees."""
+    return rotate(_render_page(path, mime, page_index, dpi, max_megapixels), rotation)
+
+
+def _render_page(
     path: Path, mime: str, page_index: int, dpi: int, max_megapixels: int
 ) -> Image.Image:
-    """Render one page (PDF) or frame (image) to an RGB PIL image, size-capped."""
     _set_pixel_limit(max_megapixels)
     if mime == "application/pdf":
         with PDFIUM_LOCK:
@@ -291,11 +320,16 @@ def _even_paper(img: Image.Image) -> Image.Image:
 
 
 def make_thumbnail(
-    path: Path, mime: str, max_megapixels: int, width: int, page_index: int = 0
+    path: Path,
+    mime: str,
+    max_megapixels: int,
+    width: int,
+    page_index: int = 0,
+    rotation: int = 0,
 ) -> bytes:
     from PIL import ImageFilter
 
-    img = render_width(path, mime, page_index, width * 3, max_megapixels)
+    img = render_width(path, mime, page_index, width * 3, max_megapixels, rotation)
     img = _even_paper(_trim(img))
     img = img.resize((width, max(1, round(img.height * width / img.width))), Image.LANCZOS,
                      reducing_gap=2.0)  # fmt: skip
@@ -306,9 +340,14 @@ def make_thumbnail(
 
 
 def make_preview(
-    path: Path, mime: str, max_megapixels: int, width: int = PREVIEW_WIDTH, page_index: int = 0
+    path: Path,
+    mime: str,
+    max_megapixels: int,
+    width: int = PREVIEW_WIDTH,
+    page_index: int = 0,
+    rotation: int = 0,
 ) -> bytes:
-    return make_thumbnail(path, mime, max_megapixels, width, page_index)
+    return make_thumbnail(path, mime, max_megapixels, width, page_index, rotation)
 
 
 def page_sizes(path: Path, mime: str) -> list[tuple[float, float]]:
@@ -335,9 +374,19 @@ def page_sizes(path: Path, mime: str) -> list[tuple[float, float]]:
 
 
 def render_width(
+    path: Path, mime: str, page_index: int, width: int, max_megapixels: int, rotation: int = 0
+) -> Image.Image:
+    """Render one page so that it is `width` pixels wide (aspect ratio kept), turned clockwise
+    by `rotation` degrees (a turned page is rendered larger and scaled down to `width`)."""
+    img = rotate(_render_width(path, mime, page_index, width, max_megapixels), rotation)
+    if rotation in (90, 270) and img.width > width:
+        img = img.resize((width, max(1, round(img.height * width / img.width))), Image.LANCZOS)
+    return img
+
+
+def _render_width(
     path: Path, mime: str, page_index: int, width: int, max_megapixels: int
 ) -> Image.Image:
-    """Render one page so that it is `width` pixels wide (aspect ratio kept)."""
     if mime == "application/pdf":
         with PDFIUM_LOCK:
             pdf = pdfium.PdfDocument(str(path))

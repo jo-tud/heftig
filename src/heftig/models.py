@@ -172,6 +172,9 @@ class DocumentMetadata(BaseModel):
     # pages (1-based) the user marked as blank (True: hidden in the viewer) or as not blank
     # (False: always shown) - overrides the detection in text_pages.json
     page_blank: dict[int, bool] = Field(default_factory=dict)
+    # pages (1-based) the user turned: degrees clockwise (90, 180, 270) - applied wherever a
+    # page is shown or read; the original file stays as it is
+    page_rotation: dict[int, Literal[90, 180, 270]] = Field(default_factory=dict)
     # scan session the paper came in with, and where the paper is now (besides Heftig's own
     # filing): in an existing folder (paper_location) or shredded (paper_discarded_at)
     scan_session: ScanSessionRef | None = None
@@ -234,6 +237,8 @@ class PageText(BaseModel):
     # (almost) no ink, e.g. the empty back of a duplex scan: not sent to a paid AI, hidden in the
     # page viewer (unless the user decided otherwise, see DocumentMetadata.page_blank)
     blank: bool = False
+    # how the page was turned (DocumentMetadata.page_rotation) when its image was read
+    turn: int = 0
 
 
 class TextPages(BaseModel):

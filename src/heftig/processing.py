@@ -151,12 +151,15 @@ def _ocr_cache_path(archive: Archive, doc_id: str, page: int) -> Path:
 
 def _ocr_cache_key(meta, extractor, page: int) -> dict:
     model_for = getattr(extractor, "page_model", None)
-    return {
+    key = {
         "sha256": meta.sha256,
         "provider": extractor.name,
         "model": model_for(page) if model_for else getattr(extractor, "model", ""),
         "adapter": getattr(extractor, "adapter_version", ""),
     }
+    if docs.rotation(meta, page):  # a turned page is read anew (older keys stay valid)
+        key["turn"] = docs.rotation(meta, page)
+    return key
 
 
 def _ocr_cache_get(archive: Archive, meta, extractor, page: int) -> str | None:
@@ -258,7 +261,8 @@ def extract(archive: Archive, doc_id: str, progress: Progress, final_attempt: bo
     notes: list[str] = []  # review reasons that are not page errors
 
     def image_for(i: int, provider) -> tuple[bytes, str]:
-        img = render_page(path, meta.mime_type, i, s.ocr_dpi, s.max_image_megapixels)
+        img = render_page(path, meta.mime_type, i, s.ocr_dpi, s.max_image_megapixels,
+                          docs.rotation(meta, i + 1))  # fmt: skip
         if provider is not None and provider.name not in LOCAL_PROVIDERS:
             return ocr_image_bytes(img, s.ocr_max_side)
         return to_png_bytes(img), "image/png"
@@ -278,6 +282,7 @@ def extract(archive: Archive, doc_id: str, progress: Progress, final_attempt: bo
     #    read locally (free); without a local OCR they stay empty / are reported
     local_only: dict[int, str] = {}  # page index -> reason ("blank" | "budget")
     for i in need_ocr:
+        pages[i].turn = docs.rotation(meta, i + 1)
         if is_blank_page(path, meta.mime_type, i, s):
             pages[i].blank = True
             # (a page the user called "not blank" is read like any other)
@@ -425,7 +430,8 @@ def extract(archive: Archive, doc_id: str, progress: Progress, final_attempt: bo
         hidden = set(docs.blank_pages(TextPages(page_count=len(pages), pages=pages,
                                                 extracted_at=started), meta.page_blank))  # fmt: skip
         cover = next((i for i in range(len(pages)) if i + 1 not in hidden), 0)
-        preview = make_preview(path, meta.mime_type, s.max_image_megapixels, page_index=cover)
+        preview = make_preview(path, meta.mime_type, s.max_image_megapixels, page_index=cover,
+                               rotation=docs.rotation(meta, cover + 1))  # fmt: skip
     except Exception as e:  # preview is optional and regenerable
         log.warning("doc %s: preview failed: %s", doc_id, type(e).__name__)
 
