@@ -29,11 +29,12 @@ from datetime import date
 from functools import lru_cache
 from typing import Any
 
-from . import datephrases, i18n
+from . import datephrases, expand, i18n
 from . import taxonomy as tax
+from .expand import STOPWORDS, Vocab
 from .i18n import N_, _
 from .index import COLUMN_WEIGHTS, FTS_COLUMNS
-from .textnorm import TOKEN_RE, fold, levenshtein, normalize_name
+from .textnorm import TOKEN_RE, fold, normalize_name
 
 SORTS = ("relevance", "received", "document_date", "title")
 FIELD_KEYS = {
@@ -102,9 +103,18 @@ class Term:
     tokens: list[str]
     phrase: bool = False
     number_run: bool = False  # merged from separately typed numbers
-    # indexed words ending in this one (German compounds: "steuerbescheid" ->
-    # "einkommensteuerbescheid"), filled by _expand_terms
+    quoted: bool = False  # typed in quotes: searched as typed, without other forms
+    # filled by _prepare_terms from the index vocabulary (heftig.expand), by level:
+    # FORMS: indexed words with the same stem ("kindern" -> "kind") and compounds ending in
+    # the word or containing it ("steuerbescheid" -> "einkommensteuerbescheid")
+    stems: list[str] = field(default_factory=list)
     compounds: list[str] = field(default_factory=list)
+    # RELATED: other words for the same thing, and the parts of a compound (all must match)
+    synonyms: list[Term] = field(default_factory=list)
+    parts: list[Term] = field(default_factory=list)
+    exact: bool = False  # a short synonym: the word itself, not words starting with it
+    # SIMILAR: indexed words spelt almost the same (OCR errors: "kuendiqunq")
+    similar: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -175,9 +185,13 @@ def parse_query(q: str) -> ParsedQuery:
         if m.group(5) is not None:
             toks = TOKEN_RE.findall(fold(m.group(5)))
             if toks:
-                out.terms.append(Term(toks, phrase=len(toks) > 1))
+                out.terms.append(Term(toks, phrase=len(toks) > 1, quoted=True))
             continue
         _add_text(out, m.group(6))
+    # "die Rechnung vom Zahnarzt": function words need not occur (unless that is all there is)
+    meaningful = [t for t in out.terms if t.phrase or t.tokens[0] not in STOPWORDS]
+    if meaningful:
+        out.terms = meaningful
     if len(out.terms) > MAX_TERMS:
         out.terms = out.terms[:MAX_TERMS]
         out.errors.append(_("Only the first %(num)s search terms are used.", num=MAX_TERMS))
@@ -228,69 +242,25 @@ def _date_range(value: str, label: str) -> tuple[str, str]:
         ) from e
 
 
-# --- term correction ---------------------------------------------------------------------
+# --- search words and what they stand for -------------------------------------------------
+#
+# The index matches word beginnings ("rechnung" finds "Rechnungen"). Everything else a word can
+# stand for is looked up in the index vocabulary (heftig.expand) and searched in levels: the
+# word as typed (LITERAL), its forms and compounds (FORMS), other words for it and its parts
+# (RELATED), spellings one or two letters away (SIMILAR). A document that has the word itself
+# is ranked above one found through a form, and so on (see _rank_sql).
 
-
-def _next_prefix(tok: str) -> str:
-    return tok[:-1] + chr(ord(tok[-1]) + 1)
-
-
-def _prefix_exists(conn: sqlite3.Connection, tok: str, prefix: bool) -> bool:
-    if prefix:
-        row = conn.execute(
-            "SELECT 1 FROM doc_vocab WHERE term >= ? AND term < ? LIMIT 1",
-            (tok, _next_prefix(tok)),
-        ).fetchone()
-    else:
-        row = conn.execute("SELECT 1 FROM doc_vocab WHERE term = ? LIMIT 1", (tok,)).fetchone()
-    return row is not None
-
-
-def correct_token(conn: sqlite3.Connection, tok: str, stats: dict[str, Any]) -> str | None:
-    """Closest indexed term (same first letter, edit distance <= 1-2), or None."""
-    max_d = 1 if len(tok) <= 5 else 2
-    best: tuple[int, int, str] | None = None
-    checked = 0
-    rows = conn.execute(
-        "SELECT term, doc FROM doc_vocab WHERE term >= ? AND term < ?",
-        (tok[0], _next_prefix(tok[0])),
-    )
-    for term, doc_count in rows:
-        if abs(len(term) - len(tok)) > max_d or any(c.isdigit() for c in term):
-            continue
-        checked += 1
-        d = levenshtein(tok, term, max_d)
-        if d <= max_d:
-            key = (d, -doc_count, term)
-            if best is None or key < best:
-                best = key
-    stats["candidates_checked"] = stats.get("candidates_checked", 0) + checked
-    return best[2] if best else None
-
-
-# --- FTS query construction ---------------------------------------------------------------
-
+LITERAL, FORMS, RELATED, SIMILAR = 0, 1, 2, 3
 
 # columns that describe what a document is (vs. what its text mentions)
 META_COLUMNS = ("ident", "title", "correspondent", "doctype", "tags", "custom", "dates", "notes")
 TIER_STEP = 10000.0  # far beyond any BM25 score: tiers decide first
-
-
-def _without_compounds(terms: list[Term]) -> list[Term]:
-    return [Term(t.tokens, t.phrase, t.number_run) for t in terms]
-
-
-# --- German word forms ----------------------------------------------------------------------
-#
-# The index matches word beginnings ("rechnung" finds "Rechnungen"). Two gaps remain in German:
-# an inflected query word is longer than the indexed base form ("steuerbescheide" vs.
-# "Steuerbescheid", "verträge" vs. "Vertrag"), and compounds end in the word ("Einkommen-
-# steuerbescheid", "Stromrechnung", "Kaltmiete"). Both are closed here: base forms are searched
-# as prefixes too, and indexed words ending in the query word (optionally inflected) are added.
+PROXIMITY_BOOST = 0.5  # BM25 x 1.5 when the search words stand close together
+TITLE_BOOST = 1.0  # BM25 x 2 when the title has every search word (in some form)
+NEAR_DISTANCE = 10  # words in between
 
 _INFLECTIONS = ("en", "es", "e", "n", "s")
 MIN_FORM = 5  # shorter words are not reduced or looked up inside compounds
-MAX_COMPOUNDS = 40
 
 
 @lru_cache(maxsize=4096)
@@ -312,62 +282,130 @@ def word_forms(tok: str) -> tuple[str, ...]:
     return tuple(dict.fromkeys(forms))
 
 
-def _ends_in(word: str, form: str) -> bool:
-    return word.endswith(form) or any(word.endswith(form + s) for s in _INFLECTIONS)
+def _prefixable(tok: str) -> bool:
+    return not any(c.isdigit() for c in tok) and len(tok) >= 3
 
 
-_COMPOUNDS: dict[tuple, list[str]] = {}
+def _literal_forms(t: Term) -> tuple[str, ...]:
+    return (t.tokens[0],) if t.exact or t.quoted else word_forms(t.tokens[0])
 
 
-def _compounds(conn: sqlite3.Connection, tok: str) -> list[str]:
-    """Indexed words that end in `tok` (or one of its base forms), most frequent first."""
-    forms = word_forms(tok)
-    if len(tok) < MIN_FORM or not tok.isalpha():
-        return []
-    state = conn.execute("SELECT COUNT(*), MAX(updated_at) FROM documents").fetchone()
-    db = conn.execute("PRAGMA database_list").fetchone()[2]
-    key = (db, tok, tuple(state))
-    if key in _COMPOUNDS:
-        return _COMPOUNDS[key]
-    shortest = sorted(forms, key=len)
-    queries = [f for f in shortest if not any(f != g and g in f for g in shortest)]
-    found: dict[str, int] = {}
-    for f in queries:
-        for term, n in conn.execute(
-            "SELECT term, doc FROM doc_vocab WHERE instr(term, ?) > 1", (f,)
-        ):
-            if any(_ends_in(term, g) for g in forms) and term.isalpha():
-                found[term] = n
-    out = [t for t, _ in sorted(found.items(), key=lambda x: -x[1])[:MAX_COMPOUNDS]]
-    if len(_COMPOUNDS) > 2000:
-        _COMPOUNDS.clear()
-    _COMPOUNDS[key] = out
-    return out
+def _word_term(words: tuple[str, ...]) -> Term:
+    """A synonym as a search term: a phrase, or one word (short ones exactly: "kfz" should not
+    find "kfzmeister...")."""
+    if len(words) > 1:
+        return Term(list(words), phrase=True, quoted=True)
+    return Term([words[0]], exact=len(words[0]) < MIN_FORM)
 
 
-def _expand_terms(conn: sqlite3.Connection, terms: list[Term]) -> None:
+def _expand(v: Vocab, t: Term, deep: bool = True) -> None:
+    """Fill the levels of a term from the vocabulary. `deep`: also split compounds and look for
+    similar spellings; not deep: the term is a part of a split compound."""
+    t.stems, t.compounds, t.synonyms, t.parts, t.similar = [], [], [], [], []
+    if t.quoted or t.number_run:
+        return
+    if t.phrase:
+        # "Kfz-Steuer": other words for the whole ("Kraftfahrzeugsteuer"), or its parts in
+        # any of their forms
+        t.synonyms = [_word_term(a) for a in expand.related(tuple(t.tokens))]
+        if deep and all(tok.isalpha() for tok in t.tokens):
+            t.parts = [Term([tok]) for tok in t.tokens]
+            for p in t.parts:
+                _expand(v, p, deep=False)
+        return
+    tok = t.tokens[0]
+    if not tok.isalpha():
+        return
+    t.stems = expand.same_stem(v, tok)
+    forms = tuple(dict.fromkeys([*word_forms(tok), *(s for s in t.stems if len(s) >= 4)]))
+    t.compounds = expand.compounds(v, tok, forms, part=not deep)
+    t.synonyms = [_word_term(a) for a in expand.related((tok,))]
+    if deep:
+        parts = expand.split(v, tok)
+        if parts:
+            t.parts = [Term([p]) for p in parts]
+            for p in t.parts:
+                _expand(v, p, deep=False)
+        t.similar = expand.similar(
+            v, tok, lambda w: _term_matches(t, w, FORMS) or _synonym_matches(t, w)
+        )
+
+
+def _synonym_matches(t: Term, word: str) -> bool:
+    return any(_term_matches(s, word, LITERAL) for s in t.synonyms)
+
+
+def _found_anywhere(v: Vocab, t: Term) -> bool:
+    """Whether any level of the term (short of similar spellings) occurs in the index."""
+    if t.stems or t.compounds or t.parts:
+        return True
+    tok = t.tokens[0]
+    if any(v.has_prefix(f) if _prefixable(f) else v.docs(f) for f in word_forms(tok)):
+        return True
+    return any(
+        v.has_prefix(s.tokens[0]) if not s.exact and not s.phrase else v.docs(s.tokens[0])
+        for s in t.synonyms
+    )
+
+
+def _prepare_terms(
+    conn: sqlite3.Connection, terms: list[Term], stats: dict[str, Any]
+) -> list[tuple[str, str]]:
+    """Expand every term; a word that occurs nowhere, in no form, is replaced by the closest
+    indexed word (a typo). Returns the corrections."""
+    v = Vocab(conn)
+    corrections: list[tuple[str, str]] = []
+    t_f = time.perf_counter()
     for t in terms:
-        if not t.phrase:
-            t.compounds = _compounds(conn, t.tokens[0])
+        _expand(v, t)
+        if t.phrase or t.quoted:
+            continue
+        tok = t.tokens[0]
+        if any(c.isdigit() for c in tok) or len(tok) < 4 or _found_anywhere(v, t):
+            continue
+        fixed = expand.correct(v, tok, stats)
+        if fixed:
+            corrections.append((tok, fixed))
+            t.tokens = [fixed]
+            _expand(v, t)
+    stats["ms"] = round((time.perf_counter() - t_f) * 1000, 2)
+    return corrections
+
+
+# --- FTS query construction ---------------------------------------------------------------
 
 
 def _token_expr(tok: str) -> str:
     # tokens are [^\W_]+ after folding -> safe inside FTS5 double quotes
-    if any(c.isdigit() for c in tok) or len(tok) < 3:
-        return f'"{tok}"'
-    return f'"{tok}"*'
+    return f'"{tok}"*' if _prefixable(tok) else f'"{tok}"'
 
 
-def _term_expr(t: Term) -> str:
-    if t.phrase:
-        phrase = '"' + " ".join(t.tokens) + '"'
-        if all(any(c.isdigit() for c in tok) for tok in t.tokens):
-            # "8372 9381" also finds "83729381"
-            return f'({phrase} OR "{"".join(t.tokens)}")'
-        return phrase
-    tok = t.tokens[0]
-    parts = [_token_expr(f) for f in word_forms(tok)] + [f'"{c}"' for c in t.compounds]
+def _or(parts: list[str]) -> str:
+    parts = list(dict.fromkeys(parts))
     return parts[0] if len(parts) == 1 else "(" + " OR ".join(parts) + ")"
+
+
+def _term_expr(t: Term, level: int = SIMILAR) -> str:
+    """FTS5 expression for a term with everything it stands for up to `level`."""
+    if t.phrase:
+        alts = ['"' + " ".join(t.tokens) + '"']
+        if all(any(c.isdigit() for c in tok) for tok in t.tokens):
+            alts.append(f'"{"".join(t.tokens)}"')  # "8372 9381" also finds "83729381"
+        elif level >= FORMS and not t.quoted and all(tok.isalpha() for tok in t.tokens):
+            alts.append(_token_expr("".join(t.tokens)))  # "Kfz-Steuer" finds "Kfzsteuer"
+    elif t.exact:
+        alts = [f'"{t.tokens[0]}"']
+    else:
+        alts = [_token_expr(f) for f in _literal_forms(t)]
+    if level >= FORMS:
+        alts += [f'"{w}"' for w in (*t.stems, *t.compounds)]
+    if level >= RELATED:
+        alts += [_term_expr(s, LITERAL) for s in t.synonyms]
+        if t.parts:
+            alts.append("(" + " AND ".join(_term_expr(p, RELATED) for p in t.parts) + ")")
+    if level >= SIMILAR:
+        alts += [f'"{w}"' for w in t.similar]
+    return _or(alts)
 
 
 def _is_number(t: Term) -> bool:
@@ -385,8 +423,81 @@ def _merge_number_runs(terms: list[Term]) -> list[Term]:
     return out
 
 
-def build_match(terms: list[Term], op: str = "AND") -> str:
-    return f" {op} ".join(_term_expr(t) for t in terms)
+def build_match(terms: list[Term], op: str = "AND", level: int = SIMILAR) -> str:
+    return f" {op} ".join(_term_expr(t, level) for t in terms)
+
+
+def _near_expr(terms: list[Term]) -> str | None:
+    """The search words as typed, close together in one field (NEAR), or None for one word."""
+    if len(terms) < 2:
+        return None
+    parts = []
+    for t in terms:
+        if t.phrase:
+            parts.append('"' + " ".join(t.tokens) + '"')
+        else:
+            parts.append(_token_expr(t.tokens[0]) if not t.exact else f'"{t.tokens[0]}"')
+    return f"NEAR({' '.join(parts)}, {NEAR_DISTANCE})"
+
+
+def _rank_sql(terms: list[Term], partial: bool, years: list[str]) -> tuple[str, list[Any]]:
+    """ORDER BY expression (lower = better) and its parameters.
+
+    1. partial matches (OR fallback): more search words found first (as Meilisearch's "words")
+    2. tiers: all words in the document's own description (title, sender, type, tags, fields,
+       notes) before words only in the text; within each, the word as typed before its forms,
+       before other words for it; similar spellings last
+    3. BM25 with the column weights - of the words of the document's tier only, so a letter
+       full of compounds of a word does not beat one with the word itself - improved when the
+       title has all the words (x2), when they stand close together (x1.5) and when a year in
+       the query is the document's year (document date or title, x1.5)
+    """
+    weights = ", ".join(str(COLUMN_WEIGHTS[c]) for c in FTS_COLUMNS)
+    op = " OR " if partial else " AND "
+    meta = "{" + " ".join(META_COLUMNS) + "} : "
+    levels = (LITERAL, FORMS, RELATED)
+    exprs = [op.join(_term_expr(t, lvl) for t in terms) for lvl in levels]
+    tiers: list[tuple[str, str]] = []  # (who is in the tier, what BM25 scores)
+    for e in [meta + "(" + e + ")" for e in exprs] + exprs:
+        if e not in (t[0] for t in tiers):
+            tiers.append((e, e.removeprefix(meta)))
+    member = "d.rowid IN (SELECT rowid FROM doc_fts WHERE doc_fts MATCH ?)"
+    scored = (
+        f"(SELECT bm25(doc_fts, {weights}) FROM doc_fts WHERE doc_fts MATCH ? "
+        "AND doc_fts.rowid = d.rowid)"
+    )
+    boost_sql = f"1.0 + (CASE WHEN {member} THEN {TITLE_BOOST} ELSE 0.0 END)"
+    boost_params: list[Any] = ["{title} : (" + op.join(_term_expr(t) for t in terms) + ")"]
+    near = _near_expr(terms)
+    if near:
+        boost_sql += f" + (CASE WHEN {member} THEN {PROXIMITY_BOOST} ELSE 0.0 END)"
+        boost_params.append(near)
+    if years:
+        marks = ",".join("?" for _ in years)
+        in_title = " OR ".join("instr(d.title, ?) > 0" for _ in years)
+        boost_sql += (
+            f" + (CASE WHEN substr(d.document_date, 1, 4) IN ({marks}) OR {in_title} "
+            f"THEN {YEAR_BOOST - 1} ELSE 0.0 END)"
+        )
+        boost_params += list(years) + list(years)
+    # the boosts multiply the (negative) BM25 part only, not the tier
+    sql = (
+        "(CASE "
+        + " ".join(
+            f"WHEN {member} THEN {n * TIER_STEP} + {scored} * ({boost_sql})"
+            for n in range(len(tiers))
+        )
+        + f" ELSE {len(tiers) * TIER_STEP} + bm25(doc_fts, {weights}) * ({boost_sql}) END)"
+    )
+    params: list[Any] = []
+    for who, what in tiers:
+        params += [who, what, *boost_params]
+    params += boost_params
+    if partial:
+        sql += " + (" + " + ".join(f"(CASE WHEN {member} THEN 0 ELSE 1 END)" for _ in terms)
+        sql += f") * {TIER_STEP * 10}"
+        params += [_term_expr(t) for t in terms]
+    return sql, params
 
 
 # --- main entry --------------------------------------------------------------------------
@@ -397,31 +508,6 @@ class _Clause:
     facet: str  # which filter group it belongs to (facet counts ignore their own group)
     sql: str
     params: list[Any]
-
-
-def _correct_terms(
-    conn: sqlite3.Connection, terms: list[Term], stats: dict[str, Any]
-) -> list[tuple[str, str]]:
-    """Replace words that occur nowhere in the index by their closest indexed term."""
-    corrections: list[tuple[str, str]] = []
-    t_f = time.perf_counter()
-    for t in terms:
-        if t.phrase:
-            continue
-        tok = t.tokens[0]
-        prefix = not any(c.isdigit() for c in tok) and len(tok) >= 3
-        if any(_prefix_exists(conn, f, prefix) for f in word_forms(tok)):
-            continue
-        if _compounds(conn, tok):
-            continue
-        if any(c.isdigit() for c in tok) or len(tok) < 4:
-            continue
-        fixed = correct_token(conn, tok, stats)
-        if fixed:
-            corrections.append((tok, fixed))
-            t.tokens = [fixed]
-    stats["ms"] = round((time.perf_counter() - t_f) * 1000, 2)
-    return corrections
 
 
 def _base(match: str | None, clauses: list[_Clause], exclude: str = "") -> tuple[str, list[Any]]:
@@ -506,8 +592,7 @@ def search(
 
     terms = parsed.terms
     fuzzy_stats: dict[str, Any] = {}
-    corrections = _correct_terms(conn, terms, fuzzy_stats) if terms else []
-    _expand_terms(conn, terms)
+    corrections = _prepare_terms(conn, terms, fuzzy_stats) if terms else []
 
     sort = p.sort if p.sort in SORTS else ("relevance" if terms else "received")
     if sort == "relevance" and not terms:
@@ -523,7 +608,6 @@ def search(
     partial = False
     match: str | None = None
     if terms:
-        weights = ", ".join(str(COLUMN_WEIGHTS[c]) for c in FTS_COLUMNS)
         match = build_match(terms, "AND")
         base, params = _base(match, clauses)
         total = conn.execute(f"SELECT COUNT(*) {base}", params).fetchone()[0]
@@ -540,8 +624,8 @@ def search(
             base, params = _base(match, clauses)
             total = conn.execute(f"SELECT COUNT(*) {base}", params).fetchone()[0]
             partial = total > 0
-        # A year in the query that equals the document date's year multiplies the (negative,
-        # lower = better) BM25 score by YEAR_BOOST. Years are too common for BM25's IDF.
+        # Years are too common for BM25's IDF: a year in the query that is the document's
+        # year counts extra (see _rank_sql).
         years = sorted(
             {
                 t.tokens[0]
@@ -549,31 +633,7 @@ def search(
                 if not t.phrase and re.fullmatch(r"(19|20)\d\d", t.tokens[0])
             }
         )
-        # Tiers before BM25: documents whose own description (title, type, sender, tags, fields,
-        # notes) has the search words come first - a "Steuerbescheid" before letters that only
-        # mention one -, the word itself before compounds ending in it ("rechnung": "Rechnung
-        # Telekom" before "Steuerberechnung"; rare compounds would win on BM25 alone).
-        plain = _without_compounds(terms)
-        op = " OR " if partial else " AND "
-        plain_match = op.join(_term_expr(t) for t in plain)
-        meta = "{" + " ".join(META_COLUMNS) + "} : "
-        tiers = [meta + "(" + plain_match + ")", meta + "(" + match + ")", plain_match]
-        rank_sql = (
-            "(CASE "
-            + " ".join(
-                f"WHEN d.rowid IN (SELECT rowid FROM doc_fts WHERE doc_fts MATCH ?) THEN {n}"
-                for n in range(len(tiers))
-            )
-            + f" ELSE {len(tiers)} END) * {TIER_STEP} + bm25(doc_fts, {weights})"
-        )
-        rank_params: list[Any] = list(tiers)
-        if years:
-            marks = ",".join("?" for _ in years)
-            rank_sql += (
-                f" + bm25(doc_fts, {weights}) * (CASE WHEN substr(d.document_date, 1, 4) "
-                f"IN ({marks}) THEN {YEAR_BOOST - 1} ELSE 0.0 END)"
-            )
-            rank_params += list(years)
+        rank_sql, rank_params = _rank_sql(terms, partial, years)
         rows = conn.execute(
             f"SELECT d.id, {rank_sql} AS rank {base} ORDER BY {order} LIMIT ? OFFSET ?",
             [*rank_params, *params, per_page, (page - 1) * per_page],
@@ -977,21 +1037,20 @@ def highlight_terms(conn: sqlite3.Connection, q: str) -> list[Term]:
         return []
     rest, _phrase = datephrases.extract(q)
     terms = parse_query(rest).terms
-    _correct_terms(conn, terms, {})
+    _prepare_terms(conn, terms, {})
     return terms
 
 
 def word_matches(word: str, terms: list[Term]) -> bool:
     toks = TOKEN_RE.findall(fold(word))
-    return any(_tok_matches(t, w) for term in terms for t in term.tokens for w in toks)
+    return any(_term_matches(t, w) for t in terms for w in toks)
 
 
 def count_hits(text: str, terms: list[Term]) -> int:
-    toks = {t for term in terms for t in term.tokens}
     return sum(
         1
         for m in TOKEN_RE.finditer(fold(text or ""))
-        if any(_tok_matches(t, m.group(0)) for t in toks)
+        if any(_term_matches(t, m.group(0)) for t in terms)
     )
 
 
@@ -1045,21 +1104,31 @@ def _hydrate(
     return out
 
 
-@lru_cache(maxsize=4096)
-def _matcher(tok: str) -> re.Pattern[str]:
-    """Which indexed words a query word stands for (as in the index query): exact for numbers
-    and very short words, else word beginnings of its forms, and compounds ending in them."""
-    if any(c.isdigit() for c in tok) or len(tok) < 3:
-        return re.compile(re.escape(tok) + r"\Z")
-    alts = "|".join(re.escape(f) for f in word_forms(tok))
-    rx = f"(?:{alts})"
-    if len(tok) >= MIN_FORM:
-        rx += rf"|[^\W\d_]+(?:{alts})(?:{'|'.join(_INFLECTIONS)})?\Z"
-    return re.compile(rx)
+def _literal_match(tok: str, word: str, forms: tuple[str, ...]) -> bool:
+    if not _prefixable(tok):
+        return word == tok
+    return any(word.startswith(f) for f in forms)
 
 
-def _tok_matches(tok: str, word: str) -> bool:
-    return _matcher(tok).match(word) is not None
+def _term_matches(t: Term, word: str, level: int = SIMILAR) -> bool:
+    """Whether an indexed (folded) word is one the term stands for, up to `level` - the same
+    rule as the index query, for highlighting, "found in" and the hits on a page."""
+    if t.phrase:
+        if any(_literal_match(tok, word, (tok,)) for tok in t.tokens):
+            return True
+    elif t.exact:
+        if word == t.tokens[0]:
+            return True
+    elif _literal_match(t.tokens[0], word, _literal_forms(t)):
+        return True
+    if level >= FORMS and (word in t.stems or word in t.compounds):
+        return True
+    if level >= RELATED and (
+        any(_term_matches(s, word, LITERAL) for s in t.synonyms)
+        or any(_term_matches(p, word, RELATED) for p in t.parts)
+    ):
+        return True
+    return level >= SIMILAR and word in t.similar
 
 
 def _reasons(fts_row: sqlite3.Row, terms: list[Term]) -> list[str]:
@@ -1072,9 +1141,13 @@ def _reasons(fts_row: sqlite3.Row, terms: list[Term]) -> list[str]:
         hit = False
         for t in terms:
             if t.phrase:
-                if " ".join(t.tokens) in " ".join(TOKEN_RE.findall(fts_row[col] or "")):
+                if (
+                    " ".join(t.tokens) in " ".join(TOKEN_RE.findall(fts_row[col] or ""))
+                    or any(_term_matches(x, w, LITERAL) for x in t.synonyms for w in wordset)
+                    or (t.parts and all(any(_term_matches(x, w) for w in wordset) for x in t.parts))
+                ):
                     hit = True
-            elif any(_tok_matches(t.tokens[0], w) for w in wordset):
+            elif any(_term_matches(t, w) for w in wordset):
                 hit = True
         if hit:
             found.append(COLUMN_LABELS[col])
@@ -1085,11 +1158,10 @@ def snippet_html(text: str, terms: list[Term], width: int = 220) -> str:
     """Escaped excerpt around the first match with <mark> highlighting."""
     if not text:
         return ""
-    toks = {t for term in terms for t in term.tokens}
     spans = []
     for m in TOKEN_RE.finditer(text):
         w = fold(m.group(0))
-        if any(_tok_matches(t, w) for t in toks):
+        if any(_term_matches(t, w) for t in terms):
             spans.append((m.start(), m.end()))
     if not spans:
         excerpt = text[:width].strip()
@@ -1140,9 +1212,8 @@ def _scope(
     notes += parsed.errors
     clauses = _filters(conn, p, parsed.filters, notes) + clauses
     terms = parsed.terms
-    for a, b in _correct_terms(conn, terms, {}):
+    for a, b in _prepare_terms(conn, terms, {}):
         notes.append(_("Search term corrected: %(old)s -> %(new)s", old=a, new=b))
-    _expand_terms(conn, terms)
     terms = terms + (extra or [])
     return (*_base(build_match(terms, "AND") if terms else None, clauses), notes)
 
