@@ -35,7 +35,7 @@ curl -fsSL https://raw.githubusercontent.com/jo-tud/heftig/main/install.sh | sh
 ```
 
 It downloads the container image, creates `~/heftig`, starts Heftig (also after a reboot) and
-prints the address of the setup page. There you create your account and, if you like, connect an
+prints the address of the setup page. There you create your (local) account and, if you like, connect an
 AI, a mailbox and your scanner – no configuration files. Running the installer again updates
 Heftig. To remove it: `podman rm -f heftig` (or `docker rm -f heftig`) and delete `~/heftig`.
 
