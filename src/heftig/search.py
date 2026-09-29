@@ -440,8 +440,16 @@ def _near_expr(terms: list[Term]) -> str | None:
     return f"NEAR({' '.join(parts)}, {NEAR_DISTANCE})"
 
 
-def _rank_sql(terms: list[Term], partial: bool, years: list[str]) -> tuple[str, list[Any]]:
-    """ORDER BY expression (lower = better) and its parameters.
+def _relevance(
+    conn: sqlite3.Connection,
+    terms: list[Term],
+    partial: bool,
+    years: list[str],
+    base: str,
+    params: list[Any],
+) -> list[tuple[str, float]]:
+    """All documents of the search (the query `base` with its filters), best first, with their
+    rank (lower = better).
 
     1. partial matches (OR fallback): more search words found first (as Meilisearch's "words")
     2. tiers: all words in the document's own description (title, sender, type, tags, fields,
@@ -451,53 +459,84 @@ def _rank_sql(terms: list[Term], partial: bool, years: list[str]) -> tuple[str, 
        full of compounds of a word does not beat one with the word itself - improved when the
        title has all the words (x2), when they stand close together (x1.5) and when a year in
        the query is the document's year (document date or title, x1.5)
+    4. received date and ingest order, newest first
+
+    One FTS query per tier and boost, then sorted here: a BM25 per document and tier in SQL
+    would evaluate the whole expression once per document.
     """
+    rows = conn.execute(
+        f"SELECT d.rowid, d.id, d.received_at, d.ingest_sequence, d.document_date, d.title {base}",
+        params,
+    ).fetchall()
+    if not rows:
+        return []
     weights = ", ".join(str(COLUMN_WEIGHTS[c]) for c in FTS_COLUMNS)
+
+    def members(expr: str) -> set[int]:
+        return {
+            r[0] for r in conn.execute("SELECT rowid FROM doc_fts WHERE doc_fts MATCH ?", (expr,))
+        }
+
+    bm25_cache: dict[str, dict[int, float]] = {}
+
+    def bm25(expr: str) -> dict[int, float]:
+        if expr not in bm25_cache:
+            bm25_cache[expr] = dict(
+                conn.execute(
+                    f"SELECT rowid, bm25(doc_fts, {weights}) FROM doc_fts WHERE doc_fts MATCH ?",
+                    (expr,),
+                ).fetchall()
+            )
+        return bm25_cache[expr]
+
     op = " OR " if partial else " AND "
     meta = "{" + " ".join(META_COLUMNS) + "} : "
-    levels = (LITERAL, FORMS, RELATED)
-    exprs = [op.join(_term_expr(t, lvl) for t in terms) for lvl in levels]
+    exprs = [op.join(_term_expr(t, lvl) for t in terms) for lvl in (LITERAL, FORMS, RELATED)]
+    exprs.append(op.join(_term_expr(t) for t in terms))
     tiers: list[tuple[str, str]] = []  # (who is in the tier, what BM25 scores)
-    for e in [meta + "(" + e + ")" for e in exprs] + exprs:
+    for e in [meta + "(" + e + ")" for e in exprs[:-1]] + exprs:
         if e not in (t[0] for t in tiers):
             tiers.append((e, e.removeprefix(meta)))
-    member = "d.rowid IN (SELECT rowid FROM doc_fts WHERE doc_fts MATCH ?)"
-    scored = (
-        f"(SELECT bm25(doc_fts, {weights}) FROM doc_fts WHERE doc_fts MATCH ? "
-        "AND doc_fts.rowid = d.rowid)"
-    )
-    boost_sql = f"1.0 + (CASE WHEN {member} THEN {TITLE_BOOST} ELSE 0.0 END)"
-    boost_params: list[Any] = ["{title} : (" + op.join(_term_expr(t) for t in terms) + ")"]
+    todo = {r[0] for r in rows}
+    tier: dict[int, int] = {}
+    score: dict[int, float] = {}
+    for n, (who, what) in enumerate(tiers):
+        found = todo if n == len(tiers) - 1 else todo & members(who)
+        if found:
+            scores = bm25(what)
+            for rid in found:
+                tier[rid], score[rid] = n, scores.get(rid, 0.0)
+            todo -= found
+        if not todo:
+            break
+
+    boost = dict.fromkeys(tier, 1.0)
+    for rid in members("{title} : (" + exprs[-1] + ")") & boost.keys():
+        boost[rid] += TITLE_BOOST
     near = _near_expr(terms)
     if near:
-        boost_sql += f" + (CASE WHEN {member} THEN {PROXIMITY_BOOST} ELSE 0.0 END)"
-        boost_params.append(near)
+        for rid in members(near) & boost.keys():
+            boost[rid] += PROXIMITY_BOOST
     if years:
-        marks = ",".join("?" for _ in years)
-        in_title = " OR ".join("instr(d.title, ?) > 0" for _ in years)
-        boost_sql += (
-            f" + (CASE WHEN substr(d.document_date, 1, 4) IN ({marks}) OR {in_title} "
-            f"THEN {YEAR_BOOST - 1} ELSE 0.0 END)"
-        )
-        boost_params += list(years) + list(years)
-    # the boosts multiply the (negative) BM25 part only, not the tier
-    sql = (
-        "(CASE "
-        + " ".join(
-            f"WHEN {member} THEN {n * TIER_STEP} + {scored} * ({boost_sql})"
-            for n in range(len(tiers))
-        )
-        + f" ELSE {len(tiers) * TIER_STEP} + bm25(doc_fts, {weights}) * ({boost_sql}) END)"
-    )
-    params: list[Any] = []
-    for who, what in tiers:
-        params += [who, what, *boost_params]
-    params += boost_params
+        for r in rows:
+            if (r["document_date"] or "")[:4] in years or any(
+                y in (r["title"] or "") for y in years
+            ):
+                boost[r[0]] += YEAR_BOOST - 1
+    missing = dict.fromkeys(tier, 0)
     if partial:
-        sql += " + (" + " + ".join(f"(CASE WHEN {member} THEN 0 ELSE 1 END)" for _ in terms)
-        sql += f") * {TIER_STEP * 10}"
-        params += [_term_expr(t) for t in terms]
-    return sql, params
+        for t in terms:
+            has = members(_term_expr(t))
+            for rid in missing:
+                missing[rid] += rid not in has
+
+    def rank(rid: int) -> float:
+        return missing[rid] * TIER_STEP * 10 + tier[rid] * TIER_STEP + score[rid] * boost[rid]
+
+    ordered = sorted(rows, key=lambda r: r["ingest_sequence"], reverse=True)
+    ordered.sort(key=lambda r: r["received_at"] or "", reverse=True)
+    ordered.sort(key=lambda r: rank(r[0]))
+    return [(r["id"], rank(r[0])) for r in ordered]
 
 
 # --- main entry --------------------------------------------------------------------------
@@ -598,7 +637,7 @@ def search(
     if sort == "relevance" and not terms:
         sort = "received"
     order = {
-        "relevance": "rank ASC, d.received_at DESC, d.ingest_sequence DESC",
+        "relevance": "d.received_at DESC, d.ingest_sequence DESC",  # ranked in _relevance
         "received": "d.received_at DESC, d.ingest_sequence DESC",
         "document_date": "d.document_date IS NULL, d.document_date DESC, "
         "d.received_at DESC, d.ingest_sequence DESC",
@@ -633,20 +672,29 @@ def search(
                 if not t.phrase and re.fullmatch(r"(19|20)\d\d", t.tokens[0])
             }
         )
-        rank_sql, rank_params = _rank_sql(terms, partial, years)
-        rows = conn.execute(
-            f"SELECT d.id, {rank_sql} AS rank {base} ORDER BY {order} LIMIT ? OFFSET ?",
-            [*rank_params, *params, per_page, (page - 1) * per_page],
-        ).fetchall()
+        if sort == "relevance":
+            ranked = _relevance(conn, terms, partial, years, base, params)
+            rows = ranked[(page - 1) * per_page : page * per_page]
+        else:
+            rows = [
+                (r["id"], None)
+                for r in conn.execute(
+                    f"SELECT d.id {base} ORDER BY {order} LIMIT ? OFFSET ?",
+                    [*params, per_page, (page - 1) * per_page],
+                )
+            ]
     else:
         base, params = _base(None, clauses)
         total = conn.execute(f"SELECT COUNT(*) {base}", params).fetchone()[0]
-        rows = conn.execute(
-            f"SELECT d.id, NULL AS rank {base} ORDER BY {order} LIMIT ? OFFSET ?",
-            [*params, per_page, (page - 1) * per_page],
-        ).fetchall()
+        rows = [
+            (r["id"], None)
+            for r in conn.execute(
+                f"SELECT d.id {base} ORDER BY {order} LIMIT ? OFFSET ?",
+                [*params, per_page, (page - 1) * per_page],
+            )
+        ]
 
-    items = _hydrate(conn, [(r["id"], r["rank"]) for r in rows], terms)
+    items = _hydrate(conn, rows, terms)
     if partial:
         notes.append(_("Not all search terms occur together – showing partial matches."))
     result = SearchResult(

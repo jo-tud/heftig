@@ -163,8 +163,17 @@ class Vocab:
             self._cache[k] = value
         return value
 
-    def starting(self, prefix: str, limit: int = MAX_SCAN) -> list[tuple[str, int]]:
-        """Indexed words starting with `prefix` (term, number of documents)."""
+    def starting(
+        self, prefix: str, limit: int = MAX_SCAN, lengths: tuple[int, int] | None = None
+    ) -> list[tuple[str, int]]:
+        """Indexed words starting with `prefix` (term, number of documents), optionally only
+        those with a length in the range `lengths`."""
+        if lengths:
+            return self.conn.execute(
+                "SELECT term, doc FROM doc_vocab WHERE term >= ? AND term < ? "
+                "AND length(term) BETWEEN ? AND ? LIMIT ?",
+                (prefix, _next(prefix), *lengths, limit),
+            ).fetchall()
         return self.conn.execute(
             "SELECT term, doc FROM doc_vocab WHERE term >= ? AND term < ? LIMIT ?",
             (prefix, _next(prefix), limit),
@@ -180,15 +189,25 @@ class Vocab:
 
         return self.cached("docs", term, run)
 
-    def containing(self, part: str) -> list[tuple[str, int]]:
-        """Indexed words that contain `part` after their first letter (a full vocabulary scan,
-        cached)."""
+    def compound_candidates(self, part: str, inner: bool, slack: int) -> list[tuple[str, int]]:
+        """Indexed words that end in `part` (plus up to `slack` letters: the rest of a longer
+        form and an inflection) or, with `inner`, have it in the middle with at least three
+        letters before it and some after it (a full vocabulary scan, cached; the exact test is
+        done by the caller)."""
+        # instr() finds the first occurrence; a later one in the middle is rare enough to miss
+        sql = (
+            "SELECT term, doc FROM doc_vocab WHERE instr(term, :p) > 1 AND "
+            "(length(term) - instr(term, :p) - length(:p) + 1 <= :slack"
+            + (
+                " OR (instr(term, :p) > 3 AND length(term) - instr(term, :p) - length(:p) >= 3))"
+                if inner
+                else ")"
+            )
+        )
         return self.cached(
             "in",
-            part,
-            lambda: self.conn.execute(
-                "SELECT term, doc FROM doc_vocab WHERE instr(term, ?) > 1", (part,)
-            ).fetchall(),
+            (part, inner, slack),
+            lambda: self.conn.execute(sql, {"p": part, "slack": slack}).fetchall(),
         )
 
 
@@ -214,8 +233,10 @@ def _umlaut_variants(s: str) -> list[str]:
     return out
 
 
-def same_stem(v: Vocab, tok: str) -> list[str]:
-    """Indexed words with the stem of `tok` (kindern -> kind, kinder, kindes)."""
+def same_stem(v: Vocab, tok: str, scan: int = 1000) -> list[str]:
+    """Indexed words with the stem of `tok` (kindern -> kind, kinder, kindes). `scan`: words
+    read per spelling of the stem at most (the ones with the same stem are short, so they come
+    early)."""
     if not tok.isalpha() or len(tok) < MIN_STEM_WORD:
         return []
 
@@ -225,13 +246,14 @@ def same_stem(v: Vocab, tok: str) -> list[str]:
             return []
         found: dict[str, int] = {}
         for prefix in _umlaut_variants(s):
-            for term, n in v.starting(prefix):
+            # a word with this stem is at most a few letters longer than it
+            for term, n in v.starting(prefix, scan, (len(prefix), len(prefix) + 6)):
                 if term.isalpha() and stem(term) == s:
                     found[term] = n
         found.pop(tok, None)
         return [t for t, _ in sorted(found.items(), key=lambda x: (-x[1], x[0]))[:MAX_FORMS]]
 
-    return v.cached("stem", tok, run)
+    return v.cached("stem", (tok, scan), run)
 
 
 def _ends_in(word: str, form: str) -> bool:
@@ -263,10 +285,18 @@ def compounds(v: Vocab, tok: str, forms: tuple[str, ...], part: bool = False) ->
 
     def run() -> list[str]:
         usable = sorted({f for f in forms if len(f) >= MIN_STEM_WORD}, key=len)
-        queries = [f for f in usable if not any(f != g and g in f for g in usable)]
+        # one vocabulary scan per spelling of the stem that the forms contain (versicher for
+        # versicherung, versicherungen, versichert ...), else per form
+        cores = [c for c in _umlaut_variants(stem(tok)) if len(c) >= MIN_STEM_WORD]
+        wanted: dict[str, int] = {}  # scan -> letters a form may add after it
+        for f in usable:
+            core = next((c for c in cores if c in f), f)
+            wanted[core] = max(wanted.get(core, 0), len(f) - f.index(core) - len(core))
+        queries = [q for q in wanted if not any(q != g and g in q for g in wanted)]
         found: dict[str, int] = {}
         for q in queries:
-            for term, n in v.containing(q):
+            slack = max(n for g, n in wanted.items() if q in g) + 3
+            for term, n in v.compound_candidates(q, len(q) >= min_inner, slack):
                 if not term.isalpha():
                     continue
                 if any(_ends_in(term, f) for f in usable) or any(
@@ -285,34 +315,27 @@ def compounds(v: Vocab, tok: str, forms: tuple[str, ...], part: bool = False) ->
 
 def _word_count(v: Vocab, part: str, tail: bool) -> int:
     """How common `part` is as a word of its own in the archive (0: not a word). A word is an
-    indexed word, a word with the same stem, a word with synonyms, or - as the first part - the
-    start of an indexed word whose rest is a word (muell in muellabfuhr needs abfuhr), and as
-    the last part the end of one whose beginning is a word (nummer in kundennummer)."""
+    indexed word, a word with the same stem or with synonyms; as the last part also the start
+    of an indexed word (nummer in nummern), as the first part the start of an indexed word
+    whose rest is a word (muell in muellabfuhr needs abfuhr)."""
     if len(part) < 3 or not part.isalpha():
         return 0
     n = v.docs(part)
     if n:
         return n
-    if len(part) >= MIN_STEM_WORD and same_stem(v, part):
-        return 1
     if related((part,)):
         return 1
     if len(part) < MIN_STEM_WORD:
         return 0
-    # evidence: the number of compounds it is a part of (next to a word)
+    if same_stem(v, part, scan=50):
+        return 1
     if tail:
-        found = [
-            term
-            for term, _ in v.containing(part)
-            if term.endswith(part) and _joint_word(v, term[: -len(part)], head=True)
-        ]
-    else:
-        found = [
-            term
-            for term, _ in v.starting(part, 200)
-            if len(term) > len(part) and _joint_word(v, term[len(part) :], head=False)
-        ]
-    return len(found)
+        return sum(d for _, d in v.starting(part, 50))
+    return sum(
+        1
+        for term, _ in v.starting(part, 200)
+        if len(term) > len(part) and _joint_word(v, term[len(part) :], head=False)
+    )
 
 
 def _joint_word(v: Vocab, rest: str, head: bool) -> bool:
@@ -335,6 +358,7 @@ def split(v: Vocab, tok: str) -> tuple[str, str] | None:
         return None
 
     def run() -> tuple[str, str] | None:
+        whole = v.docs(tok)
         best: tuple[float, int, str, str] | None = None
         for i in range(3, len(tok) - 2):
             head, tail = tok[:i], tok[i:]
@@ -348,7 +372,8 @@ def split(v: Vocab, tok: str) -> tuple[str, str] | None:
                     key = ((nh * nt) ** 0.5, min(len(h), len(tail)), h, tail)
                     if best is None or key[:2] > best[:2]:
                         best = key
-        return (best[2], best[3]) if best else None
+        # as Koehn & Knight: split only if the parts are more common than the whole word
+        return (best[2], best[3]) if best and best[0] > whole else None
 
     return v.cached("split", tok, run)
 
@@ -416,6 +441,22 @@ def allowed_edits(tok: str) -> int:
     return 0 if len(tok) < 5 else 1 if len(tok) < 9 else 2
 
 
+@lru_cache(maxsize=65536)
+def _bigrams(w: str) -> dict[str, int]:
+    out: dict[str, int] = {}
+    for i in range(len(w) - 1):
+        out[w[i : i + 2]] = out.get(w[i : i + 2], 0) + 1
+    return out
+
+
+def _close_letters(a: str, b: str, max_d: int) -> bool:
+    """Cheap test before the edit distance (q-gram lemma): words within k edits share at least
+    max(len) - 1 - 2k letter pairs; an OCR confusion (rn/m) changes three, so 3k here."""
+    ba, bb = _bigrams(a), _bigrams(b)
+    shared = sum(min(n, bb.get(g, 0)) for g, n in ba.items())
+    return shared >= max(len(a), len(b)) - 1 - 3 * max_d
+
+
 def similar(v: Vocab, tok: str, covered) -> list[str]:
     """Indexed words spelt almost like `tok` (same first two letters), for OCR errors in the
     text: kuendigung -> kuendiqunq, kaltmiete -> kaltrniete. `covered(word)` tells which words
@@ -426,8 +467,9 @@ def similar(v: Vocab, tok: str, covered) -> list[str]:
 
     def run() -> list[str]:
         found = []
-        for term, n in v.starting(tok[:2]):
-            if abs(len(term) - len(tok)) > 2 * max_d or not term.isalpha() or term == tok:
+        lengths = (len(tok) - 2 * max_d, len(tok) + 2 * max_d)
+        for term, n in v.starting(tok[:2], 20000, lengths):
+            if not term.isalpha() or term == tok or not _close_letters(tok, term, max_d):
                 continue
             dist = distance(tok, term, max_d)
             if dist <= max_d:
@@ -445,8 +487,8 @@ def correct(v: Vocab, tok: str, stats: dict[str, Any]) -> str | None:
     checked = 0
     for first in tok[0] + SOUND_ALIKE.get(tok[0], ""):
         extra = 0 if first == tok[0] else 1
-        for term, doc_count in v.starting(first, 100000):
-            if abs(len(term) - len(tok)) > max_d or not term.isalpha():
+        for term, doc_count in v.starting(first, 100000, (len(tok) - max_d, len(tok) + max_d)):
+            if not term.isalpha() or not _close_letters(tok, term, max_d):
                 continue
             checked += 1
             d = distance(tok, term, max_d)
