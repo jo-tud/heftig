@@ -156,7 +156,10 @@ def test_inbox_card_flow(tmp_path):
     assert r.status_code == 303 and r.headers["location"].startswith("/inbox")
     scan(arch, "Bescheid", "s.pdf")
     page = c.get("/inbox").text
-    assert "Scan-Sitzung „Steuer“" in page and "Alle 1 abgeheftet, so wie sie aus dem Scanner kamen" in page
+    assert (
+        "Scan-Sitzung „Steuer“" in page
+        and "Alle 1 abgeheftet, so wie sie aus dem Scanner kamen" in page
+    )
     assert "Steuer" in c.get("/scan").text
     sid = sessions.active(arch.conn)["id"]
     assert "Sitzung: Steuer" in c.get(f"/?session={sid}").text
