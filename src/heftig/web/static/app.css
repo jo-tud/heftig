@@ -592,3 +592,7 @@ html.privacy .pv-media.pv-open .pv-hide:hover { opacity: 1; }
 .autosave-note { margin: .2rem 0 0; color: var(--ok); }
 .autosave-note.error-text { color: var(--err); }
 .reviewbar .rb-note:empty { display: none; }
+/* a jump to a section of the same page ("Open" in the inbox tasks): show where it landed */
+.card:has(> h2:target) { animation: target-flash 1.6s ease-out; }
+@keyframes target-flash { 0%, 30% { box-shadow: 0 0 0 3px var(--accent); } 100% { box-shadow: none; } }
+@media (prefers-reduced-motion: reduce) { .card:has(> h2:target) { animation: none; box-shadow: 0 0 0 3px var(--accent); } }

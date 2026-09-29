@@ -114,6 +114,10 @@ def test_upload_detail_original_and_duplicate(client):
     assert [i["id"] for i in res["items"]] == [doc_id]
     html = client.get(f"/documents/{doc_id}").text
     assert "Jetzt abgeheftet" in html
+    # the inbox task "paper to file" opens the document list of exactly that paper
+    assert 'href="/?filed=no"' in client.get("/inbox").text
+    listed = client.get("/?filed=no").text
+    assert f"/documents/{doc_id}" in listed
 
 
 def test_unsupported_upload_is_rejected_friendly(client):

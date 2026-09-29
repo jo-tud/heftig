@@ -69,7 +69,7 @@
     {% if duplicates %}<li><span class="tnum">{{ duplicates | length }}</span> <span class="tlabel">{{ ngettext("possible duplicate", "possible duplicates", duplicates | length) }}</span>
       <a class="button{% if not review_total %} primary{% endif %}" href="/duplicates/next">{{ _("Go through") }}</a></li>{% endif %}
     {% if unfiled %}<li><span class="tnum">{{ unfiled | length }}</span> <span class="tlabel">{{ ngettext("paper to file", "papers to file", unfiled | length) }}</span>
-      <a class="button" href="#unf-h">{{ _("List") }}</a></li>{% endif %}
+      <a class="button" href="/?filed=no">{{ _("List") }}</a></li>{% endif %}
     {% if title_proposals %}<li><span class="tnum">{{ title_proposals }}</span> <span class="tlabel">{{ _("title suggestions") }}</span>
       <a class="button" href="/titles">{{ _("Open") }}</a></li>{% endif %}
     {% if problems %}<li><span class="tnum bad">{{ problems | length }}</span> <span class="tlabel">{{ _("failed jobs") }}</span>
