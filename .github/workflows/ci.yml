@@ -33,11 +33,11 @@ jobs:
       - run: docker build -t heftig:ci .
       - name: Container starts, is healthy and offers the setup page
         run: |
-          docker run -d --name h -p 127.0.0.1:8765:8765 heftig:ci heftig run
+          docker run -d --name heftig-ci -p 127.0.0.1:8765:8765 heftig:ci heftig run
           for i in $(seq 1 30); do curl -fs http://127.0.0.1:8765/ready && break; sleep 1; done
-          token=$(docker exec h cat /archive/setup-token)
+          token=$(docker exec heftig-ci cat /archive/setup-token)
           curl -fs "http://127.0.0.1:8765/setup?token=$token" | grep -q 'name="username"' \
-            || { docker logs h; exit 1; }
+            || { docker logs heftig-ci; exit 1; }
 
   image:
     needs: [test, docker]
