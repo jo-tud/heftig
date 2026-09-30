@@ -30,6 +30,7 @@ from .. import (
     jobs,
     maintenance,
     saved_searches,
+    senders,
     sessions,
     settings_store,
     synonyms,
@@ -348,6 +349,7 @@ def _params_from(qp) -> SearchParams:
         received_from=qp.get("received_from") or None,
         received_to=qp.get("received_to") or None,
         source=[v for v in qp.getlist("source") if v],
+        email_from=[v for v in qp.getlist("email_from") if v],
         status=[v for v in qp.getlist("status") if v],
         filed=qp.get("filed") or None,
         filing_section=qp.get("filing_section") or None,
@@ -387,7 +389,8 @@ def documents_page(request: Request, p: Principal = Depends(require_user)):
     if params.session:
         s = sessions.get(a.conn, params.session)
         names = {params.session: s["name"]} if s else {}
-    view = sv.build(params, result, request.query_params, today, names)
+    email_names = senders.load(a.paths)
+    view = sv.build(params, result, request.query_params, today, names, email_names)
     pages = (result.total + result.per_page - 1) // result.per_page
     sections = [
         r[0]
@@ -427,6 +430,7 @@ def documents_page(request: Request, p: Principal = Depends(require_user)):
         ),
         start_page=not params.q and not view["active"],
         message=request.query_params.get("msg"),
+        email_names=email_names,
     )
 
 
@@ -549,7 +553,7 @@ def _bulk_selection(a, qp) -> dict[str, Any]:
         "ids": ids[:BULK_LIMIT],
         "too_many": len(ids) > BULK_LIMIT,
         "fingerprint": hashlib.sha256("\n".join(sorted(ids)).encode()).hexdigest()[:32],
-        "label": sv.describe(params, items),
+        "label": sv.describe(params, items, email_names=senders.load(a.paths)),
         "query": urlencode([(k, v) for k, v in items if k != "sort"]),
     }
 
@@ -602,7 +606,9 @@ def _bulk_sync(a, form) -> RedirectResponse:
         )
     batch = trash.new_batch()
     with i18n.language("en"):  # stored in English; shown translated
-        label = sv.describe(sel["params"], sv.query_items(QueryParams(query)))
+        label = sv.describe(
+            sel["params"], sv.query_items(QueryParams(query)), email_names=senders.load(a.paths)
+        )
         reason = _("Bulk deletion “%(label)s”", label=label)[:200]
     for doc_id in sel["ids"]:
         try:
@@ -801,6 +807,7 @@ def document_page(request: Request, doc_id: str, p: Principal = Depends(require_
         pos=detail["filing_position"],
         current_binder=binders.current(a) if detail["metadata"].get("paper") else "",
         binder_names=[b["name"] for b in reversed(binders.load(a.paths))],
+        sender_names=senders.load(a.paths),
         text_pages=tp.pages if tp else [],
         events=events,
         terms={k: tax.list_terms(a.conn, k) for k in tax.KINDS},
@@ -1911,6 +1918,40 @@ async def settings_synonyms(request: Request, p: Principal = Depends(require_wri
     saved = await run_in_threadpool(synonyms.save, a.paths, groups)
     msg = ngettext("%(num)d group saved.", "%(num)d groups saved.", len(saved))
     return redirect("/settings?" + urlencode({"msg": msg}) + "#syn-h")
+
+
+def _sender_rows(a) -> list[dict[str, Any]]:
+    """Every address documents were e-mailed from, and every named one, with its name."""
+    from ..search import EMAIL_FROM
+
+    names = senders.load(a.paths)
+    counts = {
+        r[0]: r[1]
+        for r in a.conn.execute(
+            f"SELECT {EMAIL_FROM} AS a, COUNT(*) FROM documents d WHERE d.source = 'email' "
+            "GROUP BY a HAVING a IS NOT NULL"
+        )
+    }
+    rows = [{"address": x, "name": names.get(x, ""), "count": n} for x, n in counts.items()]
+    rows += [{"address": x, "name": n, "count": 0} for x, n in names.items() if x not in counts]
+    return sorted(rows, key=lambda r: (-r["count"], r["address"]))
+
+
+@router.get("/settings/senders")
+def settings_senders(request: Request, p: Principal = Depends(require_user)):
+    a = get_archive(request)
+    msg = _("Saved.") if request.query_params.get("saved") else None
+    return render(request, "senders.html", nav="settings", rows=_sender_rows(a), message=msg)
+
+
+@router.post("/settings/senders")
+async def settings_senders_save(request: Request, p: Principal = Depends(require_write)):
+    form = await request.form()
+    a = get_archive(request)
+    addresses = [str(v) for v in form.getlist("address")][: senders.MAX_NAMES]
+    names = [str(v) for v in form.getlist("name")]
+    await run_in_threadpool(senders.save, a.paths, dict(zip(addresses, names, strict=False)))
+    return redirect("/settings/senders?saved=1")
 
 
 @router.post("/settings/action")

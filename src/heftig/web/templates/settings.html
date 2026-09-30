@@ -97,7 +97,7 @@
     <dt>{{ _("E-mail") }}</dt><dd>{% if s.imap_host %}{{ _("%(user)s @ %(host)s:%(port)s (TLS), folder %(mailbox)s, every %(minutes)s min", user=s.imap_user, host=s.imap_host, port=s.imap_port, mailbox=s.imap_mailbox, minutes=s.imap_poll_seconds // 60) }}{% else %}{{ _("not set up") }}{% endif %}</dd>
     {% for st in status.imap %}<dt>{{ _("Last check") }}</dt><dd>{{ time(st.last_poll_at) }} · UID {{ st.last_uid }}{% if st.last_error %} · <span class="error-text">{{ st.last_error | reason }}</span>{% endif %}</dd>{% endfor %}
   </dl>
-  <p class="buttons"><a class="button" href="/settings/scanner">{{ _("Scanner and phone") }}</a> <a class="button" href="/settings/mail">{{ _("E-mail import") }}</a></p>
+  <p class="buttons"><a class="button" href="/settings/scanner">{{ _("Scanner and phone") }}</a> <a class="button" href="/settings/mail">{{ _("E-mail import") }}</a> <a class="button" href="/settings/senders">{{ _("E-mail senders") }}</a></p>
   <p class="hint">{% trans %}Save multi-page letters as <em>one</em> PDF file on the scanner.{% endtrans %}</p>
 </section>
 

@@ -256,6 +256,7 @@ The web UI's filter panel and the API (`GET /api/documents`) accept:
 | `date_from`, `date_to` | document date range (`YYYY`, `YYYY-MM` or `YYYY-MM-DD`) |
 | `received_from`, `received_to` | received date range, independent of the document date |
 | `source` (repeatable) | input source |
+| `email_from` (repeatable) | the address a document was e-mailed from (any case; the filter *E-mail from*) |
 | `status` (repeatable) | `queued`, `processing`, `done`, `needs_review`, `failed` |
 | `filed` | `yes` (paper filing confirmed) or `no` (paper, not yet filed) |
 | `filing_section` | e.g. `2026-09` |

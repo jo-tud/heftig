@@ -11,7 +11,7 @@ from datetime import date, timedelta
 from typing import Any
 from urllib.parse import urlencode
 
-from .. import i18n
+from .. import i18n, senders
 from ..datephrases import month_name
 from ..i18n import N_, _
 from ..search import SearchParams, SearchResult
@@ -27,7 +27,8 @@ STATUS_LABELS = i18n.Labels({
 CHIP_LABELS = i18n.Labels({
     "correspondent": N_("Sender"), "document_type": N_("Type"), "tag": N_("Tag"),
     "date_from": N_("Date from"), "date_to": N_("Date to"), "received_from": N_("Received from"),
-    "received_to": N_("Received to"), "source": N_("Source"), "status": N_("Status"),
+    "received_to": N_("Received to"), "source": N_("Source"), "email_from": N_("E-mail from"),
+    "status": N_("Status"),
     "filed": N_("Filed"), "filing_section": N_("Section"), "filing_binder": N_("Binder"),
     "cf_key": N_("Field"),
     "cf_min": N_("min."), "cf_max": N_("max."), "session": N_("Scan batch"),
@@ -161,7 +162,11 @@ def _date_label(v: str) -> str:
         return v
 
 
-def chips(items: Items, session_names: dict[str, str] | None = None) -> list[dict[str, str]]:
+def chips(
+    items: Items,
+    session_names: dict[str, str] | None = None,
+    email_names: dict[str, str] | None = None,
+) -> list[dict[str, str]]:
     out = []
     df = _values(items, "date_from")
     dt = _values(items, "date_to")
@@ -181,14 +186,16 @@ def chips(items: Items, session_names: dict[str, str] | None = None) -> list[dic
             shown = _date_label(v)
         if k == "session":
             shown = (session_names or {}).get(v, v)
+        if k == "email_from":
+            shown = senders.label(email_names or {}, v)
         out.append({"label": f"{CHIP_LABELS[k]}: {shown}", "href": href(rest)})
     return out
 
 
-def describe(params: SearchParams, items: Items, session_names=None) -> str:
+def describe(params: SearchParams, items: Items, session_names=None, email_names=None) -> str:
     """Short label of a search, e.g. for saved and recent searches."""
     parts = [params.q.strip()] if params.q.strip() else []
-    for c in chips(items, session_names):
+    for c in chips(items, session_names, email_names):
         parts.append(c["label"].split(": ", 1)[-1])
     return " · ".join(parts)[:80] or _("All documents")
 
@@ -199,14 +206,16 @@ def build(
     query_params,
     today: date,
     session_names: dict[str, str] | None = None,
+    email_names: dict[str, str] | None = None,
 ) -> dict[str, Any]:
+    """`email_names`: names for e-mail sender addresses (senders.json)."""
     items = query_items(query_params)
     f = result.facets or {}
     tags_selected = _values(items, "tag")
     tag_mode = "any" if params.tag_mode == "any" else "all"
     view = {
         "qitems": items,
-        "chips": chips(items, session_names),
+        "chips": chips(items, session_names, email_names),
         "active": any(k in CHIP_LABELS for k, _ in items),
         "groups": [
             (_("Sender"), _group(items, "correspondent", f.get("correspondent", []))),
@@ -220,6 +229,12 @@ def build(
             "any": with_values(items, tag_mode="any"),
         },
         "sources": _group(items, "source", f.get("source", []), lambda v: SOURCE_LABELS.get(v, v)),
+        "email_senders": _group(
+            items,
+            "email_from",
+            f.get("email_from", []),
+            lambda v: senders.label(email_names or {}, v),
+        ),  # fmt: skip
         # a date phrase in the text ("seit 2023") is replaced, not combined, by the timeline
         "timeline": _timeline(
             [
@@ -233,7 +248,7 @@ def build(
             today,
         ),
         "undated": f.get("undated", 0),
-        "label": describe(params, items, session_names),
+        "label": describe(params, items, session_names, email_names),
         "query": urlencode(items),
         # search form: a new text keeps the filters (visible as chips), drops paging/literal
         "keep": [(k, v) for k, v in items if k not in ("q", "literal")],

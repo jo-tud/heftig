@@ -220,6 +220,7 @@ body.sheet-instant .facets { transition: none !important; }
 .result h2 a { text-decoration: none; color: var(--ink); }
 .result h2 a:hover { text-decoration: underline; }
 .meta { display: flex; flex-wrap: wrap; gap: .25rem .9rem; font-size: .875rem; color: var(--muted); margin: 0 0 .3rem; }
+.has-tip { text-decoration: underline dotted; text-underline-offset: 2px; cursor: help; }
 .tags { margin: .2rem 0; }
 .tag { display: inline-block; font-size: .8rem; background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 0 .55rem; margin: 0 .25rem .25rem 0; text-decoration: none; color: var(--ink); }
 .snippet { margin: .3rem 0; font-size: .92rem; overflow-wrap: anywhere; }
@@ -241,7 +242,8 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 .
 table { width: 100%; border-collapse: collapse; font-size: .92rem; }
 th, td { text-align: left; padding: .4rem .35rem; border-bottom: 1px solid var(--line); vertical-align: top; }
 th { font-weight: 600; color: var(--muted); font-size: .8rem; }
-table.cf input, table.cf select { padding: .3rem .4rem; }
+table.cf input, table.cf select, table.senders input { padding: .3rem .4rem; }
+table.senders td { vertical-align: middle; }
 .stack { padding-left: 1.2rem; } .stack .current { font-weight: 600; }
 pre.text { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--bg); padding: .7rem; border-radius: 6px; max-height: 60vh; overflow: auto; font-size: .85rem; }
 details > summary { cursor: pointer; margin: .3rem 0; }

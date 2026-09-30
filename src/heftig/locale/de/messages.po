@@ -42,7 +42,7 @@ msgstr "Es gibt bereits einen Benutzer (Einzelbenutzer-System)."
 msgid "There already is a binder named “%(name)s”."
 msgstr "Es gibt schon einen Ordner „%(name)s“."
 
-#: src/heftig/binders.py:126 src/heftig/web/ui.py:1119
+#: src/heftig/binders.py:126 src/heftig/web/ui.py:1126
 msgid "Unknown binder."
 msgstr "Unbekannter Ordner."
 
@@ -102,11 +102,11 @@ msgstr "KI schlug Tag „%(name)s“ vor – ähnlich zu „%(similar)s“"
 msgid "New tag from an email – please confirm"
 msgstr "Neuer Tag aus einer E-Mail – bitte bestätigen"
 
-#: src/heftig/classify.py:428 src/heftig/search.py:58 src/heftig/search.py:955 src/heftig/suggestions.py:21 src/heftig/web/search_view.py:212 src/heftig/web/search_view.py:28
+#: src/heftig/classify.py:428 src/heftig/search.py:1035 src/heftig/search.py:58 src/heftig/suggestions.py:21 src/heftig/web/search_view.py:221 src/heftig/web/search_view.py:28
 msgid "Sender"
 msgstr "Absender"
 
-#: src/heftig/classify.py:428 src/heftig/search.py:59 src/heftig/suggestions.py:22 src/heftig/web/search_view.py:213 src/heftig/web/templates/document.html:129 src/heftig/web/ui.py:98
+#: src/heftig/classify.py:428 src/heftig/search.py:59 src/heftig/suggestions.py:22 src/heftig/web/search_view.py:222 src/heftig/web/templates/document.html:133 src/heftig/web/ui.py:99
 msgid "Document type"
 msgstr "Dokumenttyp"
 
@@ -362,7 +362,7 @@ msgstr "Notiz nicht gefunden."
 msgid "Invalid attachment."
 msgstr "Ungültiger Anhang."
 
-#: src/heftig/documents.py:1048 src/heftig/documents.py:1127 src/heftig/web/api.py:665
+#: src/heftig/documents.py:1048 src/heftig/documents.py:1127 src/heftig/web/api.py:667
 msgid "Attachment not found."
 msgstr "Anhang nicht gefunden."
 
@@ -382,11 +382,11 @@ msgstr "Es gibt keine Seite %(num)s."
 msgid "Please enter the date as YYYY-MM-DD."
 msgstr "Datum bitte als JJJJ-MM-TT angeben."
 
-#: src/heftig/documents.py:451 src/heftig/web/ui.py:1074
+#: src/heftig/documents.py:451 src/heftig/web/ui.py:1081
 msgid "Field “%(field)s” cannot be locked."
 msgstr "Feld „%(field)s“ kann nicht gesperrt werden."
 
-#: src/heftig/documents.py:385 src/heftig/documents.py:491 src/heftig/web/ui.py:1079
+#: src/heftig/documents.py:385 src/heftig/documents.py:491 src/heftig/web/ui.py:1086
 msgid "Field “%(field)s” cannot be edited."
 msgstr "Feld „%(field)s“ ist nicht bearbeitbar."
 
@@ -402,7 +402,7 @@ msgstr "Vorschlag nicht gefunden."
 msgid "The paper is not filed."
 msgstr "Das Papier ist nicht abgeheftet."
 
-#: src/heftig/documents.py:635 src/heftig/web/templates/documents.html:224
+#: src/heftig/documents.py:635 src/heftig/web/templates/documents.html:239
 msgid "taken out"
 msgstr "herausgenommen"
 
@@ -454,7 +454,7 @@ msgstr "gleiches Dokumentdatum"
 msgid "different sender"
 msgstr "anderer Absender"
 
-#: src/heftig/duplicates.py:225 src/heftig/search.py:1137
+#: src/heftig/duplicates.py:225 src/heftig/search.py:1217
 msgid "same sender"
 msgstr "gleicher Absender"
 
@@ -498,7 +498,7 @@ msgstr "Dateiname passt zur Ausschlussregel „%(pattern)s“"
 msgid "Sender not allowed (%(sender)s) – see HEFTIG_IMAP_ALLOWED_SENDERS"
 msgstr "Absender nicht freigegeben (%(sender)s) – siehe HEFTIG_IMAP_ALLOWED_SENDERS"
 
-#: src/heftig/imap_import.py:159 src/heftig/web/ui.py:108
+#: src/heftig/imap_import.py:159 src/heftig/web/ui.py:109
 msgid "unknown"
 msgstr "unbekannt"
 
@@ -578,185 +578,185 @@ msgstr "Hash-Konflikt in %(path)s – bitte `heftig check` ausführen"
 msgid "The worker was interrupted – will continue"
 msgstr "Worker wurde unterbrochen – wird fortgesetzt"
 
-#: src/heftig/local_embed.py:124
+#: src/heftig/local_embed.py:125
 msgid "Downloading the search model failed (HTTP %(status)s)."
 msgstr "Herunterladen des Suchmodells fehlgeschlagen (HTTP %(status)s)."
 
-#: src/heftig/local_embed.py:137
+#: src/heftig/local_embed.py:138
 msgid "Downloading the search model failed (%(error)s)."
 msgstr "Herunterladen des Suchmodells fehlgeschlagen (%(error)s)."
 
-#: src/heftig/local_embed.py:144
+#: src/heftig/local_embed.py:145
 msgid "The downloaded search model is damaged (checksum)."
 msgstr "Das heruntergeladene Suchmodell ist beschädigt (Prüfsumme)."
 
-#: src/heftig/local_embed.py:153
+#: src/heftig/local_embed.py:154
 msgid "The search model is not downloaded yet."
 msgstr "Das Suchmodell ist noch nicht heruntergeladen."
 
-#: src/heftig/maintenance.py:169
+#: src/heftig/maintenance.py:171
 msgid "%(item)s: cannot be repaired (%(error)s)"
 msgstr "%(item)s: nicht reparierbar (%(error)s)"
 
-#: src/heftig/maintenance.py:203
+#: src/heftig/maintenance.py:205
 msgid "Invalid sidecar: %(error)s"
 msgstr "Sidecar ungültig: %(error)s"
 
-#: src/heftig/maintenance.py:205
+#: src/heftig/maintenance.py:207
 msgid "%(id)s: invalid sidecar moved to %(path)s"
 msgstr "%(id)s: ungültiger Sidecar nach %(path)s verschoben"
 
-#: src/heftig/maintenance.py:215
+#: src/heftig/maintenance.py:217
 msgid "Original already archived as document %(id)s"
 msgstr "Original bereits als Dokument %(id)s archiviert"
 
-#: src/heftig/maintenance.py:218
+#: src/heftig/maintenance.py:220
 msgid "%(id)s: duplicate sidecar moved to %(path)s"
 msgstr "%(id)s: doppelter Sidecar nach %(path)s verschoben"
 
-#: src/heftig/maintenance.py:228
+#: src/heftig/maintenance.py:230
 msgid "%(id)s: arrival number %(old)s → %(new)s"
 msgstr "%(id)s: Eingangsnummer %(old)s → %(new)s"
 
-#: src/heftig/maintenance.py:244
+#: src/heftig/maintenance.py:246
 msgid "%(id)s: sidecar written from the newer database version"
 msgstr "%(id)s: Sidecar aus neuerer Datenbankversion geschrieben"
 
-#: src/heftig/maintenance.py:249
+#: src/heftig/maintenance.py:251
 msgid "%(id)s: sidecar without original – not taken over"
 msgstr "%(id)s: Sidecar ohne Original – nicht übernommen"
 
-#: src/heftig/maintenance.py:253
+#: src/heftig/maintenance.py:255
 msgid "SHA-256 in the sidecar does not match the original"
 msgstr "SHA-256 im Sidecar passt nicht zum Original"
 
-#: src/heftig/maintenance.py:256
+#: src/heftig/maintenance.py:258
 msgid "%(id)s: sidecar does not match the original, moved to %(path)s"
 msgstr "%(id)s: Sidecar passt nicht zum Original, nach %(path)s verschoben"
 
-#: src/heftig/maintenance.py:266
+#: src/heftig/maintenance.py:268
 msgid "%(id)s: loaded from the sidecar"
 msgstr "%(id)s: aus Sidecar übernommen"
 
-#: src/heftig/maintenance.py:272
+#: src/heftig/maintenance.py:274
 msgid "%(id)s: sidecar rewritten from the database"
 msgstr "%(id)s: Sidecar aus Datenbank neu geschrieben"
 
-#: src/heftig/maintenance.py:275
+#: src/heftig/maintenance.py:277
 msgid "%(id)s: processing queued again"
 msgstr "%(id)s: Verarbeitung neu eingeplant"
 
-#: src/heftig/maintenance.py:282
+#: src/heftig/maintenance.py:284
 msgid "%(path)s: added as a document (%(status)s)"
 msgstr "%(path)s: als Dokument übernommen (%(status)s)"
 
-#: src/heftig/maintenance.py:291
+#: src/heftig/maintenance.py:293
 msgid "Search index rebuilt"
 msgstr "Suchindex neu aufgebaut"
 
-#: src/heftig/maintenance.py:298
+#: src/heftig/maintenance.py:300
 msgid "tmp/%(name)s removed"
 msgstr "tmp/%(name)s entfernt"
 
-#: src/heftig/maintenance.py:302
+#: src/heftig/maintenance.py:304
 msgid "%(num)d interrupted job queued again"
 msgid_plural "%(num)d interrupted jobs queued again"
 msgstr[0] "%(num)d abgebrochene(r) Auftrag/Aufträge wieder eingeplant"
 msgstr[1] "%(num)d abgebrochene(r) Auftrag/Aufträge wieder eingeplant"
 
-#: src/heftig/maintenance.py:528 src/heftig/maintenance.py:542
+#: src/heftig/maintenance.py:533 src/heftig/maintenance.py:547
 msgid "Unsafe path in the ZIP: %(path)s"
 msgstr "Unsicherer Pfad im ZIP: %(path)s"
 
-#: src/heftig/maintenance.py:530
+#: src/heftig/maintenance.py:535
 msgid "Encrypted ZIP files are not supported"
 msgstr "Verschlüsselte ZIP-Dateien werden nicht unterstützt"
 
-#: src/heftig/maintenance.py:533
+#: src/heftig/maintenance.py:538
 msgid "The ZIP is too large when unpacked"
 msgstr "ZIP ist entpackt zu groß"
 
-#: src/heftig/maintenance.py:536
+#: src/heftig/maintenance.py:541
 msgid "Suspicious compression ratio for %(path)s (zip bomb?)"
 msgstr "Verdächtige Kompressionsrate bei %(path)s (Zip-Bombe?)"
 
-#: src/heftig/maintenance.py:553
+#: src/heftig/maintenance.py:558
 msgid "ZIP entry larger than stated"
 msgstr "ZIP-Eintrag größer als angegeben"
 
-#: src/heftig/maintenance.py:560
+#: src/heftig/maintenance.py:565
 msgid "manifest.json not found"
 msgstr "manifest.json nicht gefunden"
 
-#: src/heftig/maintenance.py:580
+#: src/heftig/maintenance.py:585
 msgid "Not a Heftig export (manifest.json missing)"
 msgstr "Kein Heftig-Export (manifest.json fehlt)"
 
-#: src/heftig/maintenance.py:583
+#: src/heftig/maintenance.py:588
 msgid "Unknown export format"
 msgstr "Unbekanntes Exportformat"
 
-#: src/heftig/maintenance.py:585
+#: src/heftig/maintenance.py:590
 msgid "The export comes from a newer Heftig version"
 msgstr "Export stammt von einer neueren Heftig-Version"
 
-#: src/heftig/maintenance.py:591
+#: src/heftig/maintenance.py:596
 msgid "Unsafe path in the manifest: %(path)s"
 msgstr "Unsicherer Pfad im Manifest: %(path)s"
 
-#: src/heftig/maintenance.py:594
+#: src/heftig/maintenance.py:599
 msgid "Checksum mismatch: %(path)s"
 msgstr "Prüfsumme stimmt nicht: %(path)s"
 
-#: src/heftig/maintenance.py:664
+#: src/heftig/maintenance.py:674
 msgid "Users and API tokens are not imported for security reasons – please create them again with `heftig init` or `heftig token create`."
 msgstr "Benutzer und API-Tokens werden aus Sicherheitsgründen nicht übernommen – bitte mit `heftig init` bzw. `heftig token create` neu anlegen."
 
-#: src/heftig/maintenance.py:686
+#: src/heftig/maintenance.py:696
 msgid "same ID, different original"
 msgstr "gleiche ID, anderes Original"
 
-#: src/heftig/maintenance.py:695
+#: src/heftig/maintenance.py:705
 msgid "Document exists with different metadata – not overwritten"
 msgstr "Dokument existiert mit abweichenden Metadaten – nicht überschrieben"
 
-#: src/heftig/maintenance.py:704
+#: src/heftig/maintenance.py:714
 msgid "Original already present as document %(id)s"
 msgstr "Original bereits als Dokument %(id)s vorhanden"
 
-#: src/heftig/maintenance.py:710
+#: src/heftig/maintenance.py:720
 msgid "Original checksum wrong"
 msgstr "Original-Prüfsumme falsch"
 
-#: src/heftig/maintenance.py:746
+#: src/heftig/maintenance.py:756
 msgid "%(id)s: attachment %(filename)s is missing or damaged"
 msgstr "%(id)s: Anhang %(filename)s fehlt oder ist beschädigt"
 
-#: src/heftig/maintenance.py:766
+#: src/heftig/maintenance.py:776
 msgid "Imported from an export"
 msgstr "Aus Export übernommen"
 
-#: src/heftig/maintenance.py:829
+#: src/heftig/maintenance.py:839
 msgid "There is no backup copy of the database yet."
 msgstr "Es gibt noch keine Sicherungskopie der Datenbank."
 
-#: src/heftig/maintenance.py:834
+#: src/heftig/maintenance.py:844
 msgid "The last backup copy of the database is %(num)d day old."
 msgid_plural "The last backup copy of the database is %(num)d days old."
 msgstr[0] "Die letzte Sicherungskopie der Datenbank ist von vor %(num)d Tag."
 msgstr[1] "Die letzte Sicherungskopie der Datenbank ist von vor %(num)d Tagen."
 
-#: src/heftig/maintenance.py:839
+#: src/heftig/maintenance.py:849
 msgid "The last backup copy of the database is %(num)d hour old."
 msgid_plural "The last backup copy of the database is %(num)d hours old."
 msgstr[0] "Die letzte Sicherungskopie der Datenbank ist von vor %(num)d Stunde."
 msgstr[1] "Die letzte Sicherungskopie der Datenbank ist von vor %(num)d Stunden."
 
-#: src/heftig/maintenance.py:883
+#: src/heftig/maintenance.py:898
 msgid "Not a Heftig backup (index.sqlite missing)"
 msgstr "Kein Heftig-Backup (index.sqlite fehlt)"
 
-#: src/heftig/maintenance.py:885
+#: src/heftig/maintenance.py:900
 msgid "The target directory is not empty"
 msgstr "Zielverzeichnis ist nicht leer"
 
@@ -988,71 +988,79 @@ msgstr "Leere Suche – nichts zu speichern."
 msgid "At most %(num)s saved searches."
 msgstr "Höchstens %(num)s gespeicherte Suchen."
 
-#: src/heftig/search.py:1045
+#: src/heftig/search.py:1035 src/heftig/web/search_view.py:28 src/heftig/web/templates/document.html:146 src/heftig/web/templates/document.html:151 src/heftig/web/templates/document.html:156 src/heftig/web/ui.py:1295
+msgid "Type"
+msgstr "Typ"
+
+#: src/heftig/search.py:1072
+msgid "also “%(alias)s”"
+msgstr "auch „%(alias)s“"
+
+#: src/heftig/search.py:1125
 msgid "Number"
 msgstr "Nummer"
 
-#: src/heftig/search.py:1051 src/heftig/web/templates/documents.html:31
+#: src/heftig/search.py:1131 src/heftig/web/templates/documents.html:31
 msgid "Date range"
 msgstr "Zeitraum"
 
-#: src/heftig/search.py:1052
+#: src/heftig/search.py:1132
 msgid "filters by document date"
 msgstr "wird als Dokumentdatum gefiltert"
 
-#: src/heftig/search.py:1060 src/heftig/web/templates/base.html:25 src/heftig/web/templates/documents.html:3 src/heftig/web/templates/settings.html:106
+#: src/heftig/search.py:1140 src/heftig/web/templates/base.html:25 src/heftig/web/templates/documents.html:3 src/heftig/web/templates/senders.html:12 src/heftig/web/templates/settings.html:107
 msgid "Documents"
 msgstr "Dokumente"
 
-#: src/heftig/search.py:1139
+#: src/heftig/search.py:1219
 msgid "same type"
 msgstr "gleicher Typ"
 
-#: src/heftig/search.py:1324
+#: src/heftig/search.py:1457
 msgid "Date range recognized: %(range)s"
 msgstr "Zeitraum erkannt: %(range)s"
 
-#: src/heftig/search.py:1330
+#: src/heftig/search.py:1463
 msgid "Search term corrected: %(old)s -> %(new)s"
 msgstr "Suchbegriff korrigiert: %(old)s -> %(new)s"
 
-#: src/heftig/search.py:1357
+#: src/heftig/search.py:1490
 msgid "Search pattern missing."
 msgstr "Suchmuster fehlt."
 
-#: src/heftig/search.py:1359
+#: src/heftig/search.py:1492
 msgid "Search pattern is too long (max. 200 characters)."
 msgstr "Suchmuster ist zu lang (max. 200 Zeichen)."
 
-#: src/heftig/search.py:1366
+#: src/heftig/search.py:1499
 msgid "Invalid regular expression: %(error)s"
 msgstr "Ungültiger regulärer Ausdruck: %(error)s"
 
-#: src/heftig/search.py:1463
+#: src/heftig/search.py:1596
 msgid "The regular expression is too expensive (more than %(sec)s s) – please simplify it, e.g. without nested repetitions like (.+)+."
 msgstr "Der reguläre Ausdruck ist zu aufwendig (mehr als %(sec)s s) – bitte einfacher formulieren, z. B. ohne verschachtelte Wiederholungen wie (.+)+."
 
-#: src/heftig/search.py:1470
+#: src/heftig/search.py:1603
 msgid "The regular expression could not be evaluated."
 msgstr "Der reguläre Ausdruck konnte nicht ausgewertet werden."
 
-#: src/heftig/search.py:178
+#: src/heftig/search.py:180
 msgid "Unclosed quotation mark – searched as plain text."
 msgstr "Anführungszeichen nicht geschlossen – als normaler Text gesucht."
 
-#: src/heftig/search.py:185
+#: src/heftig/search.py:187
 msgid "“%(key)s:” without a value was ignored."
 msgstr "„%(key)s:“ ohne Wert wurde ignoriert."
 
-#: src/heftig/search.py:205
+#: src/heftig/search.py:208
 msgid "Only the first %(num)s search terms are used."
 msgstr "Nur die ersten %(num)s Suchbegriffe werden verwendet."
 
-#: src/heftig/search.py:220
+#: src/heftig/search.py:223
 msgid "“year:%(value)s” – please enter a year, e.g. year:2025."
 msgstr "„year:%(value)s“ – bitte eine Jahreszahl angeben, z. B. year:2025."
 
-#: src/heftig/search.py:244
+#: src/heftig/search.py:247
 msgid "“%(label)s:%(value)s” – please enter the date as YYYY, YYYY-MM, YYYY-MM-DD or A..B."
 msgstr "„%(label)s:%(value)s“ – Datum bitte als JJJJ, JJJJ-MM, JJJJ-MM-TT oder A..B angeben."
 
@@ -1060,15 +1068,11 @@ msgstr "„%(label)s:%(value)s“ – Datum bitte als JJJJ, JJJJ-MM, JJJJ-MM-TT 
 msgid "Number/ID"
 msgstr "Nummer/ID"
 
-#: src/heftig/search.py:57 src/heftig/suggestions.py:25 src/heftig/web/templates/document.html:122 src/heftig/web/templates/documents.html:187 src/heftig/web/ui.py:1285 src/heftig/web/ui.py:95
+#: src/heftig/search.py:57 src/heftig/suggestions.py:25 src/heftig/web/templates/document.html:126 src/heftig/web/templates/documents.html:201 src/heftig/web/ui.py:1292 src/heftig/web/ui.py:96
 msgid "Title"
 msgstr "Titel"
 
-#: src/heftig/search.py:577
-msgid "Search by meaning failed: %(error)s"
-msgstr "Suche nach Bedeutung fehlgeschlagen: %(error)s"
-
-#: src/heftig/search.py:60 src/heftig/search.py:955 src/heftig/web/search_view.py:28
+#: src/heftig/search.py:1035 src/heftig/search.py:60 src/heftig/web/search_view.py:28
 msgid "Tag"
 msgstr "Tag"
 
@@ -1076,73 +1080,69 @@ msgstr "Tag"
 msgid "Custom field"
 msgstr "Zusatzfeld"
 
-#: src/heftig/search.py:62 src/heftig/web/templates/document.html:323
+#: src/heftig/search.py:617
+msgid "Search by meaning failed: %(error)s"
+msgstr "Suche nach Bedeutung fehlgeschlagen: %(error)s"
+
+#: src/heftig/search.py:62 src/heftig/web/templates/document.html:327
 msgid "File name"
 msgstr "Dateiname"
 
-#: src/heftig/search.py:63 src/heftig/web/search_view.py:176 src/heftig/web/templates/document.html:140 src/heftig/web/templates/titles.html:25
+#: src/heftig/search.py:63 src/heftig/web/search_view.py:181 src/heftig/web/templates/document.html:144 src/heftig/web/templates/titles.html:25
 msgid "Date"
 msgstr "Datum"
 
-#: src/heftig/search.py:64 src/heftig/web/templates/document.html:137 src/heftig/web/ui.py:100
+#: src/heftig/search.py:64 src/heftig/web/templates/document.html:141 src/heftig/web/ui.py:101
 msgid "Summary"
 msgstr "Zusammenfassung"
 
-#: src/heftig/search.py:65 src/heftig/web/templates/document.html:140 src/heftig/web/templates/document.html:309 src/heftig/web/templates/inbox.html:136 src/heftig/web/ui.py:1292
+#: src/heftig/search.py:65 src/heftig/web/templates/document.html:144 src/heftig/web/templates/document.html:313 src/heftig/web/templates/inbox.html:136 src/heftig/web/ui.py:1299
 msgid "Text"
 msgstr "Text"
-
-#: src/heftig/search.py:658
-msgid "Exact ID/hash"
-msgstr "Exakte ID/Hash"
 
 #: src/heftig/search.py:66
 msgid "Note/attachment"
 msgstr "Notiz/Anhang"
 
-#: src/heftig/search.py:762
+#: src/heftig/search.py:710
+msgid "Exact ID/hash"
+msgstr "Exakte ID/Hash"
+
+#: src/heftig/search.py:826
 msgid "Meaning"
 msgstr "Bedeutung"
 
-#: src/heftig/search.py:764
+#: src/heftig/search.py:828
 msgid "Not all search terms occur together – showing partial matches."
 msgstr "Nicht alle Suchbegriffe kommen gemeinsam vor – zeige Teiltreffer."
 
-#: src/heftig/search.py:792
+#: src/heftig/search.py:856
 msgid "“%(name)s” is unknown."
 msgstr "„%(name)s“ ist nicht bekannt."
 
-#: src/heftig/search.py:834 src/heftig/web/templates/documents.html:49
+#: src/heftig/search.py:902 src/heftig/web/templates/documents.html:49
 msgid "Document date from"
 msgstr "Dokumentdatum ab"
 
-#: src/heftig/search.py:836 src/heftig/web/templates/documents.html:50
+#: src/heftig/search.py:904 src/heftig/web/templates/documents.html:50
 msgid "Document date to"
 msgstr "Dokumentdatum bis"
 
-#: src/heftig/search.py:839 src/heftig/web/search_view.py:29 src/heftig/web/templates/documents.html:123
+#: src/heftig/search.py:907 src/heftig/web/search_view.py:29 src/heftig/web/templates/documents.html:137
 msgid "Received from"
 msgstr "Eingang ab"
 
-#: src/heftig/search.py:842 src/heftig/web/search_view.py:30 src/heftig/web/templates/documents.html:124
+#: src/heftig/search.py:910 src/heftig/web/search_view.py:30 src/heftig/web/templates/documents.html:138
 msgid "Received to"
 msgstr "Eingang bis"
 
-#: src/heftig/search.py:848
+#: src/heftig/search.py:916
 msgid "Unknown source “%(source)s”. Allowed: %(options)s."
 msgstr "Unbekannte Quelle „%(source)s“. Möglich: %(options)s."
 
-#: src/heftig/search.py:871
+#: src/heftig/search.py:942
 msgid "Amount “%(value)s” not understood – e.g. 1234.56."
 msgstr "Betrag „%(value)s“ nicht verstanden – z. B. 1.234,56."
-
-#: src/heftig/search.py:955 src/heftig/web/search_view.py:28 src/heftig/web/templates/document.html:142 src/heftig/web/templates/document.html:147 src/heftig/web/templates/document.html:152 src/heftig/web/ui.py:1288
-msgid "Type"
-msgstr "Typ"
-
-#: src/heftig/search.py:992
-msgid "also “%(alias)s”"
-msgstr "auch „%(alias)s“"
 
 #: src/heftig/sessions.py:130
 msgid "Binder %(name)s"
@@ -1180,11 +1180,11 @@ msgstr "Unbekannte Papier-Behandlung."
 msgid "File is larger than %(mb)s MB"
 msgstr "Datei ist größer als %(mb)s MB"
 
-#: src/heftig/suggestions.py:23 src/heftig/web/templates/documents.html:72 src/heftig/web/ui.py:1294 src/heftig/web/ui.py:1925 src/heftig/web/ui.py:99
+#: src/heftig/suggestions.py:23 src/heftig/web/templates/documents.html:72 src/heftig/web/ui.py:100 src/heftig/web/ui.py:1301 src/heftig/web/ui.py:1966
 msgid "Tags"
 msgstr "Tags"
 
-#: src/heftig/suggestions.py:24 src/heftig/web/templates/document.html:124 src/heftig/web/templates/documents.html:187 src/heftig/web/templates/documents.html:221 src/heftig/web/templates/documents.html:31 src/heftig/web/ui.py:1286
+#: src/heftig/suggestions.py:24 src/heftig/web/templates/document.html:128 src/heftig/web/templates/documents.html:201 src/heftig/web/templates/documents.html:235 src/heftig/web/templates/documents.html:31 src/heftig/web/ui.py:1293
 msgid "Document date"
 msgstr "Dokumentdatum"
 
@@ -1216,7 +1216,7 @@ msgstr "„%(title)s“ in den Papierkorb"
 msgid "Filing: The filing position now belongs to “%(title)s” – please check where the paper is."
 msgstr "Ablage: Die Ablageposition gehört inzwischen zu „%(title)s“ – bitte prüfen, wo das Papier liegt."
 
-#: src/heftig/trash.py:170 src/heftig/web/ui.py:498
+#: src/heftig/trash.py:170 src/heftig/web/ui.py:502
 msgid "No longer in the trash."
 msgstr "Nicht (mehr) im Papierkorb."
 
@@ -1252,39 +1252,39 @@ msgstr "Wird nur jetzt angezeigt."
 msgid "Token not found or already revoked."
 msgstr "Token nicht gefunden oder bereits widerrufen."
 
-#: src/heftig/web/api.py:276
+#: src/heftig/web/api.py:278
 msgid "Saved search not found."
 msgstr "Gespeicherte Suche nicht gefunden."
 
-#: src/heftig/web/api.py:284 src/heftig/web/api.py:417 src/heftig/web/app.py:186 src/heftig/web/app.py:188
+#: src/heftig/web/api.py:286 src/heftig/web/api.py:419 src/heftig/web/app.py:186 src/heftig/web/app.py:188
 msgid "Document not found."
 msgstr "Dokument nicht gefunden."
 
-#: src/heftig/web/api.py:335
+#: src/heftig/web/api.py:337
 msgid "Original file is missing – run `heftig check`."
 msgstr "Originaldatei fehlt – `heftig check` ausführen."
 
-#: src/heftig/web/api.py:413
+#: src/heftig/web/api.py:415
 msgid "To confirm, pass ?confirm=<id>."
 msgstr "Zur Bestätigung ?confirm=<id> angeben."
 
-#: src/heftig/web/api.py:439
+#: src/heftig/web/api.py:441
 msgid "Delete permanently: pass ?confirm=<id>."
 msgstr "Endgültig löschen: ?confirm=<id> angeben."
 
-#: src/heftig/web/api.py:473 src/heftig/web/ui.py:478
+#: src/heftig/web/api.py:475 src/heftig/web/ui.py:482
 msgid "Nothing to do."
 msgstr "Nichts zu tun."
 
-#: src/heftig/web/api.py:567
+#: src/heftig/web/api.py:569
 msgid "The job has not failed."
 msgstr "Auftrag ist nicht fehlgeschlagen."
 
-#: src/heftig/web/api.py:669
+#: src/heftig/web/api.py:671
 msgid "Attachment file is missing – run `heftig check`."
 msgstr "Anhangdatei fehlt – `heftig check` ausführen."
 
-#: src/heftig/web/api.py:840
+#: src/heftig/web/api.py:842
 msgid "The path must be inside <archive>/imports/ and exist."
 msgstr "Pfad muss unter <archive>/imports/ liegen und existieren."
 
@@ -1308,25 +1308,21 @@ msgstr "Anmeldung erforderlich."
 msgid "This API token is read-only."
 msgstr "Dieser API-Token darf nur lesen."
 
-#: src/heftig/web/search_view.py:110
+#: src/heftig/web/search_view.py:111
 msgid "All years"
 msgstr "Alle Jahre"
 
-#: src/heftig/web/search_view.py:135
+#: src/heftig/web/search_view.py:136
 msgid "Last 12 months"
 msgstr "Letzte 12 Monate"
 
-#: src/heftig/web/search_view.py:137
+#: src/heftig/web/search_view.py:138
 msgid "This year (%(year)s)"
 msgstr "Dieses Jahr (%(year)s)"
 
-#: src/heftig/web/search_view.py:140
+#: src/heftig/web/search_view.py:141
 msgid "Last year (%(year)s)"
 msgstr "Letztes Jahr (%(year)s)"
-
-#: src/heftig/web/search_view.py:193
-msgid "All documents"
-msgstr "Alle Dokumente"
 
 #: src/heftig/web/search_view.py:20 src/heftig/web/templates/_setup.html:4 src/heftig/web/templates/setup_scanner.html:3
 msgid "Scanner"
@@ -1344,15 +1340,19 @@ msgstr "Browser"
 msgid "API"
 msgstr "API"
 
+#: src/heftig/web/search_view.py:200
+msgid "All documents"
+msgstr "Alle Dokumente"
+
 #: src/heftig/web/search_view.py:21
 msgid "Email"
 msgstr "E-Mail"
 
-#: src/heftig/web/search_view.py:21 src/heftig/web/templates/document.html:309 src/heftig/web/ui.py:115
+#: src/heftig/web/search_view.py:21 src/heftig/web/templates/document.html:313 src/heftig/web/ui.py:116
 msgid "Import"
 msgstr "Import"
 
-#: src/heftig/web/search_view.py:24 src/heftig/web/ui.py:114
+#: src/heftig/web/search_view.py:24 src/heftig/web/ui.py:115
 msgid "waiting"
 msgstr "wartet"
 
@@ -1360,7 +1360,7 @@ msgstr "wartet"
 msgid "in progress"
 msgstr "in Arbeit"
 
-#: src/heftig/web/search_view.py:24 src/heftig/web/templates/document.html:86
+#: src/heftig/web/search_view.py:24 src/heftig/web/templates/document.html:90
 msgid "done"
 msgstr "fertig"
 
@@ -1368,7 +1368,7 @@ msgstr "fertig"
 msgid "to review"
 msgstr "prüfen"
 
-#: src/heftig/web/search_view.py:25 src/heftig/web/static/scan.js:641 src/heftig/web/ui.py:121
+#: src/heftig/web/search_view.py:25 src/heftig/web/static/scan.js:641 src/heftig/web/ui.py:122
 msgid "error"
 msgstr "Fehler"
 
@@ -1380,47 +1380,51 @@ msgstr "Datum ab"
 msgid "Date to"
 msgstr "Datum bis"
 
-#: src/heftig/web/search_view.py:30 src/heftig/web/templates/document.html:322 src/heftig/web/templates/documents.html:87 src/heftig/web/templates/inbox.html:173
+#: src/heftig/web/search_view.py:30 src/heftig/web/templates/document.html:326 src/heftig/web/templates/documents.html:87 src/heftig/web/templates/inbox.html:173
 msgid "Source"
 msgstr "Quelle"
 
-#: src/heftig/web/search_view.py:30 src/heftig/web/templates/documents.html:99
+#: src/heftig/web/search_view.py:30 src/heftig/web/templates/document.html:329 src/heftig/web/templates/documents.html:97
+msgid "E-mail from"
+msgstr "Per E-Mail von"
+
+#: src/heftig/web/search_view.py:31 src/heftig/web/templates/documents.html:113
 msgid "Status"
 msgstr "Status"
 
-#: src/heftig/web/search_view.py:31
+#: src/heftig/web/search_view.py:32
 msgid "Filed"
 msgstr "Abgeheftet"
 
-#: src/heftig/web/search_view.py:31
+#: src/heftig/web/search_view.py:32
 msgid "Section"
 msgstr "Abschnitt"
 
-#: src/heftig/web/search_view.py:31 src/heftig/web/templates/document.html:192 src/heftig/web/templates/documents.html:108 src/heftig/web/templates/inbox.html:202
+#: src/heftig/web/search_view.py:32 src/heftig/web/templates/document.html:196 src/heftig/web/templates/documents.html:122 src/heftig/web/templates/inbox.html:202
 msgid "Binder"
 msgstr "Ordner"
 
-#: src/heftig/web/search_view.py:32 src/heftig/web/templates/_review.html:21 src/heftig/web/templates/documents.html:117
+#: src/heftig/web/search_view.py:33 src/heftig/web/templates/_review.html:21 src/heftig/web/templates/documents.html:131
 msgid "Field"
 msgstr "Feld"
 
-#: src/heftig/web/search_view.py:33
+#: src/heftig/web/search_view.py:34
 msgid "min."
 msgstr "min."
 
-#: src/heftig/web/search_view.py:33
+#: src/heftig/web/search_view.py:34
 msgid "max."
 msgstr "max."
 
-#: src/heftig/web/search_view.py:33
+#: src/heftig/web/search_view.py:34
 msgid "Scan batch"
 msgstr "Sitzung"
 
-#: src/heftig/web/search_view.py:35 src/heftig/web/templates/documents.html:105
+#: src/heftig/web/search_view.py:36 src/heftig/web/templates/documents.html:119
 msgid "yes"
 msgstr "ja"
 
-#: src/heftig/web/search_view.py:35
+#: src/heftig/web/search_view.py:36
 msgid "no"
 msgstr "nein"
 
@@ -1452,7 +1456,7 @@ msgstr "Gespeichert. Die Anmeldung am Postfach klappt; neue E-Mails werden alle 
 msgid "E-mail import is off."
 msgstr "Der E-Mail-Import ist aus."
 
-#: src/heftig/web/setup.py:192
+#: src/heftig/web/setup.py:192 src/heftig/web/ui.py:1943
 msgid "Saved."
 msgstr "Gespeichert."
 
@@ -1690,7 +1694,7 @@ msgstr "Vorschlag"
 msgid "Reason"
 msgstr "Grund"
 
-#: src/heftig/web/templates/_review.html:27 src/heftig/web/templates/document.html:62 src/heftig/web/templates/titles.html:11
+#: src/heftig/web/templates/_review.html:27 src/heftig/web/templates/document.html:66 src/heftig/web/templates/titles.html:11
 msgid "%(pct)s%%"
 msgstr "%(pct)s %%"
 
@@ -1730,7 +1734,7 @@ msgid_plural "%(num)d open suggestions – those not accepted are dismissed"
 msgstr[0] "%(num)d offener Vorschlag – wird verworfen, wenn nicht übernommen"
 msgstr[1] "%(num)d offene Vorschläge – nicht übernommene werden verworfen"
 
-#: src/heftig/web/templates/_setup.html:15 src/heftig/web/templates/base.html:31 src/heftig/web/templates/binders.html:4 src/heftig/web/templates/categories.html:6 src/heftig/web/templates/settings.html:3 src/heftig/web/templates/settings.html:5
+#: src/heftig/web/templates/_setup.html:15 src/heftig/web/templates/base.html:31 src/heftig/web/templates/binders.html:4 src/heftig/web/templates/categories.html:6 src/heftig/web/templates/senders.html:4 src/heftig/web/templates/settings.html:3
 msgid "Settings"
 msgstr "Einstellungen"
 
@@ -1755,7 +1759,7 @@ msgctxt "setup step"
 msgid "Search"
 msgstr "Suche"
 
-#: src/heftig/web/templates/_setup.html:4 src/heftig/web/templates/settings.html:96 src/heftig/web/templates/setup_mail.html:3
+#: src/heftig/web/templates/_setup.html:4 src/heftig/web/templates/settings.html:97 src/heftig/web/templates/setup_mail.html:3
 msgid "E-mail"
 msgstr "E-Mail"
 
@@ -1863,7 +1867,7 @@ msgstr[1] "%(num)d Blätter ohne Dokument im Archiv"
 msgid "section %(section)s"
 msgstr "Abschnitt %(section)s"
 
-#: src/heftig/web/templates/binders.html:29 src/heftig/web/templates/document.html:188
+#: src/heftig/web/templates/binders.html:29 src/heftig/web/templates/document.html:192
 msgid "Taken out"
 msgstr "Herausgenommen"
 
@@ -2009,7 +2013,7 @@ msgid_plural "%(num)d docs."
 msgstr[0] "%(num)d Dok."
 msgstr[1] "%(num)d Dok."
 
-#: src/heftig/web/templates/categories.html:35 src/heftig/web/templates/document.html:228
+#: src/heftig/web/templates/categories.html:35 src/heftig/web/templates/document.html:232
 msgid "Edit"
 msgstr "Bearbeiten"
 
@@ -2054,7 +2058,7 @@ msgid_plural "Delete “%(name)s”? It will be removed from %(num)d documents."
 msgstr[0] "„%(name)s“ löschen? Die Zuordnung wird bei %(num)d Dokument entfernt."
 msgstr[1] "„%(name)s“ löschen? Die Zuordnung wird bei %(num)d Dokumenten entfernt."
 
-#: src/heftig/web/templates/categories.html:46 src/heftig/web/templates/document.html:233 src/heftig/web/templates/scan.html:55
+#: src/heftig/web/templates/categories.html:46 src/heftig/web/templates/document.html:237 src/heftig/web/templates/scan.html:55
 msgid "Delete"
 msgstr "Löschen"
 
@@ -2082,7 +2086,7 @@ msgstr "S. %(pages)s"
 msgid "Move up"
 msgstr "Nach oben"
 
-#: src/heftig/web/templates/combine.html:22 src/heftig/web/templates/documents.html:169
+#: src/heftig/web/templates/combine.html:22 src/heftig/web/templates/documents.html:183
 msgid "Remove"
 msgstr "Entfernen"
 
@@ -2128,45 +2132,49 @@ msgstr[1] "%(num)d S."
 msgid "Review"
 msgstr "Prüfen"
 
-#: src/heftig/web/templates/document.html:102
+#: src/heftig/web/templates/document.html:103
+msgid "Turn page %(num)s to the left"
+msgstr "Seite %(num)s nach links drehen"
+
+#: src/heftig/web/templates/document.html:103
+msgid "Turn page %(num)s to the right"
+msgstr "Seite %(num)s nach rechts drehen"
+
+#: src/heftig/web/templates/document.html:106
 msgid "blank"
 msgstr "leer"
 
-#: src/heftig/web/templates/document.html:102
+#: src/heftig/web/templates/document.html:106
 msgid "Not blank – show"
 msgstr "Nicht leer – zeigen"
 
-#: src/heftig/web/templates/document.html:103
+#: src/heftig/web/templates/document.html:107
 msgid "Blank – hide"
 msgstr "Leer – ausblenden"
 
-#: src/heftig/web/templates/document.html:108 src/heftig/web/templates/duplicate.html:89
+#: src/heftig/web/templates/document.html:112 src/heftig/web/templates/duplicate.html:89
 msgid "Private – tap to show"
 msgstr "Privat – antippen zum Anzeigen"
 
-#: src/heftig/web/templates/document.html:109 src/heftig/web/templates/duplicate.html:90
+#: src/heftig/web/templates/document.html:113 src/heftig/web/templates/duplicate.html:90
 msgid "Blur again"
 msgstr "Wieder unscharf machen"
 
-#: src/heftig/web/templates/document.html:109 src/heftig/web/templates/duplicate.html:90
+#: src/heftig/web/templates/document.html:113 src/heftig/web/templates/duplicate.html:90
 msgid "Hide"
 msgstr "Verbergen"
 
-#: src/heftig/web/templates/document.html:111
+#: src/heftig/web/templates/document.html:115
 msgid "Double-tap to zoom."
 msgstr "Doppeltippen zoomt."
 
-#: src/heftig/web/templates/document.html:111
+#: src/heftig/web/templates/document.html:115
 msgid "Hide blank pages"
 msgstr "Leere Seiten ausblenden"
 
-#: src/heftig/web/templates/document.html:115
+#: src/heftig/web/templates/document.html:119
 msgid "Metadata"
 msgstr "Metadaten"
-
-#: src/heftig/web/templates/document.html:119
-msgid "Locked: reprocessing won't overwrite this field. Uncheck to leave it to the AI again."
-msgstr "Gesperrt: Neuverarbeitung überschreibt das Feld nicht. Häkchen entfernen, um es wieder der KI zu überlassen."
 
 #: src/heftig/web/templates/document.html:12
 msgid "Save changes, mark as reviewed and go to the next one"
@@ -2176,59 +2184,59 @@ msgstr "Änderungen speichern, als geprüft markieren und zum nächsten"
 msgid "Reviewed → next"
 msgstr "Geprüft → nächstes"
 
-#: src/heftig/web/templates/document.html:120
+#: src/heftig/web/templates/document.html:123
+msgid "Locked: reprocessing won't overwrite this field. Uncheck to leave it to the AI again."
+msgstr "Gesperrt: Neuverarbeitung überschreibt das Feld nicht. Häkchen entfernen, um es wieder der KI zu überlassen."
+
+#: src/heftig/web/templates/document.html:124
 msgid "%(field)s locked"
 msgstr "%(field)s gesperrt"
 
-#: src/heftig/web/templates/document.html:127
-msgctxt "document field"
-msgid "Sender"
-msgstr "Korrespondent"
-
-#: src/heftig/web/templates/document.html:13 src/heftig/web/templates/duplicate.html:21 src/heftig/web/templates/duplicate.html:27 src/heftig/web/templates/setup_ai.html:41 src/heftig/web/templates/setup_mail.html:38 src/heftig/web/templates/setup_search.html:23
+#: src/heftig/web/templates/document.html:13 src/heftig/web/templates/duplicate.html:21 src/heftig/web/templates/duplicate.html:27 src/heftig/web/templates/setup_ai.html:41 src/heftig/web/templates/setup_mail.html:38 src/heftig/web/templates/setup_search.html:25
 msgid "Skip"
 msgstr "Überspringen"
 
 #: src/heftig/web/templates/document.html:131
+msgctxt "document field"
+msgid "Sender"
+msgstr "Korrespondent"
+
+#: src/heftig/web/templates/document.html:135
 msgid "Tags (comma-separated)"
 msgstr "Tags (durch Komma getrennt)"
 
-#: src/heftig/web/templates/document.html:134
+#: src/heftig/web/templates/document.html:138
 msgid "Manually added: %(added)s · removed: %(removed)s – kept when reprocessing."
 msgstr "Manuell hinzugefügt: %(added)s · entfernt: %(removed)s – bleibt bei Neuverarbeitung erhalten."
 
-#: src/heftig/web/templates/document.html:135
+#: src/heftig/web/templates/document.html:139
 msgid "Manually added: %(added)s – kept when reprocessing."
 msgstr "Manuell hinzugefügt: %(added)s – bleibt bei Neuverarbeitung erhalten."
 
-#: src/heftig/web/templates/document.html:136
+#: src/heftig/web/templates/document.html:140
 msgid "Manually removed: %(removed)s – kept when reprocessing."
 msgstr "Manuell entfernt: %(removed)s – bleibt bei Neuverarbeitung erhalten."
 
-#: src/heftig/web/templates/document.html:140
+#: src/heftig/web/templates/document.html:144
 msgctxt "field type"
 msgid "Number"
 msgstr "Zahl"
 
-#: src/heftig/web/templates/document.html:140
+#: src/heftig/web/templates/document.html:144
 msgid "Amount"
 msgstr "Betrag"
 
-#: src/heftig/web/templates/document.html:142 src/heftig/web/templates/documents.html:200 src/heftig/web/templates/settings.html:134
+#: src/heftig/web/templates/document.html:146 src/heftig/web/templates/documents.html:214 src/heftig/web/templates/senders.html:12 src/heftig/web/templates/settings.html:135
 msgid "Name"
 msgstr "Name"
 
-#: src/heftig/web/templates/document.html:142 src/heftig/web/templates/document.html:148 src/heftig/web/templates/document.html:153
+#: src/heftig/web/templates/document.html:146 src/heftig/web/templates/document.html:152 src/heftig/web/templates/document.html:157
 msgid "Value"
 msgstr "Wert"
 
-#: src/heftig/web/templates/document.html:142 src/heftig/web/templates/document.html:149 src/heftig/web/templates/document.html:154
+#: src/heftig/web/templates/document.html:146 src/heftig/web/templates/document.html:153 src/heftig/web/templates/document.html:158
 msgid "Currency"
 msgstr "Währung"
-
-#: src/heftig/web/templates/document.html:146
-msgid "Field name"
-msgstr "Feldname"
 
 #: src/heftig/web/templates/document.html:15
 msgid "Move to the trash (restorable) and go to the next one"
@@ -2238,195 +2246,199 @@ msgstr "In den Papierkorb legen (wiederherstellbar) und zum nächsten"
 msgid "Trash → next"
 msgstr "Papierkorb → nächstes"
 
-#: src/heftig/web/templates/document.html:151
+#: src/heftig/web/templates/document.html:150
+msgid "Field name"
+msgstr "Feldname"
+
+#: src/heftig/web/templates/document.html:155
 msgid "new, e.g. contract number"
 msgstr "neu, z. B. Vertragsnummer"
 
-#: src/heftig/web/templates/document.html:151
+#: src/heftig/web/templates/document.html:155
 msgid "New field name"
 msgstr "Neuer Feldname"
-
-#: src/heftig/web/templates/document.html:158
-msgid "Changes are saved as soon as you leave a field. Changed fields are locked (🔒) and won't be overwritten when reprocessing."
-msgstr "Änderungen werden gespeichert, sobald du ein Feld verlässt. Geänderte Felder werden gesperrt (🔒) und beim erneuten Verarbeiten nicht überschrieben."
-
-#: src/heftig/web/templates/document.html:159
-msgid "Changed fields are locked (🔒) and won't be overwritten when reprocessing."
-msgstr "Geänderte Felder werden gesperrt (🔒) und bei Neuverarbeitung nicht überschrieben."
 
 #: src/heftig/web/templates/document.html:16
 msgid "Stop"
 msgstr "Beenden"
 
-#: src/heftig/web/templates/document.html:160 src/heftig/web/templates/document.html:216 src/heftig/web/templates/document.html:232 src/heftig/web/templates/documents.html:202 src/heftig/web/templates/settings.html:37 src/heftig/web/templates/settings.html:69
+#: src/heftig/web/templates/document.html:162
+msgid "Changes are saved as soon as you leave a field. Changed fields are locked (🔒) and won't be overwritten when reprocessing."
+msgstr "Änderungen werden gespeichert, sobald du ein Feld verlässt. Geänderte Felder werden gesperrt (🔒) und beim erneuten Verarbeiten nicht überschrieben."
+
+#: src/heftig/web/templates/document.html:163
+msgid "Changed fields are locked (🔒) and won't be overwritten when reprocessing."
+msgstr "Geänderte Felder werden gesperrt (🔒) und bei Neuverarbeitung nicht überschrieben."
+
+#: src/heftig/web/templates/document.html:164 src/heftig/web/templates/document.html:220 src/heftig/web/templates/document.html:236 src/heftig/web/templates/documents.html:216 src/heftig/web/templates/senders.html:23 src/heftig/web/templates/settings.html:37
 msgid "Save"
 msgstr "Speichern"
 
-#: src/heftig/web/templates/document.html:170 src/heftig/web/templates/setup_scanner.html:33
+#: src/heftig/web/templates/document.html:174 src/heftig/web/templates/setup_scanner.html:33
 msgid "Paper filing"
 msgstr "Papierablage"
 
-#: src/heftig/web/templates/document.html:171
+#: src/heftig/web/templates/document.html:175
 msgid "Scanned in batch <a href=\"%(url)s\">“%(name)s”</a>"
 msgstr "Eingescannt in der Sitzung <a href=\"%(url)s\">„%(name)s“</a>"
 
-#: src/heftig/web/templates/document.html:171
+#: src/heftig/web/templates/document.html:175
 msgid "Original kept"
 msgstr "Original behalten"
 
-#: src/heftig/web/templates/document.html:171
+#: src/heftig/web/templates/document.html:175
 msgid "Original not needed"
 msgstr "Original nicht nötig"
 
-#: src/heftig/web/templates/document.html:173
+#: src/heftig/web/templates/document.html:177
 msgid "Taken out of binder <strong>%(binder)s</strong> – now: %(where)s"
 msgstr "Aus Ordner <strong>%(binder)s</strong> herausgenommen – jetzt: %(where)s"
 
-#: src/heftig/web/templates/document.html:174
+#: src/heftig/web/templates/document.html:178
 msgid "Its place: section <strong>%(section)s</strong>, position <strong>%(n)s</strong> from the top."
 msgstr "Sein Platz: Abschnitt <strong>%(section)s</strong>, Position <strong>%(n)s</strong> von oben."
 
-#: src/heftig/web/templates/document.html:176
+#: src/heftig/web/templates/document.html:180
 msgid "Put back in its place"
 msgstr "Wieder an seinen Platz"
 
-#: src/heftig/web/templates/document.html:177 src/heftig/web/templates/document.html:197 src/heftig/web/templates/document.html:211 src/heftig/web/templates/inbox.html:106
+#: src/heftig/web/templates/document.html:181 src/heftig/web/templates/document.html:201 src/heftig/web/templates/document.html:215 src/heftig/web/templates/inbox.html:106
 msgid "Handed over, sent away or thrown out – nothing to file"
 msgstr "Abgegeben, verschickt oder weggeworfen – nichts abzuheften"
 
-#: src/heftig/web/templates/document.html:177 src/heftig/web/templates/document.html:197 src/heftig/web/templates/document.html:211 src/heftig/web/templates/inbox.html:106
+#: src/heftig/web/templates/document.html:181 src/heftig/web/templates/document.html:201 src/heftig/web/templates/document.html:215 src/heftig/web/templates/inbox.html:106
 msgid "Not kept"
 msgstr "Nicht aufbewahrt"
 
-#: src/heftig/web/templates/document.html:179
+#: src/heftig/web/templates/document.html:183
 msgid "Binder <strong>%(binder)s</strong>, section <strong>%(section)s</strong> – position <strong>%(n)s</strong> of %(total)s, counted from the top (newest on top)."
 msgstr "Ordner <strong>%(binder)s</strong>, Abschnitt <strong>%(section)s</strong> – Position <strong>%(n)s</strong> von %(total)s, von oben gezählt (neueste oben)."
 
-#: src/heftig/web/templates/document.html:179
+#: src/heftig/web/templates/document.html:183
 msgid "Filed on %(when)s."
 msgstr "Abgeheftet am %(when)s."
 
-#: src/heftig/web/templates/document.html:181 src/heftig/web/templates/document.html:183
+#: src/heftig/web/templates/document.html:185 src/heftig/web/templates/document.html:187
 msgid "document deleted – the paper is still here"
 msgstr "Dokument gelöscht – das Papier liegt noch hier"
 
-#: src/heftig/web/templates/document.html:182
+#: src/heftig/web/templates/document.html:186
 msgid "← this document"
 msgstr "← dieses Dokument"
 
-#: src/heftig/web/templates/document.html:185
+#: src/heftig/web/templates/document.html:189
 msgid "Taken out …"
 msgstr "Herausgenommen …"
 
-#: src/heftig/web/templates/document.html:187
+#: src/heftig/web/templates/document.html:191
 msgid "where it is now, e.g. with the tax adviser"
 msgstr "wo es jetzt ist, z. B. beim Steuerberater"
 
-#: src/heftig/web/templates/document.html:187 src/heftig/web/templates/document.html:215
+#: src/heftig/web/templates/document.html:191 src/heftig/web/templates/document.html:219
 msgid "Where the paper is"
 msgstr "Verbleib des Papiers"
 
-#: src/heftig/web/templates/document.html:189
+#: src/heftig/web/templates/document.html:193
 msgid "The sheet keeps its place; “Put back in its place” returns it there."
 msgstr "Das Blatt behält seinen Platz; „Wieder an seinen Platz“ legt es dorthin zurück."
 
-#: src/heftig/web/templates/document.html:190
+#: src/heftig/web/templates/document.html:194
 msgid "Into another binder …"
 msgstr "In anderen Ordner …"
 
-#: src/heftig/web/templates/document.html:193
+#: src/heftig/web/templates/document.html:197
 msgid "Moved there"
 msgstr "Umsortiert"
 
-#: src/heftig/web/templates/document.html:194
+#: src/heftig/web/templates/document.html:198
 msgid "It goes on top of that binder’s current section."
 msgstr "Es kommt oben auf den aktuellen Abschnitt dieses Ordners."
 
-#: src/heftig/web/templates/document.html:195
+#: src/heftig/web/templates/document.html:199
 msgid "Other …"
 msgstr "Sonstiges …"
-
-#: src/heftig/web/templates/document.html:198
-msgid "Undo filing"
-msgstr "Ablage zurücknehmen"
 
 #: src/heftig/web/templates/document.html:20
 msgid "← Documents"
 msgstr "← Dokumente"
 
-#: src/heftig/web/templates/document.html:200
+#: src/heftig/web/templates/document.html:202
+msgid "Undo filing"
+msgstr "Ablage zurücknehmen"
+
+#: src/heftig/web/templates/document.html:204
 msgid "Where the paper is: <strong>%(loc)s</strong>"
 msgstr "Verbleib des Papiers: <strong>%(loc)s</strong>"
 
-#: src/heftig/web/templates/document.html:202 src/heftig/web/templates/document.html:206
+#: src/heftig/web/templates/document.html:206 src/heftig/web/templates/document.html:210
 msgid "Revert"
 msgstr "Zurücknehmen"
 
-#: src/heftig/web/templates/document.html:204
+#: src/heftig/web/templates/document.html:208
 msgid "Paper not kept (handed over, sent away or thrown out) – noted on %(when)s."
 msgstr "Papier nicht aufbewahrt (abgegeben, verschickt oder weggeworfen) – vermerkt am %(when)s."
 
-#: src/heftig/web/templates/document.html:208
+#: src/heftig/web/templates/document.html:212
 msgid "Paper document – where is the paper?"
 msgstr "Papier-Dokument – wo liegt das Papier?"
 
-#: src/heftig/web/templates/document.html:210
+#: src/heftig/web/templates/document.html:214
 msgid "Filed just now"
 msgstr "Jetzt abgeheftet"
 
-#: src/heftig/web/templates/document.html:210
+#: src/heftig/web/templates/document.html:214
 msgid "into binder %(name)s"
 msgstr "in Ordner %(name)s"
 
-#: src/heftig/web/templates/document.html:213
+#: src/heftig/web/templates/document.html:217
 msgid "Somewhere else …"
 msgstr "Liegt woanders …"
 
-#: src/heftig/web/templates/document.html:215
+#: src/heftig/web/templates/document.html:219
 msgid "e.g. Insurance binder, or: given to the doctor"
 msgstr "z. B. Ordner Versicherungen, oder: beim Arzt abgegeben"
 
-#: src/heftig/web/templates/document.html:217
+#: src/heftig/web/templates/document.html:221
 msgid "“Filed”: Heftig remembers the order – the sheet filed last is on top of the current section."
 msgstr "„Abgeheftet“: Heftig merkt sich die Reihenfolge – das zuletzt abgeheftete Blatt liegt oben im aktuellen Abschnitt."
 
-#: src/heftig/web/templates/document.html:223
+#: src/heftig/web/templates/document.html:227
 msgid "Notes & attachments"
 msgstr "Notizen & Anhänge"
 
-#: src/heftig/web/templates/document.html:226
+#: src/heftig/web/templates/document.html:230
 msgid "edited %(when)s"
 msgstr "bearbeitet %(when)s"
 
-#: src/heftig/web/templates/document.html:231
+#: src/heftig/web/templates/document.html:235
 msgid "Edit note"
 msgstr "Notiz bearbeiten"
 
-#: src/heftig/web/templates/document.html:239
+#: src/heftig/web/templates/document.html:243
 msgid "New note"
 msgstr "Neue Notiz"
 
-#: src/heftig/web/templates/document.html:240
+#: src/heftig/web/templates/document.html:244
 msgid "Your own note, e.g. “Objection filed on …”, “paid by bank transfer”"
 msgstr "Eigene Notiz, z. B. „Widerspruch eingelegt am …“, „bezahlt per Überweisung“"
 
-#: src/heftig/web/templates/document.html:241
+#: src/heftig/web/templates/document.html:245
 msgid "Add note"
 msgstr "Notiz hinzufügen"
 
-#: src/heftig/web/templates/document.html:244
+#: src/heftig/web/templates/document.html:248
 msgid "Attachments"
 msgstr "Anhänge"
 
-#: src/heftig/web/templates/document.html:251
+#: src/heftig/web/templates/document.html:255
 msgid "view"
 msgstr "ansehen"
 
-#: src/heftig/web/templates/document.html:253
+#: src/heftig/web/templates/document.html:257
 msgid "Permanently delete attachment “%(name)s”?"
 msgstr "Anhang „%(name)s“ endgültig löschen?"
 
-#: src/heftig/web/templates/document.html:255
+#: src/heftig/web/templates/document.html:259
 msgid "delete"
 msgstr "löschen"
 
@@ -2438,35 +2450,35 @@ msgstr "Weitere Aktionen"
 msgid "More …"
 msgstr "Mehr …"
 
-#: src/heftig/web/templates/document.html:260
+#: src/heftig/web/templates/document.html:264
 msgid "No attachments yet."
 msgstr "Noch keine Anhänge."
 
-#: src/heftig/web/templates/document.html:262
+#: src/heftig/web/templates/document.html:266
 msgid "Attach files"
 msgstr "Dateien anhängen"
 
-#: src/heftig/web/templates/document.html:263
+#: src/heftig/web/templates/document.html:267
 msgid "Comment (optional)"
 msgstr "Bemerkung (optional)"
 
-#: src/heftig/web/templates/document.html:263
+#: src/heftig/web/templates/document.html:267
 msgid "Comment on the attachment"
 msgstr "Bemerkung zum Anhang"
 
-#: src/heftig/web/templates/document.html:264
+#: src/heftig/web/templates/document.html:268
 msgid "Attach"
 msgstr "Anhängen"
 
-#: src/heftig/web/templates/document.html:266
+#: src/heftig/web/templates/document.html:270
 msgid "Attachments are stored unchanged with the document (any file type, max. %(mb)s MB) and offered for download; notes and file names are searchable."
 msgstr "Anhänge werden unverändert zum Dokument gelegt (beliebige Dateiart, max. %(mb)s MB) und zum Herunterladen angeboten; Notizen und Dateinamen sind durchsuchbar."
 
-#: src/heftig/web/templates/document.html:271
+#: src/heftig/web/templates/document.html:275
 msgid "Similar documents"
 msgstr "Ähnliche Dokumente"
 
-#: src/heftig/web/templates/document.html:274
+#: src/heftig/web/templates/document.html:278
 msgid "no date"
 msgstr "ohne Datum"
 
@@ -2474,39 +2486,35 @@ msgstr "ohne Datum"
 msgid "Download original"
 msgstr "Original herunterladen"
 
-#: src/heftig/web/templates/document.html:280
+#: src/heftig/web/templates/document.html:284
 msgid "Technical details"
 msgstr "Technisches"
 
-#: src/heftig/web/templates/document.html:280
+#: src/heftig/web/templates/document.html:284
 msgid "recognized text, processing, history, origin"
 msgstr "erkannter Text, Verarbeitung, Verlauf, Herkunft"
 
-#: src/heftig/web/templates/document.html:281
+#: src/heftig/web/templates/document.html:285
 msgid "Recognized text"
 msgstr "Erkannter Text"
 
-#: src/heftig/web/templates/document.html:282
+#: src/heftig/web/templates/document.html:286
 msgid "embedded PDF text"
 msgstr "eingebetteter PDF-Text"
 
-#: src/heftig/web/templates/document.html:282
+#: src/heftig/web/templates/document.html:286
 msgid "OCR"
 msgstr "OCR"
 
-#: src/heftig/web/templates/document.html:285
+#: src/heftig/web/templates/document.html:289
 msgid "Show the page in the document"
 msgstr "Seite im Dokument anzeigen"
 
-#: src/heftig/web/templates/document.html:285
+#: src/heftig/web/templates/document.html:289
 msgid "%(num)d character"
 msgid_plural "%(num)d characters"
 msgstr[0] "%(num)d Zeichen"
 msgstr[1] "%(num)d Zeichen"
-
-#: src/heftig/web/templates/document.html:286 src/heftig/web/templates/error.html:2 src/heftig/web/templates/error.html:5
-msgid "Error"
-msgstr "Fehler"
 
 #: src/heftig/web/templates/document.html:29
 msgid "e.g. separately scanned pages of a letter, or the signed version"
@@ -2516,101 +2524,117 @@ msgstr "z. B. getrennt gescannte Seiten eines Briefs, oder die unterschriebene F
 msgid "Combine with another document …"
 msgstr "Mit anderem Dokument zusammenfügen …"
 
-#: src/heftig/web/templates/document.html:291
+#: src/heftig/web/templates/document.html:290 src/heftig/web/templates/error.html:2 src/heftig/web/templates/error.html:5
+msgid "Error"
+msgstr "Fehler"
+
+#: src/heftig/web/templates/document.html:295
 msgid "No text yet – processing is running or pending."
 msgstr "Noch kein Text – Verarbeitung läuft oder steht aus."
 
-#: src/heftig/web/templates/document.html:293
+#: src/heftig/web/templates/document.html:297
 msgid "Text as .txt"
 msgstr "Text als .txt"
 
-#: src/heftig/web/templates/document.html:295
+#: src/heftig/web/templates/document.html:299
 msgid "Processing & AI"
 msgstr "Verarbeitung & KI"
 
-#: src/heftig/web/templates/document.html:296
+#: src/heftig/web/templates/document.html:300
 msgid "OCR: %(provider)s"
 msgstr "OCR: %(provider)s"
 
-#: src/heftig/web/templates/document.html:296
+#: src/heftig/web/templates/document.html:300
 msgid "Classification: %(provider)s"
 msgstr "Klassifikation: %(provider)s"
 
-#: src/heftig/web/templates/document.html:297
+#: src/heftig/web/templates/document.html:301
 msgid "Reprocessing sends page images or text to the cloud provider named above."
 msgstr "Neuverarbeitung sendet Seitenbilder bzw. Text an den oben genannten Cloud-Anbieter."
 
-#: src/heftig/web/templates/document.html:299
+#: src/heftig/web/templates/document.html:303
 msgid "Recognize text again"
 msgstr "Text neu erkennen"
 
-#: src/heftig/web/templates/document.html:300
+#: src/heftig/web/templates/document.html:304
 msgid "Classify again"
 msgstr "Neu einordnen"
 
-#: src/heftig/web/templates/document.html:301
+#: src/heftig/web/templates/document.html:305
 msgid "Both"
 msgstr "Beides"
 
-#: src/heftig/web/templates/document.html:303
+#: src/heftig/web/templates/document.html:307
 msgid "Locked fields and manual tag decisions are kept. The original is never changed."
 msgstr "Gesperrte Felder und manuelle Tag-Entscheidungen bleiben erhalten. Das Original wird nie verändert."
 
-#: src/heftig/web/templates/document.html:305
+#: src/heftig/web/templates/document.html:309
 msgid "Jobs"
 msgstr "Aufträge"
-
-#: src/heftig/web/templates/document.html:308
-msgid "History"
-msgstr "Verlauf"
-
-#: src/heftig/web/templates/document.html:309
-msgid "Editing"
-msgstr "Bearbeitung"
-
-#: src/heftig/web/templates/document.html:309
-msgid "Filing"
-msgstr "Ablage"
-
-#: src/heftig/web/templates/document.html:309
-msgid "Merge"
-msgstr "Zusammenführung"
 
 #: src/heftig/web/templates/document.html:31
 msgid "Mark as filed"
 msgstr "Als abgeheftet markieren"
 
-#: src/heftig/web/templates/document.html:319
+#: src/heftig/web/templates/document.html:312
+msgid "History"
+msgstr "Verlauf"
+
+#: src/heftig/web/templates/document.html:313
+msgid "Editing"
+msgstr "Bearbeitung"
+
+#: src/heftig/web/templates/document.html:313
+msgid "Filing"
+msgstr "Ablage"
+
+#: src/heftig/web/templates/document.html:313
+msgid "Merge"
+msgstr "Zusammenführung"
+
+#: src/heftig/web/templates/document.html:323
 msgid "Origin"
 msgstr "Herkunft"
 
-#: src/heftig/web/templates/document.html:321
+#: src/heftig/web/templates/document.html:325
 msgid "Received in the archive"
 msgstr "Eingang im Archiv"
 
-#: src/heftig/web/templates/document.html:321
+#: src/heftig/web/templates/document.html:325
 msgid "(no. %(num)s)"
 msgstr "(Nr. %(num)s)"
 
-#: src/heftig/web/templates/document.html:324
+#: src/heftig/web/templates/document.html:328
 msgid "Type / size"
 msgstr "Typ / Größe"
 
-#: src/heftig/web/templates/document.html:326
-msgid "Combined from"
-msgstr "Zusammengefügt aus"
-
-#: src/heftig/web/templates/document.html:327
-msgid "p. %(first)s–%(last)s: “%(title)s”"
-msgstr "S. %(first)s–%(last)s: „%(title)s“"
-
-#: src/heftig/web/templates/document.html:327
-msgid "p. %(first)s: “%(title)s”"
-msgstr "S. %(first)s: „%(title)s“"
+#: src/heftig/web/templates/document.html:329
+msgid "Subject"
+msgstr "Betreff"
 
 #: src/heftig/web/templates/document.html:329
-msgid "– original, byte for byte as received"
-msgstr "– Original bytegenau wie empfangen"
+msgid "Sent"
+msgstr "Gesendet"
+
+#: src/heftig/web/templates/document.html:329
+msgid "Message ID"
+msgstr "Message-ID"
+
+#: src/heftig/web/templates/document.html:329
+msgid "Attachment"
+msgstr "Anhang"
+
+#: src/heftig/web/templates/document.html:329
+msgid "Import reference"
+msgstr "Import-Referenz"
+
+#: src/heftig/web/templates/document.html:329
+msgid "Saved e-mail"
+msgstr "Gespeicherte E-Mail"
+
+#: src/heftig/web/templates/document.html:329
+msgid "Path in the folder"
+msgstr "Pfad im Ordner"
 
 #: src/heftig/web/templates/document.html:33
 msgid "Goes to the trash (can be restored for %(num)s day)"
@@ -2622,7 +2646,23 @@ msgstr[1] "Kommt in den Papierkorb (%(num)s Tage wiederherstellbar)"
 msgid "Move to trash"
 msgstr "In den Papierkorb"
 
+#: src/heftig/web/templates/document.html:331
+msgid "Combined from"
+msgstr "Zusammengefügt aus"
+
 #: src/heftig/web/templates/document.html:332
+msgid "p. %(first)s–%(last)s: “%(title)s”"
+msgstr "S. %(first)s–%(last)s: „%(title)s“"
+
+#: src/heftig/web/templates/document.html:332
+msgid "p. %(first)s: “%(title)s”"
+msgstr "S. %(first)s: „%(title)s“"
+
+#: src/heftig/web/templates/document.html:334
+msgid "– original, byte for byte as received"
+msgstr "– Original bytegenau wie empfangen"
+
+#: src/heftig/web/templates/document.html:337
 msgid "Same file received again"
 msgstr "Weitere Eingänge derselben Datei"
 
@@ -2642,281 +2682,277 @@ msgstr[1] "%(num)d leer"
 msgid "? pages"
 msgstr "? Seiten"
 
-#: src/heftig/web/templates/document.html:41
+#: src/heftig/web/templates/document.html:42
+msgid "All documents from this address"
+msgstr "Alle Dokumente von dieser Adresse"
+
+#: src/heftig/web/templates/document.html:43
+msgid "E-mail from %(sender)s · “%(subject)s”"
+msgstr "Per E-Mail von %(sender)s · „%(subject)s“"
+
+#: src/heftig/web/templates/document.html:43 src/heftig/web/templates/documents.html:237
+msgid "E-mail from %(sender)s"
+msgstr "Per E-Mail von %(sender)s"
+
+#: src/heftig/web/templates/document.html:43
+msgid "give a name"
+msgstr "Namen vergeben"
+
+#: src/heftig/web/templates/document.html:45
 msgid "Text: %(status)s"
 msgstr "Text: %(status)s"
 
-#: src/heftig/web/templates/document.html:47
+#: src/heftig/web/templates/document.html:51
 msgid "Possible duplicate of <a href=\"%(url)s\">%(title)s</a> (%(reasons)s) – <a href=\"%(compare)s\">compare</a>"
 msgstr "Mögliche Dublette von <a href=\"%(url)s\">%(title)s</a> (%(reasons)s) – <a href=\"%(compare)s\">vergleichen</a>"
 
-#: src/heftig/web/templates/document.html:309 src/heftig/web/templates/document.html:49
+#: src/heftig/web/templates/document.html:313 src/heftig/web/templates/document.html:53
 msgctxt "processing step"
 msgid "Classification"
 msgstr "Einordnung"
 
-#: src/heftig/web/templates/document.html:49
+#: src/heftig/web/templates/document.html:53
 msgid "Processed offline for now (%(tasks)s) – the AI processing will be caught up automatically. Your corrections are kept."
 msgstr "Vorläufig offline verarbeitet (%(tasks)s) – die KI-Verarbeitung wird automatisch nachgeholt. Deine Korrekturen bleiben dabei erhalten."
 
-#: src/heftig/web/templates/document.html:50
+#: src/heftig/web/templates/document.html:54
 msgid "Saved. Changed fields are now locked and won't be overwritten when reprocessing."
 msgstr "Gespeichert. Geänderte Felder sind jetzt gesperrt und werden bei Neuverarbeitung nicht überschrieben."
 
-#: src/heftig/web/templates/document.html:56
+#: src/heftig/web/templates/document.html:60
 msgid "Document view"
 msgstr "Dokumentansicht"
 
-#: src/heftig/web/templates/document.html:57 src/heftig/web/templates/duplicate.html:63
+#: src/heftig/web/templates/document.html:61 src/heftig/web/templates/duplicate.html:63
 msgid "View"
 msgstr "Ansicht"
 
-#: src/heftig/web/templates/document.html:59
+#: src/heftig/web/templates/document.html:63
 msgid "Page %(cur)s / %(total)s"
 msgstr "Seite %(cur)s / %(total)s"
 
-#: src/heftig/web/templates/document.html:61
+#: src/heftig/web/templates/document.html:65
 msgid "Zoom out (−)"
 msgstr "Verkleinern (−)"
 
-#: src/heftig/web/templates/document.html:61 src/heftig/web/templates/duplicate.html:65
+#: src/heftig/web/templates/document.html:65 src/heftig/web/templates/duplicate.html:65
 msgid "Zoom out"
 msgstr "Verkleinern"
 
-#: src/heftig/web/templates/document.html:62
+#: src/heftig/web/templates/document.html:66
 msgid "Page width (0)"
 msgstr "Seitenbreite (0)"
 
-#: src/heftig/web/templates/document.html:63
+#: src/heftig/web/templates/document.html:67
 msgid "Zoom in (+)"
 msgstr "Vergrößern (+)"
 
-#: src/heftig/web/templates/document.html:63 src/heftig/web/templates/duplicate.html:67
+#: src/heftig/web/templates/document.html:67 src/heftig/web/templates/duplicate.html:67
 msgid "Zoom in"
 msgstr "Vergrößern"
 
-#: src/heftig/web/templates/document.html:64
+#: src/heftig/web/templates/document.html:68
 msgid "Full screen (F)"
 msgstr "Vollbild (F)"
 
-#: src/heftig/web/templates/document.html:64
+#: src/heftig/web/templates/document.html:68
 msgid "Full screen"
 msgstr "Vollbild"
 
-#: src/heftig/web/templates/document.html:66
+#: src/heftig/web/templates/document.html:70
 msgid "Turn all pages to the left"
 msgstr "Alle Seiten nach links drehen"
 
-#: src/heftig/web/templates/document.html:66
+#: src/heftig/web/templates/document.html:70
 msgid "all"
 msgstr "alle"
 
-#: src/heftig/web/templates/document.html:66
+#: src/heftig/web/templates/document.html:70
 msgid "Turn all pages to the right"
 msgstr "Alle Seiten nach rechts drehen"
 
-#: src/heftig/web/templates/document.html:67
+#: src/heftig/web/templates/document.html:71
 msgid "Open the original in the browser"
 msgstr "Original im Browser öffnen"
 
-#: src/heftig/web/templates/document.html:67
+#: src/heftig/web/templates/document.html:71
 msgid "Original"
 msgstr "Original"
 
-#: src/heftig/web/templates/document.html:72
+#: src/heftig/web/templates/document.html:76
 msgid "“%(q)s” on"
 msgstr "„%(q)s“ auf"
 
-#: src/heftig/web/templates/document.html:73
+#: src/heftig/web/templates/document.html:77
 msgid "page %(num)s"
 msgstr "Seite %(num)s"
 
-#: src/heftig/web/static/viewer.js:138 src/heftig/web/templates/document.html:74
+#: src/heftig/web/static/viewer.js:138 src/heftig/web/templates/document.html:78
 msgid "Hide highlights"
 msgstr "Markierung aus"
 
-#: src/heftig/web/templates/document.html:75
+#: src/heftig/web/templates/document.html:79
 msgid "“%(q)s” is not in the text – the match comes from the title, sender, tags, fields or notes."
 msgstr "„%(q)s“ steht nicht im Text – der Treffer stammt aus Titel, Absender, Tags, Feldern oder Notizen."
 
-#: src/heftig/web/templates/document.html:80
+#: src/heftig/web/templates/document.html:84
 msgid "Page %(pages)s was read before it was turned."
 msgid_plural "Pages %(pages)s were read before they were turned."
 msgstr[0] "Seite %(pages)s wurde vor dem Drehen gelesen."
 msgstr[1] "Seiten %(pages)s wurden vor dem Drehen gelesen."
 
-#: src/heftig/web/templates/document.html:81
+#: src/heftig/web/templates/document.html:85
 msgid "Recognise the text again"
 msgstr "Text neu erkennen"
 
-#: src/heftig/web/templates/document.html:84
+#: src/heftig/web/templates/document.html:88
 msgid "%(num)d blank page hidden (%(pages)s)"
 msgid_plural "%(num)d blank pages hidden (%(pages)s)"
 msgstr[0] "%(num)d leere Seite ausgeblendet (%(pages)s)"
 msgstr[1] "%(num)d leere Seiten ausgeblendet (%(pages)s)"
 
-#: src/heftig/web/templates/document.html:84
+#: src/heftig/web/templates/document.html:88
 msgid "show all pages"
 msgstr "alle Seiten zeigen"
 
-#: src/heftig/web/templates/document.html:86
+#: src/heftig/web/templates/document.html:90
 msgid "All pages, blank ones dimmed."
 msgstr "Alle Seiten, leere blass."
 
-#: src/heftig/web/templates/document.html:86
+#: src/heftig/web/templates/document.html:90
 msgid "Wrongly hidden or wrongly shown? Switch it at the bottom right of the page."
 msgstr "Falsch ausgeblendet oder falsch angezeigt? Unten rechts auf der Seite umschalten."
 
-#: src/heftig/web/templates/document.html:89
+#: src/heftig/web/templates/document.html:93
 msgid "Pages of the document"
 msgstr "Seiten des Dokuments"
 
-#: src/heftig/web/templates/document.html:285 src/heftig/web/templates/document.html:93 src/heftig/web/templates/duplicate.html:81
+#: src/heftig/web/templates/document.html:289 src/heftig/web/templates/document.html:97 src/heftig/web/templates/duplicate.html:81
 msgid "Page %(num)s"
 msgstr "Seite %(num)s"
 
-#: src/heftig/web/templates/document.html:99
-msgid "Turn page %(num)s to the left"
-msgstr "Seite %(num)s nach links drehen"
-
-#: src/heftig/web/templates/document.html:99
-msgid "Turn page %(num)s to the right"
-msgstr "Seite %(num)s nach rechts drehen"
-
-#: src/heftig/web/templates/documents.html:100 src/heftig/web/templates/documents.html:109 src/heftig/web/templates/documents.html:113
-msgid "– all –"
-msgstr "– alle –"
-
-#: src/heftig/web/templates/documents.html:103 src/heftig/web/templates/documents.html:224
-msgid "Paper filed"
-msgstr "Papier abgeheftet"
-
 #: src/heftig/web/templates/documents.html:104
-msgid "– any –"
-msgstr "– egal –"
+msgid "Names for addresses …"
+msgstr "Namen für Adressen …"
 
-#: src/heftig/web/templates/documents.html:106
-msgid "no (paper, not filed yet)"
-msgstr "nein (Papier, noch nicht abgeheftet)"
+#: src/heftig/web/templates/documents.html:109
+msgid "More filters"
+msgstr "Weitere Filter"
 
 #: src/heftig/web/templates/documents.html:11
 msgctxt "search box"
 msgid "Search"
 msgstr "Suche"
 
-#: src/heftig/web/templates/documents.html:112
+#: src/heftig/web/templates/documents.html:114 src/heftig/web/templates/documents.html:123 src/heftig/web/templates/documents.html:127
+msgid "– all –"
+msgstr "– alle –"
+
+#: src/heftig/web/templates/documents.html:117 src/heftig/web/templates/documents.html:239
+msgid "Paper filed"
+msgstr "Papier abgeheftet"
+
+#: src/heftig/web/templates/documents.html:118
+msgid "– any –"
+msgstr "– egal –"
+
+#: src/heftig/web/templates/documents.html:120
+msgid "no (paper, not filed yet)"
+msgstr "nein (Papier, noch nicht abgeheftet)"
+
+#: src/heftig/web/templates/documents.html:126
 msgid "Filing section"
 msgstr "Ablageabschnitt"
-
-#: src/heftig/web/templates/documents.html:116
-msgid "Custom field (number)"
-msgstr "Zusatzfeld (Zahl)"
-
-#: src/heftig/web/templates/documents.html:117
-msgid "– field –"
-msgstr "– Feld –"
-
-#: src/heftig/web/templates/documents.html:120
-msgid "min"
-msgstr "min"
-
-#: src/heftig/web/templates/documents.html:120
-msgid "Minimum"
-msgstr "Minimum"
-
-#: src/heftig/web/templates/documents.html:121
-msgid "max"
-msgstr "max"
-
-#: src/heftig/web/templates/documents.html:121
-msgid "Maximum"
-msgstr "Maximum"
-
-#: src/heftig/web/templates/documents.html:122
-msgid "Received date"
-msgstr "Eingangsdatum"
-
-#: src/heftig/web/templates/documents.html:125
-msgid "Apply"
-msgstr "Anwenden"
-
-#: src/heftig/web/templates/documents.html:127
-msgid "Also possible in the search box: <code>\"exact phrase\"</code>, <code>correspondent:Telekom</code>, <code>type:Invoice</code>, <code>tag:Insurance</code>, <code>year:2025</code>, <code>received:2026-09</code>, <code>source:email</code>, date ranges like “March 2025”, “last year”, “since 2023”."
-msgstr "Auch im Suchfeld möglich: <code>\"genaue Phrase\"</code>, <code>von:Telekom</code>, <code>typ:Rechnung</code>, <code>tag:Versicherung</code>, <code>jahr:2025</code>, <code>eingang:2026-09</code>, <code>quelle:email</code>, Zeiträume wie „März 2025“, „letztes Jahr“, „seit 2023“."
 
 #: src/heftig/web/templates/documents.html:13
 msgid "Search: sender, keyword, number, “March 2025” … (key /)"
 msgstr "Suchen: Absender, Stichwort, Nummer, „März 2025“ … (Taste /)"
 
-#: src/heftig/web/templates/documents.html:133
+#: src/heftig/web/templates/documents.html:130
+msgid "Custom field (number)"
+msgstr "Zusatzfeld (Zahl)"
+
+#: src/heftig/web/templates/documents.html:131
+msgid "– field –"
+msgstr "– Feld –"
+
+#: src/heftig/web/templates/documents.html:134
+msgid "min"
+msgstr "min"
+
+#: src/heftig/web/templates/documents.html:134
+msgid "Minimum"
+msgstr "Minimum"
+
+#: src/heftig/web/templates/documents.html:135
+msgid "max"
+msgstr "max"
+
+#: src/heftig/web/templates/documents.html:135
+msgid "Maximum"
+msgstr "Maximum"
+
+#: src/heftig/web/templates/documents.html:136
+msgid "Received date"
+msgstr "Eingangsdatum"
+
+#: src/heftig/web/templates/documents.html:139
+msgid "Apply"
+msgstr "Anwenden"
+
+#: src/heftig/web/templates/documents.html:141
+msgid "Also possible in the search box: <code>\"exact phrase\"</code>, <code>correspondent:Telekom</code>, <code>type:Invoice</code>, <code>tag:Insurance</code>, <code>year:2025</code>, <code>received:2026-09</code>, <code>source:email</code>, date ranges like “March 2025”, “last year”, “since 2023”."
+msgstr "Auch im Suchfeld möglich: <code>\"genaue Phrase\"</code>, <code>von:Telekom</code>, <code>typ:Rechnung</code>, <code>tag:Versicherung</code>, <code>jahr:2025</code>, <code>eingang:2026-09</code>, <code>quelle:email</code>, Zeiträume wie „März 2025“, „letztes Jahr“, „seit 2023“."
+
+#: src/heftig/web/templates/documents.html:147
 msgid "Show %(num)d document"
 msgid_plural "Show %(num)d documents"
 msgstr[0] "%(num)d Dokument anzeigen"
 msgstr[1] "%(num)d Dokumente anzeigen"
 
-#: src/heftig/web/templates/documents.html:137
-msgid "Results"
-msgstr "Ergebnisse"
-
-#: src/heftig/web/templates/documents.html:143
-msgid "Active filters"
-msgstr "Aktive Filter"
-
-#: src/heftig/web/templates/documents.html:144
-msgid "Remove filter"
-msgstr "Filter entfernen"
-
-#: src/heftig/web/templates/documents.html:144
-msgid "remove"
-msgstr "entfernen"
-
 #: src/heftig/web/templates/documents.html:15
 msgid "Suggestions"
 msgstr "Vorschläge"
 
-#: src/heftig/web/templates/documents.html:150
+#: src/heftig/web/templates/documents.html:151
+msgid "Results"
+msgstr "Ergebnisse"
+
+#: src/heftig/web/templates/documents.html:157
+msgid "Active filters"
+msgstr "Aktive Filter"
+
+#: src/heftig/web/templates/documents.html:158
+msgid "Remove filter"
+msgstr "Filter entfernen"
+
+#: src/heftig/web/templates/documents.html:158
+msgid "remove"
+msgstr "entfernen"
+
+#: src/heftig/web/templates/documents.html:164
 msgid "✦ AI search “%(query)s”"
 msgstr "✦ KI-Suche „%(query)s“"
 
-#: src/heftig/web/templates/documents.html:151
+#: src/heftig/web/templates/documents.html:165
 msgid "remove or change the filters below"
 msgstr "Filter unten entfernen oder ändern"
 
-#: src/heftig/web/templates/documents.html:151
+#: src/heftig/web/templates/documents.html:165
 msgid "search without AI"
 msgstr "ohne KI suchen"
 
-#: src/heftig/web/templates/documents.html:155
+#: src/heftig/web/templates/documents.html:169
 msgid "Date range recognized: <strong>%(label)s</strong> (document date) – <a href=\"%(url)s\">search for “%(text)s” as text instead</a>"
 msgstr "Zeitraum erkannt: <strong>%(label)s</strong> (Dokumentdatum) – <a href=\"%(url)s\">„%(text)s“ stattdessen als Text suchen</a>"
 
-#: src/heftig/web/templates/documents.html:159
+#: src/heftig/web/templates/documents.html:173
 msgid "Searched with corrected terms:"
 msgstr "Gesucht mit korrigierten Begriffen:"
 
-#: src/heftig/web/templates/documents.html:165
+#: src/heftig/web/templates/documents.html:179
 msgid "Quick access"
 msgstr "Schnellzugriff"
-
-#: src/heftig/web/static/search.js:133 src/heftig/web/templates/documents.html:167
-msgid "Saved searches"
-msgstr "Gespeicherte Suchen"
-
-#: src/heftig/web/templates/documents.html:169
-msgid "Remove saved search “%(name)s”?"
-msgstr "Gespeicherte Suche „%(name)s“ entfernen?"
-
-#: src/heftig/web/templates/documents.html:169
-msgid "Remove “%(name)s”"
-msgstr "„%(name)s“ entfernen"
-
-#: src/heftig/web/static/search.js:134 src/heftig/web/templates/documents.html:173
-msgid "Recent searches"
-msgstr "Zuletzt gesucht"
-
-#: src/heftig/web/templates/documents.html:173
-msgid "Clear history"
-msgstr "Verlauf löschen"
 
 #: src/heftig/web/templates/documents.html:18
 msgid "Search in your own words – the AI turns them into filters (Ctrl+Enter)"
@@ -2926,91 +2962,111 @@ msgstr "In eigenen Worten suchen – die KI macht daraus Filter (Strg+Enter)"
 msgid "✦ AI"
 msgstr "✦ KI"
 
-#: src/heftig/web/templates/documents.html:180
+#: src/heftig/web/static/search.js:133 src/heftig/web/templates/documents.html:181
+msgid "Saved searches"
+msgstr "Gespeicherte Suchen"
+
+#: src/heftig/web/templates/documents.html:183
+msgid "Remove saved search “%(name)s”?"
+msgstr "Gespeicherte Suche „%(name)s“ entfernen?"
+
+#: src/heftig/web/templates/documents.html:183
+msgid "Remove “%(name)s”"
+msgstr "„%(name)s“ entfernen"
+
+#: src/heftig/web/static/search.js:134 src/heftig/web/templates/documents.html:187
+msgid "Recent searches"
+msgstr "Zuletzt gesucht"
+
+#: src/heftig/web/templates/documents.html:187
+msgid "Clear history"
+msgstr "Verlauf löschen"
+
+#: src/heftig/web/templates/documents.html:194
 msgid "<strong>%(num)s</strong> document for “%(q)s”"
 msgid_plural "<strong>%(num)s</strong> documents for “%(q)s”"
 msgstr[0] "<strong>%(num)s</strong> Dokument für „%(q)s“"
 msgstr[1] "<strong>%(num)s</strong> Dokumente für „%(q)s“"
 
-#: src/heftig/web/templates/documents.html:180
+#: src/heftig/web/templates/documents.html:194
 msgid "<strong>%(num)s</strong> document"
 msgid_plural "<strong>%(num)s</strong> documents"
 msgstr[0] "<strong>%(num)s</strong> Dokument"
 msgstr[1] "<strong>%(num)s</strong> Dokumente"
 
-#: src/heftig/web/templates/documents.html:184
+#: src/heftig/web/templates/documents.html:198
 msgid "Sort"
 msgstr "Sortierung"
 
-#: src/heftig/web/templates/documents.html:186
+#: src/heftig/web/templates/documents.html:200
 msgid "automatic"
 msgstr "automatisch"
 
-#: src/heftig/web/templates/documents.html:187
+#: src/heftig/web/templates/documents.html:201
 msgid "Relevance"
 msgstr "Relevanz"
 
-#: src/heftig/web/templates/documents.html:187
+#: src/heftig/web/templates/documents.html:201
 msgid "Received (newest)"
 msgstr "Eingang (neueste)"
 
-#: src/heftig/web/templates/documents.html:192
+#: src/heftig/web/templates/documents.html:206
 msgid "Delete results…"
 msgstr "Treffer löschen …"
 
-#: src/heftig/web/templates/documents.html:194
+#: src/heftig/web/templates/documents.html:208
 msgid "saved as “%(name)s”"
 msgstr "gespeichert als „%(name)s“"
 
-#: src/heftig/web/templates/documents.html:197
+#: src/heftig/web/templates/documents.html:211
 msgid "Save search"
 msgstr "Suche speichern"
 
-#: src/heftig/web/templates/documents.html:221
-msgid "uncertain"
-msgstr "unsicher"
-
-#: src/heftig/web/templates/documents.html:222
-msgid "Received"
-msgstr "Eingang"
-
-#: src/heftig/web/templates/documents.html:224
-msgid "Taken out of the binder"
-msgstr "Aus dem Ordner herausgenommen"
-
-#: src/heftig/web/templates/documents.html:224
-msgid "Paper not filed"
-msgstr "Papier nicht abgeheftet"
-
-#: src/heftig/web/templates/documents.html:229
-msgid "Matched in: %(fields)s"
-msgstr "Treffer in: %(fields)s"
-
-#: src/heftig/web/templates/documents.html:141 src/heftig/web/templates/documents.html:23 src/heftig/web/templates/documents.html:25
+#: src/heftig/web/templates/documents.html:155 src/heftig/web/templates/documents.html:23 src/heftig/web/templates/documents.html:25
 msgid "Filters"
 msgstr "Filter"
 
-#: src/heftig/web/templates/documents.html:233
+#: src/heftig/web/templates/documents.html:235
+msgid "uncertain"
+msgstr "unsicher"
+
+#: src/heftig/web/templates/documents.html:236
+msgid "Received"
+msgstr "Eingang"
+
+#: src/heftig/web/templates/documents.html:239
+msgid "Taken out of the binder"
+msgstr "Aus dem Ordner herausgenommen"
+
+#: src/heftig/web/templates/documents.html:239
+msgid "Paper not filed"
+msgstr "Papier nicht abgeheftet"
+
+#: src/heftig/web/templates/documents.html:244
+msgid "Matched in: %(fields)s"
+msgstr "Treffer in: %(fields)s"
+
+#: src/heftig/web/templates/documents.html:248
 msgid "No documents found."
 msgstr "Keine Dokumente gefunden."
 
-#: src/heftig/web/templates/documents.html:234
+#: src/heftig/web/templates/documents.html:249
 msgid "Search without filters"
 msgstr "Ohne Filter suchen"
 
-#: src/heftig/web/templates/documents.html:234
+#: src/heftig/web/templates/documents.html:249
 msgid "Upload the first document"
 msgstr "Erstes Dokument hochladen"
 
-#: src/heftig/web/templates/documents.html:240
+#: src/heftig/web/templates/documents.html:255
 msgid "previous"
 msgstr "zurück"
 
-#: src/heftig/web/templates/documents.html:241
+#: src/heftig/web/templates/documents.html:256
 msgid "Page %(page)s of %(pages)s"
 msgstr "Seite %(page)s von %(pages)s"
 
-#: src/heftig/web/templates/documents.html:242
+#: src/heftig/web/templates/documents.html:257
 msgid "next"
 msgstr "weiter"
 
@@ -3048,7 +3104,7 @@ msgstr "%(num)s ohne Datum"
 msgid "From – to"
 msgstr "Von – bis"
 
-#: src/heftig/web/templates/documents.html:63
+#: src/heftig/web/templates/documents.html:101 src/heftig/web/templates/documents.html:63
 msgid "%(num)s more"
 msgstr "%(num)s weitere"
 
@@ -3071,10 +3127,6 @@ msgstr "alle Tags"
 #: src/heftig/web/templates/documents.html:79
 msgid "at least one"
 msgstr "mindestens einer"
-
-#: src/heftig/web/templates/documents.html:95
-msgid "More filters"
-msgstr "Weitere Filter"
 
 #: src/heftig/web/templates/duplicate.html:16
 msgid "Move the right document to the trash (key ←)"
@@ -3643,155 +3695,175 @@ msgstr "Nächstes Dokument"
 msgid "Scan"
 msgstr "Scannen"
 
-#: src/heftig/web/templates/settings.html:100
+#: src/heftig/web/templates/senders.html:12
+msgid "Address"
+msgstr "Adresse"
+
+#: src/heftig/web/templates/senders.html:17
+msgid "e.g. Anna"
+msgstr "z. B. Anna"
+
+#: src/heftig/web/templates/senders.html:2 src/heftig/web/templates/senders.html:5 src/heftig/web/templates/settings.html:100
+msgid "E-mail senders"
+msgstr "E-Mail-Absender"
+
+#: src/heftig/web/templates/senders.html:26
+msgid "No documents have come by e-mail yet."
+msgstr "Bisher ist kein Dokument per E-Mail gekommen."
+
+#: src/heftig/web/templates/senders.html:7
+msgid "The addresses your documents were e-mailed from. A name you give is shown instead of the address – on the document, in the list and in the filter – for all documents from that address."
+msgstr "Die Adressen, von denen deine Dokumente per E-Mail kamen. Ein Name, den du vergibst, wird statt der Adresse angezeigt – am Dokument, in der Liste und im Filter – für alle Dokumente von dieser Adresse."
+
+#: src/heftig/web/templates/settings.html:101
 msgid "Save multi-page letters as <em>one</em> PDF file on the scanner."
 msgstr "Mehrseitige Briefe am Scanner als <em>eine</em> PDF-Datei speichern."
 
-#: src/heftig/web/templates/settings.html:104
+#: src/heftig/web/templates/settings.html:105
 msgid "Export, backup, index"
 msgstr "Export, Backup, Index"
 
-#: src/heftig/web/templates/settings.html:107
+#: src/heftig/web/templates/settings.html:108
 msgid "Last export"
 msgstr "Letzter Export"
 
-#: src/heftig/web/templates/settings.html:108
+#: src/heftig/web/templates/settings.html:109
 msgid "Last backup"
 msgstr "Letztes Backup"
-
-#: src/heftig/web/templates/settings.html:109
-msgid "Last DB snapshot"
-msgstr "Letzter DB-Snapshot"
 
 #: src/heftig/web/templates/settings.html:11
 msgid "New API token:"
 msgstr "Neuer API-Token:"
 
-#: src/heftig/web/templates/settings.html:112
+#: src/heftig/web/templates/settings.html:110
+msgid "Last DB snapshot"
+msgstr "Letzter DB-Snapshot"
+
+#: src/heftig/web/templates/settings.html:113
 msgid "as ZIP"
 msgstr "als ZIP"
 
-#: src/heftig/web/templates/settings.html:113
+#: src/heftig/web/templates/settings.html:114
 msgid "Create export"
 msgstr "Export erstellen"
 
-#: src/heftig/web/templates/settings.html:114
+#: src/heftig/web/templates/settings.html:115
 msgid "DB snapshot for backup software"
 msgstr "DB-Snapshot für Backup-Programm"
 
-#: src/heftig/web/templates/settings.html:115
+#: src/heftig/web/templates/settings.html:116
 msgid "Rebuild search index"
 msgstr "Suchindex neu aufbauen"
 
-#: src/heftig/web/templates/settings.html:117
+#: src/heftig/web/templates/settings.html:118
 msgid "Exports go to <code>archive/exports/</code> (open format, without passwords/tokens)."
 msgstr "Export landet in <code>archive/exports/</code> (offenes Format, ohne Passwörter/Tokens)."
 
-#: src/heftig/web/templates/settings.html:117
+#: src/heftig/web/templates/settings.html:118
 msgid "Full backup: <code>heftig backup TARGET</code>, see <code>docs/operations.md</code>."
 msgstr "Vollständiges Backup: <code>heftig backup ZIEL</code>, siehe <code>docs/operations.md</code>."
 
-#: src/heftig/web/templates/settings.html:121
+#: src/heftig/web/templates/settings.html:122
 msgid "Reprocess all documents"
 msgstr "Alle Dokumente neu verarbeiten"
 
-#: src/heftig/web/templates/settings.html:122
+#: src/heftig/web/templates/settings.html:123
 msgid "Classification:"
 msgstr "Einordnung:"
 
-#: src/heftig/web/templates/settings.html:123
+#: src/heftig/web/templates/settings.html:124
 msgid "Really reprocess all documents? This can take a while and sends data to the cloud provider (cost)."
 msgstr "Wirklich alle Dokumente neu verarbeiten? Das kann dauern und sendet Daten an den Cloud-Anbieter (Kosten)."
 
-#: src/heftig/web/templates/settings.html:123
+#: src/heftig/web/templates/settings.html:124
 msgid "Really reprocess all documents? This can take a while."
 msgstr "Wirklich alle Dokumente neu verarbeiten? Das kann dauern."
 
-#: src/heftig/web/templates/settings.html:125
+#: src/heftig/web/templates/settings.html:126
 msgid "Redo text recognition for all documents"
 msgstr "Text aller Dokumente neu erkennen"
 
-#: src/heftig/web/templates/settings.html:126
+#: src/heftig/web/templates/settings.html:127
 msgid "Reclassify all"
 msgstr "Alle neu einordnen"
 
-#: src/heftig/web/templates/settings.html:128
+#: src/heftig/web/templates/settings.html:129
 msgid "Locked fields and manual tag decisions are kept."
 msgstr "Gesperrte Felder und manuelle Tag-Entscheidungen bleiben erhalten."
 
-#: src/heftig/web/templates/settings.html:132
+#: src/heftig/web/templates/settings.html:133
 msgid "API tokens"
 msgstr "API-Tokens"
 
-#: src/heftig/web/templates/settings.html:134
+#: src/heftig/web/templates/settings.html:135
 msgid "Starts with"
 msgstr "Beginn"
 
-#: src/heftig/web/templates/settings.html:134
+#: src/heftig/web/templates/settings.html:135
 msgid "Permissions"
 msgstr "Rechte"
 
-#: src/heftig/web/templates/settings.html:134
+#: src/heftig/web/templates/settings.html:135
 msgid "Created"
 msgstr "Erstellt"
 
-#: src/heftig/web/templates/settings.html:134
+#: src/heftig/web/templates/settings.html:135
 msgid "Last used"
 msgstr "Zuletzt benutzt"
 
-#: src/heftig/web/templates/settings.html:137 src/heftig/web/templates/settings.html:144
+#: src/heftig/web/templates/settings.html:138 src/heftig/web/templates/settings.html:145
 msgid "read only"
 msgstr "nur lesen"
 
-#: src/heftig/web/templates/settings.html:137
+#: src/heftig/web/templates/settings.html:138
 msgid "full"
 msgstr "voll"
 
-#: src/heftig/web/templates/settings.html:138
+#: src/heftig/web/templates/settings.html:139
 msgid "revoked"
 msgstr "widerrufen"
 
-#: src/heftig/web/templates/settings.html:138
+#: src/heftig/web/templates/settings.html:139
 msgid "Revoke"
 msgstr "Widerrufen"
-
-#: src/heftig/web/templates/settings.html:139
-msgid "No tokens."
-msgstr "Keine Tokens."
 
 #: src/heftig/web/templates/settings.html:14
 msgid "AI and OCR providers"
 msgstr "KI- und OCR-Anbieter"
 
-#: src/heftig/web/templates/settings.html:143
+#: src/heftig/web/templates/settings.html:140
+msgid "No tokens."
+msgstr "Keine Tokens."
+
+#: src/heftig/web/templates/settings.html:144
 msgid "Name, e.g. Claude"
 msgstr "Name, z. B. Claude"
 
-#: src/heftig/web/templates/settings.html:143
+#: src/heftig/web/templates/settings.html:144
 msgid "Token name"
 msgstr "Token-Name"
 
-#: src/heftig/web/templates/settings.html:145
+#: src/heftig/web/templates/settings.html:146
 msgid "Create token"
 msgstr "Token erstellen"
 
-#: src/heftig/web/templates/settings.html:146
+#: src/heftig/web/templates/settings.html:147
 msgid "“Read only” is enough for the connection to Claude (<code>heftig mcp</code>, see <code>docs/mcp.md</code>): the token can search and read, but not change or delete anything."
 msgstr "„Nur lesen“ reicht für die Verbindung zu Claude (<code>heftig mcp</code>, siehe <code>docs/mcp.md</code>): der Token kann suchen und lesen, aber nichts ändern oder löschen."
 
-#: src/heftig/web/templates/settings.html:147
+#: src/heftig/web/templates/settings.html:148
 msgid "API documentation:"
 msgstr "API-Dokumentation:"
 
-#: src/heftig/web/templates/settings.html:151
+#: src/heftig/web/templates/settings.html:152
 msgid "Note"
 msgstr "Hinweis"
 
-#: src/heftig/web/templates/settings.html:152
+#: src/heftig/web/templates/settings.html:153
 msgid "Heftig is not a tamper-proof or legally certified archive."
 msgstr "Heftig ist kein revisionssicheres oder rechtlich zertifiziertes Archiv."
 
-#: src/heftig/web/templates/settings.html:152
+#: src/heftig/web/templates/settings.html:153
 msgid "Originals are kept byte for byte and checked with SHA-256; retention obligations come with additional requirements."
 msgstr "Originale werden bytegenau aufbewahrt und über SHA-256 geprüft; für Aufbewahrungspflichten gelten zusätzliche Anforderungen."
 
@@ -3828,11 +3900,11 @@ msgstr "fehlt"
 msgid "Change AI"
 msgstr "KI ändern"
 
-#: src/heftig/web/templates/settings.html:25 src/heftig/web/templates/settings.html:99
+#: src/heftig/web/templates/settings.html:100 src/heftig/web/templates/settings.html:25
 msgid "E-mail import"
 msgstr "E-Mail-Import"
 
-#: src/heftig/web/templates/settings.html:25 src/heftig/web/templates/settings.html:99 src/heftig/web/templates/setup_scanner.html:6
+#: src/heftig/web/templates/settings.html:100 src/heftig/web/templates/settings.html:25 src/heftig/web/templates/setup_scanner.html:6
 msgid "Scanner and phone"
 msgstr "Scanner und Handy"
 
@@ -3942,87 +4014,87 @@ msgstr "Angemeldet als %(user)s"
 msgid "Sign out"
 msgstr "Abmelden"
 
-#: src/heftig/web/templates/settings.html:80
+#: src/heftig/web/templates/settings.html:82
 msgid "On – the model is downloaded when the next documents are prepared."
 msgstr "An – das Modell wird geladen, sobald die nächsten Dokumente vorbereitet werden."
 
-#: src/heftig/web/templates/settings.html:81
+#: src/heftig/web/templates/settings.html:82
 msgid "On – %(done)s of %(total)s documents prepared."
 msgstr "An – %(done)s von %(total)s Dokumenten vorbereitet."
 
-#: src/heftig/web/templates/settings.html:82 src/heftig/web/templates/setup_search.html:20
+#: src/heftig/web/templates/settings.html:83 src/heftig/web/templates/setup_search.html:22
 msgid "Last error:"
 msgstr "Letzter Fehler:"
 
-#: src/heftig/web/templates/settings.html:83
+#: src/heftig/web/templates/settings.html:84
 msgid "Off – the search finds documents by their words only."
 msgstr "Aus – die Suche findet Dokumente nur über ihre Wörter."
 
-#: src/heftig/web/templates/settings.html:84
+#: src/heftig/web/templates/settings.html:85
 msgid "Change"
 msgstr "Ändern"
 
-#: src/heftig/web/templates/settings.html:88
+#: src/heftig/web/templates/settings.html:89
 msgid "Incoming: scanner, folder, e-mail"
 msgstr "Eingang: Scanner, Ordner, E-Mail"
 
-#: src/heftig/web/templates/settings.html:90
+#: src/heftig/web/templates/settings.html:91
 msgid "Scanner folder"
 msgstr "Scanner-Ordner"
 
-#: src/heftig/web/templates/settings.html:90 src/heftig/web/templates/settings.html:92
+#: src/heftig/web/templates/settings.html:91 src/heftig/web/templates/settings.html:93
 msgid "Status: %(status)s"
 msgstr "Status: %(status)s"
 
-#: src/heftig/web/templates/settings.html:91
+#: src/heftig/web/templates/settings.html:92
 msgid "What the scanner saves here counts as paper – letters you file in a binder."
 msgstr "Was der Scanner hier ablegt, gilt als Papier – Briefe, die du in einen Ordner abheftest."
 
-#: src/heftig/web/templates/settings.html:92
+#: src/heftig/web/templates/settings.html:93
 msgid "Folder for digital files"
 msgstr "Ordner für digitale Dateien"
 
-#: src/heftig/web/templates/settings.html:93
+#: src/heftig/web/templates/settings.html:94
 msgid "PDFs and images without paper (downloads, saved attachments): archived, nothing to file."
 msgstr "PDFs und Bilder ohne Papier (Downloads, gespeicherte Anhänge): werden archiviert, nichts abzuheften."
 
-#: src/heftig/web/templates/settings.html:93 src/heftig/web/templates/settings.html:96
+#: src/heftig/web/templates/settings.html:94 src/heftig/web/templates/settings.html:97
 msgid "not set up"
 msgstr "nicht eingerichtet"
 
-#: src/heftig/web/templates/settings.html:94 src/heftig/web/templates/setup_mail.html:31
+#: src/heftig/web/templates/settings.html:95 src/heftig/web/templates/setup_mail.html:31
 msgid "After import"
 msgstr "Nach Übernahme"
 
-#: src/heftig/web/templates/settings.html:94
+#: src/heftig/web/templates/settings.html:95
 msgid "The file is removed from the folder – it is now in the archive."
 msgstr "Die Datei wird aus dem Ordner entfernt – sie liegt dann im Archiv."
 
-#: src/heftig/web/templates/settings.html:94
+#: src/heftig/web/templates/settings.html:95
 msgid "The file is moved to the subfolder .heftig-verarbeitet."
 msgstr "Die Datei wird in den Unterordner .heftig-verarbeitet verschoben."
 
-#: src/heftig/web/templates/settings.html:94
+#: src/heftig/web/templates/settings.html:95
 msgid "Both folders are checked every %(num)s s."
 msgstr "Beide Ordner werden alle %(num)s s geprüft."
 
-#: src/heftig/web/templates/settings.html:95
+#: src/heftig/web/templates/settings.html:96
 msgid "Scans filed automatically"
 msgstr "Scans automatisch abgeheftet"
 
-#: src/heftig/web/templates/settings.html:95
+#: src/heftig/web/templates/settings.html:96
 msgid "yes – every scan counts as filed in the current binder"
 msgstr "ja – jeder Scan gilt als abgeheftet im aktuellen Ordner"
 
-#: src/heftig/web/templates/settings.html:95
+#: src/heftig/web/templates/settings.html:96
 msgid "no – the inbox asks you to file them"
 msgstr "nein – der Eingang erinnert ans Abheften"
 
-#: src/heftig/web/templates/settings.html:96
+#: src/heftig/web/templates/settings.html:97
 msgid "%(user)s @ %(host)s:%(port)s (TLS), folder %(mailbox)s, every %(minutes)s min"
 msgstr "%(user)s @ %(host)s:%(port)s (TLS), Ordner %(mailbox)s, alle %(minutes)s min"
 
-#: src/heftig/web/templates/settings.html:97
+#: src/heftig/web/templates/settings.html:98
 msgid "Last check"
 msgstr "Letzter Abruf"
 
@@ -4150,7 +4222,7 @@ msgstr "Nicht nötig für einen Server auf dem eigenen Computer oder im eigenen 
 msgid "Save and test"
 msgstr "Speichern und testen"
 
-#: src/heftig/web/templates/setup_ai.html:40 src/heftig/web/templates/setup_mail.html:36 src/heftig/web/templates/setup_search.html:22
+#: src/heftig/web/templates/setup_ai.html:40 src/heftig/web/templates/setup_mail.html:36 src/heftig/web/templates/setup_search.html:24
 msgid "Save and continue"
 msgstr "Speichern und weiter"
 
@@ -4302,11 +4374,11 @@ msgstr "Nein"
 msgid "Search by words only. You can switch it on later under Settings."
 msgstr "Nur Suche nach Wörtern. Du kannst sie später in den Einstellungen einschalten."
 
-#: src/heftig/web/templates/setup_search.html:19
+#: src/heftig/web/templates/setup_search.html:21
 msgid "The model is downloaded when the next documents are prepared."
 msgstr "Das Modell wird geladen, sobald die nächsten Dokumente vorbereitet werden."
 
-#: src/heftig/web/templates/setup_search.html:19
+#: src/heftig/web/templates/setup_search.html:21
 msgid "%(done)s of %(total)s documents prepared."
 msgstr "%(done)s von %(total)s Dokumenten vorbereitet."
 
@@ -4560,536 +4632,536 @@ msgstr "Papier mit dem Handy"
 msgid "Scan with the camera"
 msgstr "Mit der Kamera scannen"
 
-#: src/heftig/web/templates/document.html:139 src/heftig/web/templates/duplicate.html:49 src/heftig/web/ui.py:101 src/heftig/web/ui.py:1295
+#: src/heftig/web/templates/document.html:143 src/heftig/web/templates/duplicate.html:49 src/heftig/web/ui.py:102 src/heftig/web/ui.py:1302
 msgid "Custom fields"
 msgstr "Zusatzfelder"
 
-#: src/heftig/web/ui.py:104
+#: src/heftig/web/ui.py:105
 msgid "pending"
 msgstr "ausstehend"
 
-#: src/heftig/web/ui.py:104
+#: src/heftig/web/ui.py:105
 msgid "complete"
 msgstr "vollständig"
 
-#: src/heftig/web/ui.py:104
+#: src/heftig/web/ui.py:105
 msgid "partial"
 msgstr "teilweise"
 
-#: src/heftig/web/ui.py:105
+#: src/heftig/web/ui.py:106
 msgid "failed"
 msgstr "fehlgeschlagen"
 
-#: src/heftig/web/templates/document.html:282 src/heftig/web/ui.py:105
+#: src/heftig/web/templates/document.html:286 src/heftig/web/ui.py:106
 msgid "no text"
 msgstr "kein Text"
 
-#: src/heftig/web/ui.py:108
+#: src/heftig/web/ui.py:109
 msgid "detected automatically"
 msgstr "automatisch erkannt"
 
-#: src/heftig/web/ui.py:109
+#: src/heftig/web/ui.py:110
 msgid "detected automatically – uncertain"
 msgstr "automatisch erkannt – unsicher"
 
-#: src/heftig/web/templates/document.html:282 src/heftig/web/ui.py:109
+#: src/heftig/web/templates/document.html:286 src/heftig/web/ui.py:110
 msgid "manual"
 msgstr "manuell"
 
-#: src/heftig/web/ui.py:110 src/heftig/web/ui.py:120
+#: src/heftig/web/ui.py:111 src/heftig/web/ui.py:121
 msgid "imported"
 msgstr "importiert"
 
-#: src/heftig/web/ui.py:110
+#: src/heftig/web/ui.py:111
 msgid "no date found"
 msgstr "kein Datum gefunden"
 
-#: src/heftig/web/ui.py:1106
+#: src/heftig/web/ui.py:1113
 msgid "Marked as filed."
 msgstr "Als abgeheftet markiert."
 
-#: src/heftig/web/ui.py:1109
+#: src/heftig/web/ui.py:1116
 msgid "Filing undone."
 msgstr "Ablage zurückgenommen."
 
-#: src/heftig/web/ui.py:111
-msgid "as-of date (no letter date)"
-msgstr "Stichtag (kein Briefdatum)"
-
-#: src/heftig/web/ui.py:1112
+#: src/heftig/web/ui.py:1119
 msgid "Noted as taken out – the sheet keeps its place."
 msgstr "Als herausgenommen vermerkt – das Blatt behält seinen Platz."
 
-#: src/heftig/web/ui.py:1115
+#: src/heftig/web/ui.py:112
+msgid "as-of date (no letter date)"
+msgstr "Stichtag (kein Briefdatum)"
+
+#: src/heftig/web/ui.py:1122
 msgid "Back in its place."
 msgstr "Wieder an seinem Platz."
 
-#: src/heftig/web/ui.py:1121
+#: src/heftig/web/ui.py:1128
 msgid "Moved to binder %(name)s, on top of the current section."
 msgstr "In Ordner %(name)s umsortiert, oben auf den aktuellen Abschnitt."
 
-#: src/heftig/web/ui.py:1124
+#: src/heftig/web/ui.py:1131
 msgid "Location saved."
 msgstr "Ort gespeichert."
 
-#: src/heftig/web/ui.py:1127
+#: src/heftig/web/ui.py:1134
 msgid "Noted: the paper is not kept."
 msgstr "Vermerkt: Das Papier wird nicht aufbewahrt."
 
-#: src/heftig/web/ui.py:1130
+#: src/heftig/web/ui.py:1137
 msgid "Undone."
 msgstr "Zurückgenommen."
 
-#: src/heftig/web/templates/document.html:49 src/heftig/web/ui.py:114
+#: src/heftig/web/templates/document.html:53 src/heftig/web/ui.py:115
 msgid "Text recognition"
 msgstr "Texterkennung"
 
-#: src/heftig/web/templates/inbox.html:137 src/heftig/web/ui.py:114
+#: src/heftig/web/templates/inbox.html:137 src/heftig/web/ui.py:115
 msgid "Classification"
 msgstr "Einordnung"
 
-#: src/heftig/web/ui.py:1144
+#: src/heftig/web/ui.py:1151
 msgid "Marked as reviewed."
 msgstr "Als geprüft markiert."
 
-#: src/heftig/web/ui.py:115
-msgid "Export"
-msgstr "Export"
-
-#: src/heftig/web/ui.py:115
-msgid "Search index"
-msgstr "Suchindex"
-
-#: src/heftig/web/ui.py:1151 src/heftig/web/ui.py:1159
+#: src/heftig/web/ui.py:1158 src/heftig/web/ui.py:1166
 msgid "Unknown page."
 msgstr "Unbekannte Seite."
 
 #: src/heftig/web/ui.py:116
+msgid "Export"
+msgstr "Export"
+
+#: src/heftig/web/ui.py:116
+msgid "Search index"
+msgstr "Suchindex"
+
+#: src/heftig/web/ui.py:117
 msgid "Rebuild"
 msgstr "Neuaufbau"
 
-#: src/heftig/web/ui.py:116
+#: src/heftig/web/ui.py:117
 msgid "Titles"
 msgstr "Titel"
 
-#: src/heftig/web/ui.py:1165
+#: src/heftig/web/ui.py:1172
 msgid "Page %(num)s is hidden as blank."
 msgstr "Seite %(num)s wird als leer ausgeblendet."
 
-#: src/heftig/web/ui.py:1166
+#: src/heftig/web/ui.py:1173
 msgid "Page %(num)s is always shown."
 msgstr "Seite %(num)s wird immer angezeigt."
 
-#: src/heftig/web/ui.py:1170
+#: src/heftig/web/ui.py:1177
 msgid "All pages are being recognized with AI and the document is classified again."
 msgstr "Alle Seiten werden mit KI erkannt und das Dokument neu eingeordnet."
 
-#: src/heftig/web/static/app.js:47 src/heftig/web/ui.py:119
+#: src/heftig/web/static/app.js:47 src/heftig/web/ui.py:120
 msgid "newly archived"
 msgstr "neu archiviert"
 
-#: src/heftig/web/ui.py:119
+#: src/heftig/web/ui.py:120
 msgid "duplicate"
 msgstr "Dublette"
 
-#: src/heftig/web/static/app.js:47 src/heftig/web/ui.py:119
+#: src/heftig/web/static/app.js:47 src/heftig/web/ui.py:120
 msgid "rejected"
 msgstr "abgelehnt"
 
-#: src/heftig/web/ui.py:120
+#: src/heftig/web/ui.py:121
 msgid "skipped"
 msgstr "übersprungen"
 
-#: src/heftig/web/ui.py:120
+#: src/heftig/web/ui.py:121
 msgid "deleted"
 msgstr "gelöscht"
 
-#: src/heftig/web/ui.py:121
+#: src/heftig/web/ui.py:122
 msgid "already imported"
 msgstr "bereits importiert"
 
-#: src/heftig/web/ui.py:121
+#: src/heftig/web/ui.py:122
 msgid "restored"
 msgstr "wiederhergestellt"
 
-#: src/heftig/web/ui.py:1226
+#: src/heftig/web/ui.py:1233
 msgid "Note saved."
 msgstr "Notiz gespeichert."
 
-#: src/heftig/web/ui.py:1229
+#: src/heftig/web/ui.py:1236
 msgid "Note changed."
 msgstr "Notiz geändert."
 
-#: src/heftig/web/ui.py:1232
+#: src/heftig/web/ui.py:1239
 msgid "Note deleted."
 msgstr "Notiz gelöscht."
 
-#: src/heftig/web/ui.py:1235
+#: src/heftig/web/ui.py:1242
 msgid "Attachment deleted."
 msgstr "Anhang gelöscht."
 
-#: src/heftig/web/ui.py:1245
+#: src/heftig/web/ui.py:1252
 msgid "%(num)d attachment added."
 msgid_plural "%(num)d attachments added."
 msgstr[0] "%(num)d Anhang hinzugefügt."
 msgstr[1] "%(num)d Anhänge hinzugefügt."
 
-#: src/heftig/web/ui.py:1247
+#: src/heftig/web/ui.py:1254
 msgid "No file selected."
 msgstr "Keine Datei ausgewählt."
 
-#: src/heftig/web/ui.py:1271
+#: src/heftig/web/ui.py:1278
 msgid "filed: %(section)s, position %(position)s"
 msgstr "abgeheftet: %(section)s, Position %(position)s"
 
-#: src/heftig/web/ui.py:1278
+#: src/heftig/web/ui.py:1285
 msgid "not kept"
 msgstr "nicht aufbewahrt"
 
-#: src/heftig/web/ui.py:1280
+#: src/heftig/web/ui.py:1287
 msgid "paper, open"
 msgstr "Papier, offen"
 
-#: src/heftig/web/templates/documents.html:239 src/heftig/web/ui.py:1289
+#: src/heftig/web/templates/documents.html:254 src/heftig/web/ui.py:1296
 msgid "Pages"
 msgstr "Seiten"
 
-#: src/heftig/web/templates/inbox.html:173 src/heftig/web/ui.py:1290
+#: src/heftig/web/templates/inbox.html:173 src/heftig/web/ui.py:1297
 msgid "File"
 msgstr "Datei"
 
-#: src/heftig/web/ui.py:1291
+#: src/heftig/web/ui.py:1298
 msgctxt "duplicate facts"
 msgid "Received"
 msgstr "Eingang"
 
-#: src/heftig/web/templates/scan.html:42 src/heftig/web/ui.py:1293
+#: src/heftig/web/templates/scan.html:42 src/heftig/web/ui.py:1300
 msgid "Paper"
 msgstr "Papier"
 
-#: src/heftig/web/ui.py:1296
+#: src/heftig/web/ui.py:1303
 msgid "Notes/attachments"
 msgstr "Notizen/Anhänge"
 
-#: src/heftig/web/ui.py:1304
+#: src/heftig/web/ui.py:1311
 msgid "paper filing"
 msgstr "Papierablage"
 
-#: src/heftig/web/ui.py:1306
+#: src/heftig/web/ui.py:1313
 msgid "%(num)d note"
 msgid_plural "%(num)d notes"
 msgstr[0] "%(num)d Notiz"
 msgstr[1] "%(num)d Notizen"
 
-#: src/heftig/web/ui.py:1308
+#: src/heftig/web/ui.py:1315
 msgid "%(num)d attachment"
 msgid_plural "%(num)d attachments"
 msgstr[0] "%(num)d Anhang"
 msgstr[1] "%(num)d Anhänge"
 
-#: src/heftig/web/ui.py:1310
+#: src/heftig/web/ui.py:1317
 msgid "manual corrections"
 msgstr "manuelle Korrekturen"
 
-#: src/heftig/web/ui.py:1324
+#: src/heftig/web/ui.py:1331
 msgid "additional marks on p. %(page)s (e.g. a signature)"
 msgstr "zusätzliche Markierungen auf S. %(page)s (z. B. Unterschrift)"
 
-#: src/heftig/web/ui.py:1328
+#: src/heftig/web/ui.py:1335
 msgid "has %(items)s"
 msgstr "hat %(items)s"
 
-#: src/heftig/web/ui.py:1333
+#: src/heftig/web/ui.py:1340
 msgid "more pages"
 msgstr "mehr Seiten"
 
-#: src/heftig/web/ui.py:1360
+#: src/heftig/web/ui.py:1367
 msgid "No possible duplicates open."
 msgstr "Keine möglichen Dubletten offen."
 
-#: src/heftig/web/ui.py:1404
+#: src/heftig/web/ui.py:1411
 msgid "Both documents are kept."
 msgstr "Beide Dokumente bleiben erhalten."
 
-#: src/heftig/web/ui.py:1409
+#: src/heftig/web/ui.py:1416
 msgid "Duplicate of “%(title)s”"
 msgstr "Dublette von „%(title)s“"
 
-#: src/heftig/web/ui.py:1415
+#: src/heftig/web/ui.py:1422
 msgid "Duplicate moved to the trash."
 msgstr "Dublette in den Papierkorb verschoben."
 
-#: src/heftig/web/ui.py:1419
+#: src/heftig/web/ui.py:1426
 msgid "Duplicate moved to the trash; the kept copy takes over its place in the binder."
 msgstr "Dublette in den Papierkorb verschoben; das behaltene Exemplar übernimmt ihren Platz im Ordner."
 
-#: src/heftig/web/ui.py:1429
+#: src/heftig/web/ui.py:1436
 msgid "Combined."
 msgstr "Zusammengefügt."
 
-#: src/heftig/web/ui.py:1439
+#: src/heftig/web/ui.py:1446
 msgid "Next pair (%(num)s open)."
 msgstr "Nächstes Paar (%(num)s offen)."
 
-#: src/heftig/web/ui.py:1443
+#: src/heftig/web/ui.py:1450
 msgid "No more possible duplicates."
 msgstr "Keine weiteren möglichen Dubletten."
 
-#: src/heftig/web/ui.py:1475
+#: src/heftig/web/ui.py:1482
 msgid "Accepted for %(num)d document."
 msgid_plural "Accepted for %(num)d documents."
 msgstr[0] "Bei %(num)d Dokument übernommen."
 msgstr[1] "Bei %(num)d Dokumenten übernommen."
 
-#: src/heftig/web/ui.py:1477
+#: src/heftig/web/ui.py:1484
 msgid "Dismissed for %(num)d document."
 msgid_plural "Dismissed for %(num)d documents."
 msgstr[0] "Bei %(num)d Dokument verworfen."
 msgstr[1] "Bei %(num)d Dokumenten verworfen."
 
-#: src/heftig/web/ui.py:1498
+#: src/heftig/web/ui.py:1505
 msgid "Still not accepted: %(reason)s"
 msgstr "Wieder nicht übernommen: %(reason)s"
 
-#: src/heftig/web/ui.py:1501
+#: src/heftig/web/ui.py:1508
 msgid "Accepted from quarantine."
 msgstr "Aus der Quarantäne übernommen."
 
-#: src/heftig/web/ui.py:1504
+#: src/heftig/web/ui.py:1511
 msgid "Hidden (stays in quarantine/ausgeblendet/)."
 msgstr "Ausgeblendet (liegt weiter in quarantine/ausgeblendet/)."
 
-#: src/heftig/web/ui.py:1595
+#: src/heftig/web/ui.py:1602
 msgid "Last attempt failed: %(error)s"
 msgstr "Letzter Versuch fehlgeschlagen: %(error)s"
 
-#: src/heftig/web/ui.py:1622
+#: src/heftig/web/ui.py:1629
 msgid "%(num)d title accepted."
 msgid_plural "%(num)d titles accepted."
 msgstr[0] "%(num)d Titel übernommen."
 msgstr[1] "%(num)d Titel übernommen."
 
-#: src/heftig/web/ui.py:1624
+#: src/heftig/web/ui.py:1631
 msgid "%(num)s skipped (changed in the meantime)."
 msgstr "%(num)s übersprungen (inzwischen geändert)."
 
-#: src/heftig/web/ui.py:1631
+#: src/heftig/web/ui.py:1638
 msgid "Suggestions dismissed."
 msgstr "Vorschläge verworfen."
 
-#: src/heftig/web/ui.py:1657
+#: src/heftig/web/ui.py:1664
 msgid "Batch “%(name)s” is running – just scan now."
 msgstr "Scan-Sitzung „%(name)s“ läuft – jetzt einfach scannen."
 
-#: src/heftig/web/ui.py:1660
+#: src/heftig/web/ui.py:1667
 msgid "Batch ended."
 msgstr "Scan-Sitzung beendet."
 
-#: src/heftig/web/ui.py:1663
+#: src/heftig/web/ui.py:1670
 msgid "Hidden – open paper is listed under “Paper still to file”."
 msgstr "Ausgeblendet – offenes Papier steht unter „Papier noch abzuheften“."
 
-#: src/heftig/web/ui.py:1666
+#: src/heftig/web/ui.py:1673
 msgid "%(num)d document filed."
 msgid_plural "%(num)d documents filed – the first scanned on top."
 msgstr[0] "%(num)d Dokument abgeheftet."
 msgstr[1] "%(num)d Dokumente abgeheftet – das zuerst gescannte oben."
 
-#: src/heftig/web/ui.py:1671
+#: src/heftig/web/ui.py:1678
 msgid "%(kept)s originals filed, %(gone)s marked as discarded."
 msgstr "%(kept)s Originale abgeheftet, %(gone)s als vernichtet markiert."
 
-#: src/heftig/web/ui.py:1689
+#: src/heftig/web/ui.py:1696
 msgid "Heftig – document archive"
 msgstr "Heftig – Dokumentenarchiv"
 
-#: src/heftig/web/ui.py:1703
+#: src/heftig/web/ui.py:1710
 msgctxt "app shortcut"
 msgid "Scan"
 msgstr "Scannen"
 
-#: src/heftig/web/ui.py:1704
+#: src/heftig/web/ui.py:1711
 msgctxt "app shortcut"
 msgid "Search"
 msgstr "Suchen"
 
-#: src/heftig/web/ui.py:1135 src/heftig/web/ui.py:1839
+#: src/heftig/web/ui.py:1142 src/heftig/web/ui.py:1846
 msgid "Reprocessing scheduled."
 msgstr "Neuverarbeitung eingeplant."
 
-#: src/heftig/web/ui.py:1912
+#: src/heftig/web/ui.py:1919
 msgid "%(num)d group saved."
 msgid_plural "%(num)d groups saved."
 msgstr[0] "%(num)d Gruppe gespeichert."
 msgstr[1] "%(num)d Gruppen gespeichert."
 
-#: src/heftig/web/ui.py:1923
+#: src/heftig/web/ui.py:1964
 msgid "Senders"
 msgstr "Absender"
 
-#: src/heftig/web/ui.py:1924
+#: src/heftig/web/ui.py:1965
 msgid "Document types"
 msgstr "Dokumenttypen"
 
-#: src/heftig/web/ui.py:1933
+#: src/heftig/web/ui.py:1974
 msgid "New filings go into the new binder from now on."
 msgstr "Neu Abgeheftetes kommt ab jetzt in den neuen Ordner."
 
-#: src/heftig/web/ui.py:1934
+#: src/heftig/web/ui.py:1975
 msgid "Renamed."
 msgstr "Umbenannt."
 
-#: src/heftig/web/ui.py:2003
+#: src/heftig/web/ui.py:2044
 msgid "Entry created."
 msgstr "Eintrag angelegt."
 
-#: src/heftig/web/ui.py:2006
+#: src/heftig/web/ui.py:2047
 msgid "Renamed (%(num)d document updated)."
 msgid_plural "Renamed (%(num)d documents updated)."
 msgstr[0] "Umbenannt (%(num)d Dokument aktualisiert)."
 msgstr[1] "Umbenannt (%(num)d Dokumente aktualisiert)."
 
-#: src/heftig/web/ui.py:2013
+#: src/heftig/web/ui.py:2054
 msgid "“%(name)s” does not exist here."
 msgstr "„%(name)s“ gibt es hier nicht."
 
-#: src/heftig/web/ui.py:2015
+#: src/heftig/web/ui.py:2056
 msgid "Merged (%(num)d document updated)."
 msgid_plural "Merged (%(num)d documents updated)."
 msgstr[0] "Zusammengeführt (%(num)d Dokument aktualisiert)."
 msgstr[1] "Zusammengeführt (%(num)d Dokumente aktualisiert)."
 
-#: src/heftig/web/ui.py:2021
+#: src/heftig/web/ui.py:2062
 msgid "Alias added."
 msgstr "Alias hinzugefügt."
 
-#: src/heftig/web/ui.py:2024
+#: src/heftig/web/ui.py:2065
 msgid "Alias removed."
 msgstr "Alias entfernt."
 
-#: src/heftig/web/ui.py:2027
+#: src/heftig/web/ui.py:2068
 msgid "Deleted (%(num)d document updated)."
 msgid_plural "Deleted (%(num)d documents updated)."
 msgstr[0] "Gelöscht (%(num)d Dokument aktualisiert)."
 msgstr[1] "Gelöscht (%(num)d Dokumente aktualisiert)."
 
-#: src/heftig/web/ui.py:2031 src/heftig/web/ui.py:2076
+#: src/heftig/web/ui.py:2072 src/heftig/web/ui.py:2117
 msgid "Error: %(error)s"
 msgstr "Fehler: %(error)s"
 
-#: src/heftig/web/ui.py:2059
+#: src/heftig/web/ui.py:2100
 msgid "Token created – copy it now, it will not be shown again."
 msgstr "Token erstellt – jetzt kopieren, er wird nicht erneut angezeigt."
 
-#: src/heftig/web/ui.py:2065
+#: src/heftig/web/ui.py:2106
 msgid "Token revoked."
 msgstr "Token widerrufen."
 
-#: src/heftig/web/ui.py:2068
+#: src/heftig/web/ui.py:2109
 msgid "Export scheduled – progress in the inbox."
 msgstr "Export eingeplant – Fortschritt im Eingang."
 
-#: src/heftig/web/ui.py:2071
+#: src/heftig/web/ui.py:2112
 msgid "Search index rebuild scheduled."
 msgstr "Suchindex-Neuaufbau eingeplant."
 
-#: src/heftig/web/ui.py:2074
+#: src/heftig/web/ui.py:2115
 msgid "Database snapshot written: %(path)s"
 msgstr "Datenbank-Snapshot geschrieben: %(path)s"
 
-#: src/heftig/web/ui.py:211
+#: src/heftig/web/ui.py:212
 msgid "Combined – the individual documents are in the trash."
 msgstr "Zusammengefügt – die Einzeldokumente liegen im Papierkorb."
 
-#: src/heftig/web/ui.py:217
+#: src/heftig/web/ui.py:218
 msgid "“%(title)s” moved to the trash."
 msgstr "„%(title)s“ in den Papierkorb verschoben."
 
-#: src/heftig/web/ui.py:439
+#: src/heftig/web/ui.py:443
 msgid "Search saved."
 msgstr "Suche gespeichert."
 
-#: src/heftig/web/ui.py:442
+#: src/heftig/web/ui.py:446
 msgid "Saved search removed."
 msgstr "Gespeicherte Suche entfernt."
 
-#: src/heftig/web/ui.py:480
+#: src/heftig/web/ui.py:484
 msgid "Combining undone – the individual documents are back."
 msgstr "Zusammenfügen rückgängig gemacht – die Einzeldokumente sind zurück."
 
-#: src/heftig/web/ui.py:483
+#: src/heftig/web/ui.py:487
 msgid "%(num)d document restored."
 msgid_plural "%(num)d documents restored."
 msgstr[0] "%(num)d Dokument wiederhergestellt."
 msgstr[1] "%(num)d Dokumente wiederhergestellt."
 
-#: src/heftig/web/ui.py:487
+#: src/heftig/web/ui.py:491
 msgid "Not possible: %(reasons)s"
 msgstr "Nicht möglich: %(reasons)s"
 
-#: src/heftig/web/ui.py:492
+#: src/heftig/web/ui.py:496
 msgid "Restored."
 msgstr "Wiederhergestellt."
 
-#: src/heftig/web/ui.py:503
+#: src/heftig/web/ui.py:507
 msgid "The sheet stays in the binder – its place keeps counting."
 msgstr "Das Blatt bleibt im Ordner – sein Platz zählt weiter."
 
-#: src/heftig/web/ui.py:506
+#: src/heftig/web/ui.py:510
 msgid "Noted: the sheet is out of the binder."
 msgstr "Vermerkt: Das Blatt ist aus dem Ordner genommen."
 
-#: src/heftig/web/ui.py:509
+#: src/heftig/web/ui.py:513
 msgid "Deleted permanently."
 msgstr "Endgültig gelöscht."
 
-#: src/heftig/web/ui.py:512
+#: src/heftig/web/ui.py:516
 msgid "Trash emptied (%(num)d document)."
 msgid_plural "Trash emptied (%(num)d documents)."
 msgstr[0] "Papierkorb geleert (%(num)d Dokument)."
 msgstr[1] "Papierkorb geleert (%(num)d Dokumente)."
 
-#: src/heftig/web/ui.py:541
+#: src/heftig/web/ui.py:545
 msgid "Only for a search or a filtered selection – not for the whole archive."
 msgstr "Nur für eine Suche oder gefilterte Auswahl – nicht für das ganze Archiv."
 
-#: src/heftig/web/ui.py:596
+#: src/heftig/web/ui.py:600
 msgid "The results have changed – please check again."
 msgstr "Die Trefferliste hat sich geändert – bitte erneut prüfen."
 
-#: src/heftig/web/ui.py:601
+#: src/heftig/web/ui.py:605
 msgid "The number you typed does not match – nothing was deleted."
 msgstr "Die eingetippte Anzahl stimmt nicht – nichts gelöscht."
 
-#: src/heftig/web/ui.py:606
+#: src/heftig/web/ui.py:612
 msgid "Bulk deletion “%(label)s”"
 msgstr "Sammellöschung „%(label)s“"
 
-#: src/heftig/web/ui.py:677
+#: src/heftig/web/ui.py:683
 msgid "Too many AI searches in a short time – please wait a moment."
 msgstr "Zu viele KI-Suchen in kurzer Zeit – bitte einen Moment warten."
 
-#: src/heftig/web/ui.py:682
+#: src/heftig/web/ui.py:688
 msgid "AI search not possible: %(error)s"
 msgstr "KI-Suche nicht möglich: %(error)s"
 
-#: src/heftig/web/ui.py:686
+#: src/heftig/web/ui.py:692
 msgid "(not in the archive: %(names)s)"
 msgstr "(nicht im Archiv: %(names)s)"
 
-#: src/heftig/web/ui.py:705
+#: src/heftig/web/ui.py:711
 msgid "All reviewed – nothing left open."
 msgstr "Alles geprüft – nichts mehr offen."
 
-#: src/heftig/web/ui.py:86
+#: src/heftig/web/ui.py:87
 msgid "Only with a sign-in in the browser (API: /api/…)."
 msgstr "Nur mit Anmeldung im Browser (API: /api/…)."
 
-#: src/heftig/web/ui.py:937
+#: src/heftig/web/ui.py:944
 msgid "The document has been changed in the meantime (e.g. by the automatic processing). Please check the page and enter your change again."
 msgstr "Das Dokument wurde inzwischen verändert (z. B. durch die automatische Verarbeitung). Bitte die Seite prüfen und die Änderung erneut eintragen."
 
-#: src/heftig/web/ui.py:986
+#: src/heftig/web/ui.py:993
 msgid "Invalid number in the field “%(field)s”"
 msgstr "Zahl im Feld „%(field)s“ ungültig"
 

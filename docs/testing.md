@@ -9,7 +9,7 @@ make lint          # ruff check + ruff format --check on src, tests, contrib, sc
                    # plus the translation check (scripts/i18n.py check de)
 ```
 
-The suite (about 440 tests) needs no network access, no accounts and no API keys. AI providers,
+The suite (about 450 tests) needs no network access, no accounts and no API keys. AI providers,
 OCR (except one test) and the IMAP server are replaced by fakes. Test documents are generated
 synthetically (`tests/helpers.py`, `tests/corpus.py`); all names, numbers and addresses in them
 are invented.
@@ -60,6 +60,7 @@ Run a single file or test with `uv run pytest tests/test_search.py -q` or
 | `test_expand.py` | What a search word stands for: word forms with umlaut spellings, compounds, splitting a compound into its parts, similar spellings (Damerau, OCR confusions) ranked last, words that mean the same by stem and phrase (ranked below the word itself), function words (kept when quoted); closer matches and more words rank higher; a question ranks by its rare words; a new alias is searchable at once. |
 | `test_synonyms.py` | The archive's own words that mean the same (`synonyms.json`): parsed and cleaned, searched, saved on the settings page, carried by export and import; `heftig search-eval` with its JSON output and `--meaning`. |
 | `test_search_quality.py` | The search benchmark (below) stays above its floors (MRR@10, success@1/@5, queries without a right result), and every kind of query has cases. |
+| `test_senders.py` | E-mailed documents: filter and counts by sender address (any case), names for addresses cleaned and merged, `senders.json` in export, backup and import; the document page, the list's hover text, the filter, the chip, the settings page and the API. |
 | `test_semantic.py` | Search by meaning with a fake model: documents embedded once and again only when their pieces change, large and small pieces, meaning finds other words, word matches stay first, filters apply, a failing model keeps the word results, fusion weights for keywords and questions, the "near" rules, 8-bit vector store with and without numpy, the worker's thread, the setup step and settings (progress updated in place); the built-in model's download checks, pooling and unloading after idle time; with the real model downloaded (`~/.cache/heftig-models`, else skipped) that it finds by meaning. |
 | `test_search_ux.py` | German and English date phrases (and words that are none); switching them off; tag mode any/all; facets over the current results; suggestions; similar documents; highlighting; ID fragments; German word forms and compounds. |
 | `test_search_web.py` | Search page: facets, timeline and toggle links; date phrase notice and literal link; tag mode switch; saved searches; suggest API; hits on the document page and on scanned pages via OCR word boxes; every filter link works; odd filter values do not break pages. |
