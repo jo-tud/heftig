@@ -503,8 +503,12 @@ because the words already find most documents. A household archive of 2,000 docu
 
 **Preparing the documents.** The worker embeds archived documents in the background, in a
 thread of its own, a few seconds after they are processed (`src/heftig/semantic.py`): one piece
-with title, sender, type, tags, date and summary, then the text in chunks of about 1,200
-characters (at most 12), each starting with the title line. The vectors are stored in SQLite
+with title, sender, type, tags, date and summary, then the text twice: in large pieces of about
+1,200 characters (at most 40) and - when it is longer than 600 characters - in small pieces of
+about 600 (at most 80), each starting with the title line. **Keywords** name what a document is
+about: the best large piece decides (a tax return that mentions the chimney sweep in one line
+does not pass the chimney sweep's notice). A **written-out question** asks for a passage: the
+mean of the best large and the best small piece decides (measured below). The vectors are stored in SQLite
 (`doc_embeddings`), normalised, as 8-bit integers with a scale per vector - a quarter of the
 size of 32-bit floats with the same ranking (on the Munich, LegalQuAD and FiQA questions nDCG@10
 changed by at most 0.001; shortening the vectors to 256 of their 768 dimensions cost up to

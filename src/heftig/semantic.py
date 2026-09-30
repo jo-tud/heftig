@@ -5,9 +5,9 @@ ETF statement, "Elektriker" the bill from "Elektro Schulz" - which no word rule 
 runs on this computer (local_embed.py); nothing is sent anywhere. Off unless switched on (the
 setup assistant asks; Settings -> Search).
 
-- The worker embeds every archived document in the background (worker.py): pieces with title,
-  sender, type, tags and date, then the text in chunks of about 1,200 characters (at most 12),
-  stored in SQLite (``doc_embeddings``, derived data like the word index). The model is
+- The worker embeds every archived document in the background (worker.py): a piece with title,
+  sender, type, tags and date, then the text twice - in pieces of about 1,200 characters and
+  of about 600 - stored in SQLite (``doc_embeddings``, derived data like the word index). The model is
   downloaded when documents are embedded for the first time. A document is embedded again when
   the embedded pieces change.
 - Every search with words also compares the query with the stored vectors, once the model is
@@ -33,8 +33,14 @@ from .db import now_iso, write_tx
 
 log = logging.getLogger(__name__)
 
+# The text is embedded in large and in small pieces; a document's similarity is the mean of its
+# best large and its best small piece: the large ones keep the context of short texts, the small
+# ones find a passage in a long one (measured on real questions, docs/search.md)
 CHUNK_CHARS = 1200
-MAX_CHUNKS = 12
+MAX_CHUNKS = 40
+SMALL_CHARS = 600
+MAX_SMALL = 80
+DESCRIPTION, LARGE, SMALL = 0, 1, 2  # kinds of pieces
 DOCS_PER_ROUND = 32
 NEAREST = 20  # documents by meaning merged into the results
 RRF_K = 60
@@ -107,8 +113,24 @@ def for_search(conn: sqlite3.Connection, settings):
 # --- what is embedded ------------------------------------------------------------------------
 
 
-def chunks(conn: sqlite3.Connection, doc_id: str) -> list[str]:
-    """The pieces of a document that are embedded: its description, then its text."""
+def _split(text: str, size: int, limit: int) -> list[str]:
+    """`text` in pieces of at most `size` characters, cut between words."""
+    out = []
+    while text and len(out) < limit:
+        if len(text) <= size:
+            piece, text = text, ""
+        else:
+            cut = text.rfind(" ", size // 2, size)
+            cut = cut if cut > 0 else size
+            piece, text = text[:cut], text[cut:].lstrip()
+        out.append(piece)
+    return out
+
+
+def chunks(conn: sqlite3.Connection, doc_id: str) -> list[tuple[int, str]]:
+    """The pieces of a document that are embedded, with their kind: its description, then its
+    text in large and - when it is longer than one small piece - in small pieces, each starting
+    with the description line."""
     row = conn.execute(
         "SELECT d.metadata_json, t.content FROM documents d "
         "LEFT JOIN document_text t ON t.doc_id = d.id WHERE d.id = ?",
@@ -128,17 +150,14 @@ def chunks(conn: sqlite3.Connection, doc_id: str) -> list[str]:
         )
         if x
     )
-    out = [head + ("\n" + meta["summary"] if meta.get("summary") else "")]
+    out = [(DESCRIPTION, head + ("\n" + meta["summary"] if meta.get("summary") else ""))]
     text = " ".join((row[1] or "").split())
-    while text and len(out) <= MAX_CHUNKS:
-        if len(text) <= CHUNK_CHARS:
-            piece, text = text, ""
-        else:
-            cut = text.rfind(" ", CHUNK_CHARS // 2, CHUNK_CHARS)
-            cut = cut if cut > 0 else CHUNK_CHARS
-            piece, text = text[:cut], text[cut:].lstrip()
-        out.append(f"{head}\n{piece}" if head else piece)
-    return [c for c in out if c.strip()]
+    sizes = [(LARGE, CHUNK_CHARS, MAX_CHUNKS)]
+    if len(text) > SMALL_CHARS:
+        sizes.append((SMALL, SMALL_CHARS, MAX_SMALL))
+    for kind, size, limit in sizes:
+        out += [(kind, f"{head}\n{p}" if head else p) for p in _split(text, size, limit)]
+    return [(k, c) for k, c in out if c.strip()]
 
 
 def _normalized(v: list[float]) -> array:
@@ -216,13 +235,16 @@ def embed_pending(archive, max_docs: int = DOCS_PER_ROUND, stop=None) -> dict[st
             continue
         started = now_iso()
         before = embedder.usage.snapshot() if hasattr(embedder, "usage") else None
-        vectors = embedder.embed([_prefix(embedder, "document") + p for p in pieces])
+        vectors = embedder.embed([_prefix(embedder, "document") + p for _, p in pieces])
         with write_tx(conn):
             conn.execute("DELETE FROM doc_embeddings WHERE doc_id = ?", (doc_id,))
             conn.executemany(
-                "INSERT INTO doc_embeddings(doc_id, chunk, model, vector, scale) "
-                "VALUES(?, ?, ?, ?, ?)",
-                [(doc_id, i, model, *_packed(v)) for i, v in enumerate(vectors)],
+                "INSERT INTO doc_embeddings(doc_id, chunk, model, kind, vector, scale) "
+                "VALUES(?, ?, ?, ?, ?, ?)",
+                [
+                    (doc_id, i, model, kind, *_packed(v))
+                    for i, ((kind, _), v) in enumerate(zip(pieces, vectors, strict=True))
+                ],
             )
             conn.execute(
                 "INSERT INTO doc_embed_state(doc_id, model, content_hash, revision) "
@@ -259,28 +281,42 @@ def _record(conn, embedder, task: str, doc_id: str, started: str, before) -> Non
 
 
 class _Store:
-    """All stored vectors of one model (8-bit integers and a scale per vector): a numpy matrix
-    if numpy is installed (heftig[semantic], the container image), else plain arrays (about 1 s
-    per 30,000 chunks)."""
+    """All stored vectors of one model (8-bit integers and a scale per vector), ordered by
+    document: a numpy matrix if numpy is installed (heftig[semantic], the container image), else
+    plain arrays (about 1 s per 30,000 pieces)."""
 
     BLOCK = 8192  # rows converted to floats at a time: little memory, same speed
 
-    def __init__(self, rows: list[tuple[str, bytes, float]]):
-        self.ids = [d for d, _, _ in rows]
+    def __init__(self, rows: list[tuple[str, int, bytes, float]]):
+        """`rows`: (document id, kind, vector, scale), the rows of a document together."""
+        self.ids: list[str] = []
+        starts: list[int] = []
+        for i, (doc_id, *_) in enumerate(rows):
+            if not self.ids or self.ids[-1] != doc_id:
+                self.ids.append(doc_id)
+                starts.append(i)
         self.matrix = None
-        self.rows = [(d, array("b", v), s) for d, v, s in rows]
-        dims = {len(v) for _, v, _ in rows}
+        self.rows = [(d, k, array("b", v), s) for d, k, v, s in rows]
+        dims = {len(v) for _, _, v, _ in rows}
         try:
             import numpy as np
         except ImportError:
             return
         if len(dims) == 1:
-            self.matrix = np.frombuffer(b"".join(v for _, v, _ in rows), dtype=np.int8)
+            self.matrix = np.frombuffer(b"".join(v for _, _, v, _ in rows), dtype=np.int8)
             self.matrix = self.matrix.reshape(len(rows), dims.pop())
-            self.scales = np.array([s for _, _, s in rows], dtype=np.float32)
+            self.scales = np.array([s for _, _, _, s in rows], dtype=np.float32)
+            kinds = np.array([k for _, k, _, _ in rows], dtype=np.int8)
+            self.starts = np.array(starts, dtype=np.int64)
+            self.not_large = kinds == SMALL  # rows left out for a document's best large piece
+            self.not_small = kinds == LARGE
+            self.has_small = np.add.reduceat(self.not_large.astype(np.int32), self.starts) > 0
             self.rows = []
 
-    def similarities(self, q: array) -> list[tuple[str, float]]:
+    def similarities(self, q: array, passages: bool = False) -> list[tuple[str, float]]:
+        """Per document: the cosine of its best large piece (the description counts as one) or,
+        with `passages`, the mean of that and of its best small piece (the description counts
+        as both; without small pieces the best large one)."""
         if self.matrix is not None:
             import numpy as np
 
@@ -290,14 +326,29 @@ class _Store:
             sims = np.concatenate(
                 [
                     self.matrix[i : i + self.BLOCK].astype(np.float32) @ qv
-                    for i in range(0, len(self.ids), self.BLOCK)
+                    for i in range(0, self.matrix.shape[0], self.BLOCK)
                 ]
             )
-            return list(zip(self.ids, (sims * self.scales).tolist(), strict=True))
+            sims *= self.scales
+            large = np.maximum.reduceat(np.where(self.not_large, -2.0, sims), self.starts)
+            small = np.maximum.reduceat(np.where(self.not_small, -2.0, sims), self.starts)
+            score = np.where(self.has_small & passages, (large + small) / 2, large)
+            return list(zip(self.ids, score.tolist(), strict=True))
+        best: dict[str, list[float]] = {}  # document -> [large, small]
+        for doc_id, kind, v, s in self.rows:
+            if len(v) != len(q):
+                continue
+            sim = sum(map(operator.mul, q, v)) * s
+            b = best.setdefault(doc_id, [-2.0, -2.0])
+            if kind != SMALL:
+                b[0] = max(b[0], sim)
+            if kind != LARGE:
+                b[1] = max(b[1], sim)
+        has_small = {d for d, k, _, _ in self.rows if k == SMALL and passages}
         return [
-            (doc_id, sum(map(operator.mul, q, v)) * s)
-            for doc_id, v, s in self.rows
-            if len(v) == len(q)
+            (d, (b[0] + b[1]) / 2 if d in has_small else b[0])
+            for d in self.ids
+            if (b := best.get(d)) is not None
         ]
 
 
@@ -314,7 +365,9 @@ def _vectors(conn: sqlite3.Connection, model: str) -> _Store:
         if key in _VECTORS:
             return _VECTORS[key]
     rows = conn.execute(
-        "SELECT doc_id, vector, scale FROM doc_embeddings WHERE model = ?", (model,)
+        "SELECT doc_id, kind, vector, scale FROM doc_embeddings WHERE model = ? "
+        "ORDER BY doc_id, chunk",
+        (model,),
     ).fetchall()
     store = _Store([tuple(r) for r in rows])
     with _LOCK:
@@ -325,9 +378,12 @@ def _vectors(conn: sqlite3.Connection, model: str) -> _Store:
 
 
 def nearest(
-    conn: sqlite3.Connection, embedder, query: str, limit: int = NEAREST
+    conn: sqlite3.Connection, embedder, query: str, limit: int = NEAREST, passages: bool = False
 ) -> list[tuple[str, float]]:
-    """The documents most alike `query` by meaning: (id, cosine of the best chunk)."""
+    """The documents most alike `query` by meaning: (id, similarity - _Store.similarities).
+    `passages`: a written-out question, which asks for a passage - small pieces count too;
+    keywords name what a document is about - the large pieces decide (a tax return that
+    mentions the chimney sweep in one line must not pass the chimney sweep's notice)."""
     model = embedder.model
     store = _vectors(conn, model)
     if not store.ids or not query.strip():
@@ -337,11 +393,7 @@ def nearest(
     q = _normalized(embedder.embed([_prefix(embedder, "query") + query])[0])
     with write_tx(conn):
         _record(conn, embedder, "search", "", started, before)
-    best: dict[str, float] = {}
-    for doc_id, sim in store.similarities(q):
-        if sim > best.get(doc_id, -2.0):
-            best[doc_id] = sim
-    ranked = sorted(best.items(), key=lambda x: -x[1])
+    ranked = sorted(store.similarities(q, passages), key=lambda x: -x[1])
     return _near_enough(ranked, getattr(embedder, "spec", None))[:limit]
 
 
