@@ -1,7 +1,8 @@
 # Architecture
 
 Heftig is a small Python application (FastAPI, Jinja2 templates, SQLite with FTS5, pypdfium2,
-Pillow, httpx). There is no message broker, no external database and no cloud dependency.
+Pillow, httpx; for the search Snowball stemmers and, for the optional search by meaning,
+onnxruntime, tokenizers and numpy). There is no message broker, no external database and no cloud dependency.
 
 ## Components
 
@@ -26,10 +27,10 @@ Pillow, httpx). There is no message broker, no external database and no cloud de
 | Component | Command | Responsibilities |
 |---|---|---|
 | Web | `heftig serve` | Web UI, REST API (`/api/...`, OpenAPI at `/api/docs`), first setup and settings pages, login, uploads (ingested synchronously in the request), `/health`, `/ready` |
-| Worker | `heftig worker` | Consume folder polling, IMAP polling, processing jobs (OCR, classification), export/import/reindex/rebuild/title jobs, heartbeat, hourly maintenance |
+| Worker | `heftig worker` | Consume folder polling, IMAP polling, processing jobs (OCR, classification), export/import/reindex/rebuild/title jobs, embedding documents for the search by meaning, heartbeat, hourly maintenance |
 | Both | `heftig run` | Web server plus the worker in a thread of the same process (simple local setup) |
 | Database | `archive/index.sqlite` | Search index and a queryable copy of all document metadata; primary store for jobs, users, sessions, API tokens, IMAP cursors, the ingest event log and the settings saved in the web interface |
-| Sidecars | `archive/documents/<uuid>/`, `archive/trash/<uuid>/`, `taxonomy.json`, `binders.json`, `saved_searches.json` | Authoritative, human-readable document data; the database can be rebuilt from them |
+| Sidecars | `archive/documents/<uuid>/`, `archive/trash/<uuid>/`, `taxonomy.json`, `binders.json`, `saved_searches.json`, `synonyms.json` | Authoritative, human-readable document data; the database can be rebuilt from them |
 
 Settings come from environment variables (`config.Settings`) plus the values saved on the setup
 and settings pages (`settings_store`, stored in the database's `meta` table). An environment
@@ -43,11 +44,12 @@ The main modules:
 | `ingest.py`, `consume.py`, `imap_import.py` | Intake: one ingest function, the watched folders, the mailbox |
 | `processing.py`, `classify.py`, `providers/` | Text extraction, classification, validation of AI output, provider adapters and prompts |
 | `documents.py`, `storage.py`, `db.py`, `index.py`, `migrations/` | Sidecars, atomic writes, the SQLite database and its FTS index |
-| `search.py`, `datephrases.py`, `aisearch.py`, `wordboxes.py` | Search, date phrases, the optional AI search, hit boxes on page images |
+| `search.py`, `expand.py`, `synonyms.py`, `datephrases.py`, `aisearch.py`, `wordboxes.py` | Search and ranking, what a search word stands for (forms, compounds, similar spellings), words that mean the same, date phrases, the optional AI search, hit boxes on page images |
+| `semantic.py`, `local_embed.py`, `searcheval.py` | The optional search by meaning (pieces, vectors, fusion with the word search) and its built-in ONNX model; measuring search quality |
 | `duplicates.py`, `pagediff.py`, `combine.py`, `trash.py` | Possible duplicates and the page comparison, combining documents, the trash |
 | `binders.py`, `sessions.py` | Paper filing in named binders (`binders.json`), batches for scanning old binders |
 | `titles.py`, `taxonomy.py`, `suggestions.py`, `saved_searches.py` | Title normalisation and harmonisation, categories, AI suggestions, saved searches |
-| `settings_store.py`, `web/setup.py`, `connections.py` | Settings saved in the web interface, the setup/settings pages for AI, mail and scanner, and the connection tests behind their "Test" buttons (IMAP presets, model lists) |
+| `settings_store.py`, `web/setup.py`, `connections.py` | Settings saved in the web interface, the setup/settings pages for AI, search, mail and scanner, and the connection tests behind their "Test" buttons (IMAP presets, model lists) |
 | `i18n.py`, `locale/` | Interface languages: English source texts, gettext catalogues (`locale/de/messages.po`), translation of stored texts when shown |
 | `auth.py`, `web/` | Users, sessions, API tokens; the FastAPI app, HTML pages and REST API |
 | `maintenance.py`, `worker.py`, `jobs.py`, `cli.py`, `mcp_server.py` | Check/repair/rebuild/export/import/backup, the worker loop, the job queue, the command line, the MCP server |
@@ -67,7 +69,9 @@ poll the consume folder (and the optional folder for digital files) every
 is configured), every `HEFTIG_AI_RETRY_MINUTES` check whether an unreachable AI provider is back
 ([providers.md](providers.md#when-the-ai-provider-is-unreachable)), once an hour requeue jobs with
 expired leases, prune old raw AI responses, end forgotten scan batches, purge expired trash and
-write the automatic database snapshot, then claim due jobs until `HEFTIG_WORKER_CONCURRENCY` jobs
+write the automatic database snapshot, every 30 s (with the search by meaning switched on) start
+a thread that embeds new and changed documents (after a failure every ten minutes), then claim
+due jobs until `HEFTIG_WORKER_CONCURRENCY` jobs
 are running.
 
 ## Ingestion pipeline
@@ -180,9 +184,9 @@ be extracted at all, `needs_review` if there are review reasons or open suggesti
 
 ## Provider protocols
 
-Text extraction, classification and (later) embeddings are separate protocols in
-`src/heftig/providers/base.py`. One backend may implement several, but each task is configured
-on its own (provider, model, base URL, key, cloud permission).
+Text extraction, classification and embeddings (the built-in model of the search by meaning)
+are separate protocols in `src/heftig/providers/base.py`. One backend may implement several, but
+each task is configured on its own (provider, model, base URL, key, cloud permission).
 
 | Protocol | Method | Implementations |
 |---|---|---|

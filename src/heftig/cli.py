@@ -388,8 +388,8 @@ def cmd_embed(args) -> int:
 
     a = _archive()
     if not semantic.available(a.settings):
-        print("The search by meaning is off (Settings -> Search, or HEFTIG_SEMANTIC_SEARCH=true).",
-              file=sys.stderr)  # fmt: skip
+        print("The search by meaning is off (Settings -> Search by meaning, "
+              "or HEFTIG_SEMANTIC_SEARCH=true).", file=sys.stderr)  # fmt: skip
         return 2
     r = semantic.catch_up(a)
     _print({**r, **semantic.status(a.conn, a.settings)})

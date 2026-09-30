@@ -51,10 +51,11 @@ don't want to keep the archive.
 
 On the first start Heftig has no account. The setup page (`/setup`, protected by the one-time
 code in `archive/setup-token`, also written to the log) asks for the interface language and
-creates the account, then walks through the AI (`/settings/ai`), the mailbox (`/settings/mail`)
-and the scanner (`/settings/scanner`). The same pages are under *Settings* later (*Change AI*,
-*E-mail import*, *Scanner and phone*); the binders of the paper filing are on
-*Settings → Binders*. (`heftig init` still creates the account on the command line, e.g. for
+creates the account, then walks through the AI (`/settings/ai`), the search by meaning
+(`/settings/search`), the mailbox (`/settings/mail`) and the scanner (`/settings/scanner`). The
+same pages are under *Settings* later (*Change AI*, *Search by meaning*, *E-mail import*,
+*Scanner and phone*); the binders of the paper filing are on *Settings → Binders*, the archive's
+own words that mean the same on *Settings → Search: words that mean the same*. (`heftig init` still creates the account on the command line, e.g. for
 scripted installations.)
 
 What is saved on these pages is stored in the archive's database (`meta` table) and applies to
@@ -235,9 +236,11 @@ downloads the embedding model once (about 330 MB from huggingface.co) into
 documents in the background. While the model works it needs up to about 750 MB of memory (the
 worker while it prepares documents, the web process while searches use it); after ten minutes
 without use it is unloaded and the memory is given back to the system, so an idle Heftig stays
-small. Preparing uses half the CPU cores (`HEFTIG_SEMANTIC_THREADS`). Without internet access at that moment the download is retried
-every ten minutes (the error is shown under Settings → Search by meaning); `heftig embed`
-downloads and prepares everything at once. `models/` is not part of backups and exports - it is
+small. Preparing uses half the CPU cores (`HEFTIG_SEMANTIC_THREADS`): on a notebook about a
+second per document of three pages, so 2,000 documents take about half an hour the first time.
+Without internet access at that moment the download is retried every ten minutes (the error is
+shown under Settings → Search by meaning); `heftig embed` downloads and prepares everything at
+once. `models/` is not part of backups and exports - it is
 downloaded again when missing. Switching it off keeps the prepared vectors (they are used again
 when it is switched back on).
 
@@ -260,7 +263,8 @@ heftig backup /mnt/backup/heftig
 
 The backup contains a consistent copy of the database made with SQLite's online backup API, plus
 `originals/`, `documents/`, `trash/`, `taxonomy.json`, `saved_searches.json`, `binders.json`,
-`email/`, `quarantine/` and a `backup.json` marker.
+`synonyms.json`, `email/`, `quarantine/` and a `backup.json` marker (not `models/`: the search
+model is downloaded again when missing).
 It is a full copy every time (no deduplication), so it suits small archives or an external disk.
 In containers, mount the target:
 `docker compose run --rm -v /mnt/backup/heftig:/backup web heftig backup /backup`. The
@@ -398,6 +402,7 @@ interrupted jobs on start, so a plain restart is often enough.
 | Command | What it does | When |
 |---|---|---|
 | `heftig reindex` (also on the settings page) | Rebuilds the FTS search index from the database | index problems, after changing search code |
+| `heftig embed` | Downloads the search model if needed and prepares all pending documents for the search by meaning now (the worker does it in the background anyway) | before going offline, to be done at once |
 | `heftig rebuild-db` | Deletes all document, text, tag and taxonomy rows and reloads them from `documents/*/metadata.json`, `text_pages.json` and `taxonomy.json`, then rebuilds the index | database damaged or lost; stop the worker first |
 
 `rebuild-db` keeps users, tokens, jobs, IMAP state and the event log if the database file still
@@ -456,7 +461,9 @@ A built-in integration (e.g. a ClamAV check before ingestion) is a possible late
 - Memory is dominated by page rendering for OCR: an A4 page at 300 dpi is about 26 MB as an RGB
   image, per concurrently processed page; `HEFTIG_MAX_IMAGE_MEGAPIXELS` caps the worst case.
   With the default concurrency of 2, 1 GB for the worker is comfortable; vision models or large
-  TIFFs may need more.
+  TIFFs may need more. With the search by meaning switched on, the worker and the web process
+  each need about 750 MB more while the model is loaded (see
+  [Search by meaning: model and memory](#search-by-meaning-model-and-memory)).
 - CPU: Tesseract runs single-threaded per page; `HEFTIG_WORKER_CONCURRENCY` controls how many
   documents are processed in parallel.
 - To enforce limits in Compose, add e.g. `mem_limit: 2g` and `cpus: 2` to the `worker` service
