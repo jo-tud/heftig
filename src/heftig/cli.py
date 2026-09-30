@@ -406,7 +406,16 @@ def cmd_search_eval(args) -> int:
     if not cases:
         print("No queries with known documents.", file=sys.stderr)
         return 2
-    summary, results = searcheval.evaluate(a.conn, cases)
+    embedder = None
+    if args.meaning:
+        from . import semantic
+
+        embedder = semantic.for_search(a.conn, a.settings)
+        if embedder is None:
+            print("The search by meaning is off or nothing is embedded yet (heftig embed).",
+                  file=sys.stderr)  # fmt: skip
+            return 2
+    summary, results = searcheval.evaluate(a.conn, cases, None, embedder)
     if args.json:
         print(searcheval.as_json(summary, results))
     else:
@@ -542,6 +551,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     s.add_argument("file", help='JSON: [{"q": "...", "expect": ["<title or ID>"], "also": [...]}]')
     s.add_argument("--json", action="store_true")
+    s.add_argument("--meaning", action="store_true", help="search by meaning too, as the web does")
     s.set_defaults(fn=cmd_search_eval)
     return p
 
