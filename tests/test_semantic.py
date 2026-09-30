@@ -352,6 +352,9 @@ def test_local_model_pools_token_vectors(tmp_path, monkeypatch):
         def get_inputs(self):
             return [type("I", (), {"name": n})() for n in ("input_ids", "attention_mask")]
 
+        def get_outputs(self):
+            return [type("O", (), {"name": "last_hidden_state"})()]
+
         def run(self, _outputs, feed):
             ids = feed["input_ids"].astype(np.float32)
             return [np.stack([ids, ids * 0 + 1], axis=-1)]  # token vector (id, 1)
@@ -395,3 +398,71 @@ def test_built_in_model_finds_by_meaning(archive):
         found, res = _ids(archive, q, model)
         assert found and found[0] == ids[doc] and "Meaning" in res.items[0]["reasons"], q
     assert semantic.nearest(archive.conn, model, "Rezept Apfelkuchen") == []
+
+
+def test_model_is_unloaded_when_idle(tmp_path, monkeypatch):
+    import time
+
+    import numpy as np
+    from tokenizers import Tokenizer
+    from tokenizers.models import WordLevel
+    from tokenizers.pre_tokenizers import Whitespace
+
+    from heftig.local_embed import LocalEmbedder, ModelSpec
+
+    tok = Tokenizer(WordLevel({"[PAD]": 0, "[UNK]": 1, "a": 2}, unk_token="[UNK]"))
+    tok.pre_tokenizer = Whitespace()
+    d = tmp_path / "m"
+    d.mkdir()
+    tok.save(str(d / "tokenizer.json"))
+    (d / "model.onnx").write_bytes(b"x")
+    loads = []
+
+    class Session:
+        def get_inputs(self):
+            return [type("I", (), {"name": n})() for n in ("input_ids", "attention_mask")]
+
+        def get_outputs(self):
+            return [type("O", (), {"name": "sentence_embedding"})()]
+
+        def run(self, _outputs, feed):
+            return [np.ones((feed["input_ids"].shape[0], 2), dtype=np.float32)]
+
+    import onnxruntime
+
+    monkeypatch.setattr(
+        onnxruntime, "InferenceSession", lambda *a, **k: loads.append(1) or Session()
+    )
+    e = LocalEmbedder(ModelSpec("m", "r", "x", {"model.onnx": "", "tokenizer.json": ""}), tmp_path)
+    e.idle_seconds = 0.3
+    e.embed(["a"])
+    assert e.loaded()
+    e.embed(["a"])  # used again: stays loaded, not loaded twice
+    assert loads == [1]
+    time.sleep(0.8)
+    assert not e.loaded()  # idle: unloaded
+    e.embed(["a"])  # and loaded again when needed
+    assert e.loaded() and loads == [1, 1]
+    e.unload()
+
+
+@pytest.mark.skipif(
+    not (MODEL_CACHE / "snowflake-arctic-embed-m-v2.0-int8" / "model.onnx").exists(),
+    reason="the built-in model is not downloaded",
+)
+def test_unloading_gives_memory_back():
+    import time
+
+    from heftig.local_embed import DEFAULT, LocalEmbedder
+
+    def rss():
+        return int(open("/proc/self/status").read().split("VmRSS:")[1].split()[0]) // 1024
+
+    e = LocalEmbedder(DEFAULT, MODEL_CACHE, threads=2)
+    e.idle_seconds = 1
+    before = rss()
+    e.embed(["Rechnung Stromlieferung " * 40] * 8)
+    loaded = rss()
+    time.sleep(2)
+    assert not e.loaded()
+    assert rss() < before + (loaded - before) * 0.3  # most of it is returned

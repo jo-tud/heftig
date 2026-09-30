@@ -442,9 +442,11 @@ limits the CPU threads the model uses (default: half the cores).
 no torch, no model server. It is downloaded **once, when documents are prepared for the first
 time** (about 330 MB from huggingface.co, a fixed revision, every file checked against its
 SHA-256) into `<archive>/models/`. That folder is not part of backups or exports; it is
-downloaded again when missing. It needs about 400-500 MB of memory in the worker and, once a
-search uses it, in the web process. `heftig embed` downloads it and prepares all pending
-documents right away (for example before going offline).
+downloaded again when missing. While it works it needs up to about 850 MB of memory - in the
+worker while documents are prepared, in the web process while searches use it; after ten minutes
+without use it is unloaded and the memory given back (loading it again takes a second or two).
+`heftig embed` downloads it and prepares all pending documents right away (for example before
+going offline).
 
 Chosen by measurement on this page's benchmark, on a notebook CPU (4 cores, 2 threads used):
 
