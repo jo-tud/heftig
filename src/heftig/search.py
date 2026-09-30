@@ -3,16 +3,21 @@
 Query handling, in order:
 1. exact document ID / SHA-256 -> direct hit
 2. field syntax (``correspondent:``, ``type:``, ``tag:``, ``year:``, ``received:``, ``source:``)
-   becomes filters; ``"quoted text"`` becomes a phrase
-3. remaining words: tokens with digits must match exactly (numbers, IDs), words match as
-   prefixes; all words must match (AND)
-   German date phrases ("März 2025", "letztes Jahr", "seit 2023") become a document-date
+   becomes filters; ``"quoted text"`` becomes a phrase; function words (die, vom ...) are left
+   out; German date phrases ("März 2025", "letztes Jahr", "seit 2023") become a document-date
    filter (:mod:`heftig.datephrases`); ``literal`` turns that off
-4. a word that occurs nowhere in the index is corrected against the index vocabulary (bounded
-   edit distance, same first letter, cheap) - the UI shows the correction
-5. if AND finds nothing, fall back to OR and say so
+3. each remaining word stands for itself (numbers exactly, words as prefixes) and, looked up in
+   the index vocabulary (:mod:`heftig.expand`), for its word forms and compounds, other words
+   for it and its compound parts, and similar spellings (OCR errors) - in levels
+4. a word that matches nothing in any of these ways is corrected against the index vocabulary
+   (bounded edit distance) - the UI shows the correction
+5. all words must match (AND); if that finds nothing, fall back to OR and say so
+6. ranking (:func:`_relevance`): words found, tier (description before text, the word before
+   its forms before other words, similar spellings last), BM25 with title, proximity and year
+   factors
 
-Never calls a network service. Ranking weights: :data:`heftig.index.COLUMN_WEIGHTS`.
+Never calls a network service. Ranking weights: :data:`heftig.index.COLUMN_WEIGHTS`. Quality is
+measured by :mod:`heftig.searcheval` (docs/search.md, "Measuring search quality").
 """
 
 from __future__ import annotations
@@ -96,6 +101,7 @@ class SearchParams:
     tag_mode: str = "all"  # "all": every tag must match, "any": at least one
     session: str | None = None  # scan session id
     literal: bool = False  # True: don't turn "März 2025" etc. into a date filter
+    meaning: bool = False  # also search by meaning (embeddings; needs an embedder, semantic.py)
 
 
 @dataclass
@@ -141,6 +147,7 @@ class SearchResult:
     date_phrase: datephrases.DatePhrase | None = None
     q_rest: str = ""  # the query without the date phrase
     facets: dict[str, Any] | None = None
+    meaning: bool = False  # searched by meaning too
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -157,6 +164,7 @@ class SearchResult:
             "took_ms": round(self.took_ms, 1),
             "fuzzy": self.fuzzy_stats,
             "date_phrase": vars(self.date_phrase) if self.date_phrase else None,
+            "meaning": self.meaning,
             **({"facets": self.facets} if self.facets is not None else {}),
         }
 
@@ -307,7 +315,7 @@ def _expand(v: Vocab, t: Term, deep: bool = True) -> None:
     if t.phrase:
         # "Kfz-Steuer": other words for the whole ("Kraftfahrzeugsteuer"), or its parts in
         # any of their forms
-        t.synonyms = [_word_term(a) for a in expand.related(tuple(t.tokens))]
+        t.synonyms = [_word_term(a) for a in expand.related(tuple(t.tokens), v.root)]
         if deep and all(tok.isalpha() for tok in t.tokens):
             t.parts = [Term([tok]) for tok in t.tokens]
             for p in t.parts:
@@ -319,7 +327,7 @@ def _expand(v: Vocab, t: Term, deep: bool = True) -> None:
     t.stems = expand.same_stem(v, tok)
     forms = tuple(dict.fromkeys([*word_forms(tok), *(s for s in t.stems if len(s) >= 4)]))
     t.compounds = expand.compounds(v, tok, forms, part=not deep)
-    t.synonyms = [_word_term(a) for a in expand.related((tok,))]
+    t.synonyms = [_word_term(a) for a in expand.related((tok,), v.root)]
     if deep:
         parts = expand.split(v, tok)
         if parts:
@@ -539,6 +547,50 @@ def _relevance(
     return [(r["id"], rank(r[0])) for r in ordered]
 
 
+def _meaning_text(q: str) -> str:
+    """The query as words for the embedding model: without field syntax (von:Telekom)."""
+    out = []
+    for m in _QUERY_TOKEN.finditer(q):
+        key = (m.group(1) or m.group(3) or "").lower()
+        if key not in FIELD_KEYS:
+            out.append(m.group(0).replace('"', ""))
+    return " ".join(out)
+
+
+def _with_meaning(
+    conn: sqlite3.Connection,
+    embedder,
+    q: str,
+    clauses: list[_Clause],
+    ranked: list[tuple[str, float]],
+    errors: list[str],
+    by_meaning: set[str],
+) -> list[tuple[str, float]]:
+    """The word search's ranking merged with the documents nearest by meaning (within the
+    filters). A failing model is reported; the word search's results stay."""
+    from . import semantic
+    from .providers.base import ProviderError, ProviderUnavailable
+
+    try:
+        hits = semantic.nearest(conn, embedder, _meaning_text(q))
+    except (ProviderError, ProviderUnavailable) as e:
+        errors.append(_("Search by meaning failed: %(error)s", error=i18n.translate_text(str(e))))
+        return ranked
+    if not hits:
+        return ranked
+    base, params = _base(None, clauses)
+    marks = ",".join("?" for _ in hits)
+    allowed = {
+        r[0]
+        for r in conn.execute(
+            f"SELECT d.id {base} AND d.id IN ({marks})", [*params, *(d for d, _ in hits)]
+        )
+    }
+    near = [d for d, _ in hits if d in allowed]
+    by_meaning.update(near)
+    return [(d, -score) for d, score in semantic.fuse([d for d, _ in ranked], near)]
+
+
 # --- main entry --------------------------------------------------------------------------
 
 
@@ -568,7 +620,10 @@ def search(
     *,
     with_facets: bool | str = False,
     today: date | None = None,
+    embedder=None,
 ) -> SearchResult:
+    """Search. `embedder`: with ``p.meaning``, also search by meaning (semantic.py) - the
+    caller passes the embedding model only when the user asked for it."""
     t0 = time.perf_counter()
     per_page = max(1, min(int(p.per_page or 25), 100))
     page = max(1, int(p.page or 1))
@@ -636,6 +691,10 @@ def search(
     sort = p.sort if p.sort in SORTS else ("relevance" if terms else "received")
     if sort == "relevance" and not terms:
         sort = "received"
+    meaning = bool(p.meaning and embedder is not None and terms)
+    by_meaning: set[str] = set()
+    if meaning:
+        sort = "relevance"
     order = {
         "relevance": "d.received_at DESC, d.ingest_sequence DESC",  # ranked in _relevance
         "received": "d.received_at DESC, d.ingest_sequence DESC",
@@ -674,6 +733,9 @@ def search(
         )
         if sort == "relevance":
             ranked = _relevance(conn, terms, partial, years, base, params)
+            if meaning:
+                ranked = _with_meaning(conn, embedder, q, clauses, ranked, errors, by_meaning)
+                total = len(ranked)
             rows = ranked[(page - 1) * per_page : page * per_page]
         else:
             rows = [
@@ -695,7 +757,10 @@ def search(
         ]
 
     items = _hydrate(conn, rows, terms)
-    if partial:
+    for it in items:
+        if it["id"] in by_meaning:
+            it["reasons"].append(_("Meaning"))
+    if partial and not by_meaning:
         notes.append(_("Not all search terms occur together – showing partial matches."))
     result = SearchResult(
         items=items,
@@ -711,6 +776,7 @@ def search(
         fuzzy_stats=fuzzy_stats,
         date_phrase=date_phrase,
         q_rest=q,
+        meaning=meaning,
     )
     if with_facets:
         result.facets = _facets(conn, match, clauses, p, within=with_facets == "within")

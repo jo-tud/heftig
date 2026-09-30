@@ -30,9 +30,11 @@ from heftig.providers import registry  # noqa: E402
 TODAY = date(2026, 9, 29)
 
 
-def cases(ids: dict[str, str], only: str | None = None) -> list[searcheval.Case]:
+def cases(
+    ids: dict[str, str], only: str | None = None, heldout: bool = False
+) -> list[searcheval.Case]:
     out = []
-    for q, grades, wrong in search_bench.QUERIES:
+    for q, grades, wrong in search_bench.HELDOUT if heldout else search_bench.QUERIES:
         if only and only.lower() not in q.lower():
             continue
         out.append(
@@ -45,12 +47,31 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--json", action="store_true")
     ap.add_argument("-q", dest="only")
+    ap.add_argument("--heldout", action="store_true", help="the held-out queries")
+    ap.add_argument(
+        "--meaning",
+        nargs=2,
+        metavar=("URL", "MODEL"),
+        help="search by meaning too, with an OpenAI-compatible embedding server "
+        "(e.g. http://localhost:11434/v1 bge-m3)",
+    )
     args = ap.parse_args()
     with tempfile.TemporaryDirectory() as tmp:
         archive = Archive(make_settings(Path(tmp)))
         try:
             ids = search_bench.load(archive)
-            summary, results = searcheval.evaluate(archive.conn, cases(ids, args.only), TODAY)
+            embedder = None
+            if args.meaning:
+                from heftig import semantic
+                from heftig.providers.openai_compat import OpenAICompatEmbedder
+
+                url, model = args.meaning
+                embedder = OpenAICompatEmbedder("openai_compatible", url, None, model, 300)
+                registry.override(embedder=embedder)
+                print(semantic.catch_up(archive), file=sys.stderr)
+            summary, results = searcheval.evaluate(
+                archive.conn, cases(ids, args.only, args.heldout), TODAY, embedder
+            )
             if args.json:
                 print(searcheval.as_json(summary, results))
             else:

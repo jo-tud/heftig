@@ -217,11 +217,13 @@ fields and your tag decisions are kept.
 | OCR | One PNG image per page **without** a usable embedded text layer (rendered at `HEFTIG_OCR_DPI`, default 300), a fixed transcription prompt with page number and expected languages. | Pages that already have embedded text, the original file, file name, metadata, other documents. |
 | Classification | The extracted text (at most `HEFTIG_CLASSIFY_MAX_CHARS` = 24000 characters: first 80 % and last 20 %), the original file name, page count, the names and aliases of all your correspondents, document types and tags, the existing custom field keys, and title, correspondent, type and date of up to 8 similar documents (as naming pattern). | The original file, images, document IDs, dates of arrival, other documents' text. |
 | Title harmonisation (only when started on the page "Consistent titles") | Per group of correspondent + document type: the correspondent and type names, and per document its current title, document date and whether the title is locked. | Any document text, file names, IDs, custom fields, notes. |
+| Search by meaning (only when switched on in the settings) | Worker: per document its title, sender, type, tags, date, summary and the text in chunks (up to about 15,000 characters). Search: the search words, only when you choose "≈ Search by meaning too". | File names, IDs, images, notes, other documents' data in the same request. |
 | AI search (only when you press "✦ AI") | Your question, today's date, and the names and aliases of your correspondents, document types and tags plus the custom field keys. | Any document content. The search itself then runs locally. |
 
 The taxonomy is sent so the model can reuse existing names instead of inventing variants. Keep
 in mind that it reveals which organisations you deal with. The normal search never calls any
-provider; only the optional AI search does, as described above.
+provider; only the optional AI search and the optional search by meaning do, as described
+above (see [search.md](search.md#search-by-meaning-optional)).
 
 ## API keys
 

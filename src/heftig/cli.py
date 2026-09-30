@@ -383,6 +383,37 @@ def cmd_search(args) -> int:
     return 0
 
 
+def cmd_embed(args) -> int:
+    from . import semantic
+
+    a = _archive()
+    if not semantic.available(a.settings):
+        print("Search by meaning is not set up (settings: HEFTIG_EMBED_PROVIDER ...).",
+              file=sys.stderr)  # fmt: skip
+        return 2
+    r = semantic.catch_up(a)
+    _print({**r, **semantic.status(a.conn, a.settings)})
+    return 1 if r.get("error") else 0
+
+
+def cmd_search_eval(args) -> int:
+    from . import searcheval
+
+    a = _archive()
+    cases, problems = searcheval.load_cases(a.conn, Path(args.file))
+    for msg in problems:
+        print(f"warning: {msg}", file=sys.stderr)
+    if not cases:
+        print("No queries with known documents.", file=sys.stderr)
+        return 2
+    summary, results = searcheval.evaluate(a.conn, cases)
+    if args.json:
+        print(searcheval.as_json(summary, results))
+    else:
+        print(searcheval.report(summary, results, searcheval.titles(a.conn)))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="heftig", description="Heftig – local document archive")
     p.add_argument("--version", action="version", version=f"heftig {__version__}")
@@ -501,6 +532,17 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("query", nargs="+")
     s.add_argument("--limit", type=int, default=10)
     s.set_defaults(fn=cmd_search)
+
+    sub.add_parser(
+        "embed", help="Search by meaning: embed new and changed documents now"
+    ).set_defaults(fn=cmd_embed)
+
+    s = sub.add_parser(
+        "search-eval", help="Measure search quality with queries and the documents they should find"
+    )
+    s.add_argument("file", help='JSON: [{"q": "...", "expect": ["<title or ID>"], "also": [...]}]')
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(fn=cmd_search_eval)
     return p
 
 

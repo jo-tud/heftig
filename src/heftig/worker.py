@@ -82,6 +82,8 @@ class Worker:
         self._last_imap = 0.0
         self._last_maint = 0.0
         self._last_ai = time.monotonic()  # first catch-up check after ai_retry_minutes
+        self._embed: threading.Thread | None = None
+        self._last_embed = 0.0
 
     def _imap_poller(self):
         if self._imap is None and self.archive.settings.imap_host:
@@ -89,6 +91,31 @@ class Worker:
 
             self._imap = ImapPoller(self.archive)
         return self._imap
+
+    def _embed_new(self, now: float) -> None:
+        """Search by meaning: embed new and changed documents in a thread of its own (a call
+        to the model can take a while); every 30 s, after a failure every 10 minutes."""
+        from . import semantic
+
+        if not semantic.available(self.archive.settings) or now < self._last_embed + 30:
+            return
+        if self._embed is not None and self._embed.is_alive():
+            return
+        self._last_embed = now
+
+        def run() -> None:
+            try:
+                r = semantic.catch_up(self.archive, stop=self.stop)
+                if r["embedded"]:
+                    log.info("search by meaning: %s document(s) embedded", r["embedded"])
+                if r.get("error"):
+                    log.warning("search by meaning: %s", r["error"])
+                    self._last_embed = time.monotonic() + 570
+            except Exception:
+                log.exception("embedding documents failed")
+
+        self._embed = threading.Thread(target=run, name="embed", daemon=True)
+        self._embed.start()
 
     def heartbeat(self) -> None:
         with write_tx(self.archive.conn):
@@ -170,6 +197,7 @@ class Worker:
                 if not get_meta(self.archive.conn, maintenance.BLANK_CHECK_KEY):
                     r = maintenance.detect_blank_pages(self.archive)  # once, for older archives
                     log.info("blank pages: %s found in %s document(s)", r["pages"], r["documents"])
+            self._embed_new(now)
         except Exception:
             log.exception("worker tick failed")
         for jid in [j for j, f in running.items() if f.done()]:

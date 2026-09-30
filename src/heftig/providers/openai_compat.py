@@ -59,12 +59,11 @@ class _Client:
         self._timeout = timeout
         self.usage = UsageMeter()
 
-    def chat(self, body: dict) -> str:
+    def post(self, path: str, body: dict) -> dict:
+        """POST to the API, errors as ProviderError; the parsed JSON answer."""
         try:
             with httpx.Client(timeout=self._timeout, follow_redirects=False) as client:
-                r = client.post(
-                    f"{self.base_url}/chat/completions", headers=self._headers, json=body
-                )
+                r = client.post(f"{self.base_url}{path}", headers=self._headers, json=body)
         except httpx.TimeoutException as e:
             raise ProviderError(
                 N_("%(provider)s: timeout") % {"provider": self.name}, transient=True
@@ -96,6 +95,17 @@ class _Client:
             raise ProviderError(f"{self.name}: HTTP {r.status_code} {detail}".strip())
         try:
             data = r.json()
+        except ValueError as e:
+            raise ProviderError(
+                N_("%(provider)s: unexpected response") % {"provider": self.name}
+            ) from e
+        if not isinstance(data, dict):
+            raise ProviderError(N_("%(provider)s: unexpected response") % {"provider": self.name})
+        return data
+
+    def chat(self, body: dict) -> str:
+        data = self.post("/chat/completions", body)
+        try:
             choice = data["choices"][0]
             content = choice["message"].get("content") or ""
             if isinstance(content, list):  # some servers answer with content parts
@@ -121,6 +131,47 @@ class _Client:
         includes their hidden reasoning); other servers know ``max_tokens``."""
         body["max_completion_tokens" if self.name == "openai" else "max_tokens"] = max_tokens
         return body
+
+
+class OpenAICompatEmbedder:
+    """Embeddings (search by meaning) from ``/embeddings``: OpenAI, or a local server such as
+    Ollama (``bge-m3``, ``embeddinggemma``, ``qwen3-embedding``)."""
+
+    adapter_version = "openai-embed-v1"
+    BATCH = 64  # inputs per request
+
+    def __init__(
+        self, name: str, base_url: str, api_key: str | None, model: str, timeout: int
+    ) -> None:
+        self._client = _Client(name, base_url, api_key, model, timeout)
+        self.name = name
+        self.model = model
+        self.target = self._client.target
+        self.usage = self._client.usage
+
+    def embed(self, texts: list[str]) -> list[list[float]]:
+        out: list[list[float]] = []
+        for i in range(0, len(texts), self.BATCH):
+            batch = texts[i : i + self.BATCH]
+            body: dict = {"model": self.model, "input": batch}
+            if self.name == "openai" and self.model.startswith("text-embedding-3"):
+                body["dimensions"] = 512  # a third of the size, nearly the same quality
+            data = self._client.post("/embeddings", body)
+            try:
+                rows = sorted(data["data"], key=lambda d: d.get("index", 0))
+                vectors = [[float(x) for x in d["embedding"]] for d in rows]
+            except (KeyError, TypeError, ValueError) as e:
+                raise ProviderError(
+                    N_("%(provider)s: unexpected response") % {"provider": self.name}
+                ) from e
+            if len(vectors) != len(batch) or not all(vectors):
+                raise ProviderError(
+                    N_("%(provider)s: unexpected response") % {"provider": self.name}
+                )
+            usage = data.get("usage") or {}
+            self.usage.add(self.model, int(usage.get("prompt_tokens") or 0), 0)
+            out += vectors
+        return out
 
 
 # reasoning models served locally (Qwen, DeepSeek, ...) put their thinking into the answer

@@ -85,7 +85,7 @@ class Classifier(Protocol):
 
 @runtime_checkable
 class Embedder(Protocol):
-    """Extension point for a later semantic search mode. Not implemented in V1."""
+    """Embedding model for the search by meaning (semantic.py): one vector per text."""
 
     name: str
     model: str

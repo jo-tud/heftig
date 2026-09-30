@@ -32,6 +32,7 @@ from .. import (
     saved_searches,
     sessions,
     settings_store,
+    synonyms,
     trash,
 )
 from .. import documents as docs
@@ -360,15 +361,34 @@ def _params_from(qp) -> SearchParams:
         tag_mode="any" if qp.get("tag_mode") == "any" else "all",
         session=qp.get("session") or None,
         literal=bool(qp.get("literal")),
+        meaning=bool(qp.get("meaning")),
     )
+
+
+def meaning_embedder(a, params: SearchParams):
+    """The embedding model, only when the search by meaning was asked for and may be used."""
+    from .. import semantic
+    from ..providers import registry
+    from ..providers.base import ProviderUnavailable
+
+    if not (params.meaning and params.q and semantic.available(a.settings)):
+        return None
+    try:
+        return registry.get_embedder(a.settings)
+    except ProviderUnavailable:
+        return None
 
 
 @router.get("/")
 def documents_page(request: Request, p: Principal = Depends(require_user)):
+    from .. import semantic
+
     a = get_archive(request)
     params = _params_from_query(request)
     today = date.today()
-    result = search(a.conn, params, with_facets=True, today=today)
+    result = search(
+        a.conn, params, with_facets=True, today=today, embedder=meaning_embedder(a, params)
+    )
     names = {}
     if params.session:
         s = sessions.get(a.conn, params.session)
@@ -396,6 +416,7 @@ def documents_page(request: Request, p: Principal = Depends(require_user)):
         "documents.html",
         nav="documents",
         ai_available=aisearch.available(a),
+        meaning_available=semantic.available(a.settings) and bool(params.q),
         ai_query=request.query_params.get("ai", "")[:300],
         ai_note=request.query_params.get("ai_note", "")[:400],
         result=result,
@@ -1861,7 +1882,32 @@ def settings_page(request: Request, p: Principal = Depends(require_user)):
         s=s,
         new_token=None,
         message=request.query_params.get("msg"),
+        synonyms_text=synonyms.as_text(synonyms.load(a.paths)),
+        builtin_synonyms=synonyms.builtin(),
+        meaning=_meaning_view(a),
     )
+
+
+def _meaning_view(a) -> dict[str, Any]:
+    from .. import semantic
+    from ..db import get_meta
+
+    s = a.settings
+    mode = {"none": "off", "openai": "openai"}.get(s.embed_provider, "local")
+    return {
+        "mode": mode,
+        "model": s.embed_model,
+        "base_url": s.embed_base_url,
+        "has_key": bool(s.secret("embed_api_key")),
+        "active": semantic.available(s),
+        "blocked": s.embed_blocked_reason() if s.embed_provider != "none" else None,
+        "status": semantic.status(a.conn, s),
+        "error": get_meta(a.conn, semantic.ERROR_KEY) or "",
+        "fixed": bool(
+            settings_store.fixed(a.base_settings)
+            & {"embed_provider", "embed_model", "embed_base_url", "embed_api_key"}
+        ),
+    }
 
 
 @router.post("/settings/language")
@@ -1873,6 +1919,89 @@ async def settings_language(request: Request, p: Principal = Depends(require_wri
         await run_in_threadpool(settings_store.save, a.conn, a.base_settings, {"language": lang})
         a.refresh_settings()
     return redirect("/settings")
+
+
+MEANING_MODES = ("off", "openai", "local")
+
+
+def meaning_changes(form, current) -> tuple[dict[str, Any], str | None]:
+    """Settings for the search by meaning from the settings form, or an error message."""
+    from ..config import is_local_url
+
+    mode = _form_val(form, "meaning_mode")
+    if mode not in MEANING_MODES:
+        return {}, _("Please choose one of the options.")
+    if mode == "off":
+        return {"embed_provider": "none", "allow_cloud_embed": False}, None
+    provider = "openai" if mode == "openai" else "openai_compatible"
+    base = _form_val(form, "meaning_base_url").strip() if mode == "local" else ""
+    model = _form_val(form, "meaning_model").strip()
+    key = _form_val(form, "meaning_api_key").strip()
+    if mode == "local" and not base:
+        return {}, _("Please enter the address of the model server.")
+    if mode == "local" and not model:
+        return {}, _("Please enter a model name.")
+    changes: dict[str, Any] = {
+        "embed_provider": provider,
+        "embed_model": model or ("text-embedding-3-small" if mode == "openai" else ""),
+        "embed_base_url": base,
+    }
+    same = current.embed_provider == provider and current.embed_base_url == base
+    if key:
+        changes["embed_api_key"] = key
+    elif mode == "openai" and not (same and current.secret("embed_api_key")):
+        # the key of the OpenAI classification, if there is one
+        if current.classify_provider == "openai" and current.secret("classify_api_key"):
+            changes["embed_api_key"] = current.secret("classify_api_key")
+        else:
+            return {}, _("Please enter the API key.")
+    elif not same:
+        changes["embed_api_key"] = None  # never another server's key
+    cloud = mode == "openai" or not is_local_url(base)
+    if cloud and not _form_val(form, "meaning_consent"):
+        return {}, _("Please confirm that document texts may be sent to this service.")
+    changes["allow_cloud_embed"] = cloud
+    return changes, None
+
+
+@router.post("/settings/meaning")
+async def settings_meaning(request: Request, p: Principal = Depends(require_write)):
+    form = await request.form()
+    return await run_in_threadpool(_settings_meaning, request, form)
+
+
+def _settings_meaning(request: Request, form) -> RedirectResponse:
+    from ..providers import registry
+    from ..providers.base import ProviderError, ProviderUnavailable
+
+    a = get_archive(request)
+    changes, error = meaning_changes(form, a.settings)
+    if error:
+        return redirect("/settings?" + urlencode({"msg": error}) + "#meaning-h")
+    try:
+        settings_store.save(a.conn, a.base_settings, changes)
+    except settings_store.SettingsError as e:
+        return redirect("/settings?" + urlencode({"msg": str(e)}) + "#meaning-h")
+    a.refresh_settings()
+    if changes["embed_provider"] == "none":
+        msg = _("Search by meaning switched off.")
+    else:
+        try:
+            registry.get_embedder(a.settings).embed(["Test"])
+            msg = _("Search by meaning is set up – the documents are prepared in the background.")
+        except (ProviderError, ProviderUnavailable) as e:
+            msg = _("Saved, but the test failed: %(error)s", error=i18n.translate_text(str(e)))
+    return redirect("/settings?" + urlencode({"msg": msg}) + "#meaning-h")
+
+
+@router.post("/settings/synonyms")
+async def settings_synonyms(request: Request, p: Principal = Depends(require_write)):
+    form = await request.form()
+    a = get_archive(request)
+    groups = synonyms.parse_text(_form_val(form, "synonyms")[:50000])
+    saved = await run_in_threadpool(synonyms.save, a.paths, groups)
+    msg = ngettext("%(num)d group saved.", "%(num)d groups saved.", len(saved))
+    return redirect("/settings?" + urlencode({"msg": msg}) + "#syn-h")
 
 
 @router.post("/settings/action")
@@ -2019,6 +2148,8 @@ def _settings_sync(request: Request, form, p: Principal):
                 terms={k: tax.list_terms(a.conn, k) for k in tax.KINDS},
                 tokens=auth.list_tokens(a.conn), status=maintenance.status(a), s=a.settings,
                 new_token=token, message=_("Token created – copy it now, it will not be shown again."),
+                synonyms_text=synonyms.as_text(synonyms.load(a.paths)),
+                builtin_synonyms=synonyms.builtin(), meaning=_meaning_view(a),
             )  # fmt: skip
         elif action == "token_revoke":
             auth.revoke_token(a.conn, int(form.get("token_id")))

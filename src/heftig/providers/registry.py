@@ -11,9 +11,15 @@ _override: dict[str, object] = {}
 
 
 def override(
-    *, extractor: object = "keep", classifier: object = "keep", search_planner: object = "keep"
+    *,
+    extractor: object = "keep",
+    classifier: object = "keep",
+    search_planner: object = "keep",
+    embedder: object = "keep",
 ) -> None:
     """Replace providers (tests). Pass None to disable a task, "keep" to leave as is."""
+    if embedder != "keep":
+        _override["embedder"] = embedder
     if extractor != "keep":
         _override["extractor"] = extractor
     if classifier != "keep":
@@ -94,6 +100,25 @@ def get_classifier(s: Settings) -> Classifier | None:
             s.provider_timeout_seconds,
         )  # fmt: skip
     raise ProviderUnavailable(N_("Unknown classification provider %(name)s") % {"name": name})
+
+
+def get_embedder(s: Settings):
+    """The embedding model for the search by meaning, or None if it is switched off."""
+    if "embedder" in _override:
+        return _override["embedder"]
+    name = s.embed_provider
+    if name == "none":
+        return None
+    blocked = s.embed_blocked_reason()
+    if blocked:
+        raise ProviderUnavailable(blocked)
+    from .openai_compat import OpenAICompatEmbedder
+
+    base = s.embed_base_url or (OPENAI_BASE if name == "openai" else "")
+    model = s.embed_model or ("text-embedding-3-small" if name == "openai" else "")
+    return OpenAICompatEmbedder(
+        name, base, s.secret("embed_api_key"), model, s.provider_timeout_seconds
+    )
 
 
 def get_search_planner(s: Settings):

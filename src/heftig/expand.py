@@ -20,6 +20,7 @@ from __future__ import annotations
 import sqlite3
 import threading
 from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 from snowballstemmer import stemmer as _snowball
@@ -140,15 +141,16 @@ class Vocab:
     def __init__(self, conn: sqlite3.Connection):
         self.conn = conn
         self._state: tuple | None = None
+        db = conn.execute("PRAGMA database_list").fetchone()[2]
+        self.root = Path(db).parent if db else None  # archive directory (own synonyms)
 
     @property
     def state(self) -> tuple:
         if self._state is None:
-            db = self.conn.execute("PRAGMA database_list").fetchone()[2]
             count, last = self.conn.execute(
                 "SELECT COUNT(*), MAX(updated_at) FROM documents"
             ).fetchone()
-            self._state = (db, count, last)
+            self._state = (str(self.root), count, last, synonyms.version(self.root))
         return self._state
 
     def cached(self, kind: str, key: Any, fn):
@@ -323,7 +325,7 @@ def _word_count(v: Vocab, part: str, tail: bool) -> int:
     n = v.docs(part)
     if n:
         return n
-    if related((part,)):
+    if related((part,), v.root):
         return 1
     if len(part) < MIN_STEM_WORD:
         return 0
@@ -378,8 +380,9 @@ def split(v: Vocab, tok: str) -> tuple[str, str] | None:
     return v.cached("split", tok, run)
 
 
-def related(words: tuple[str, ...]) -> list[tuple[str, ...]]:
-    return synonyms.alternatives(words)
+def related(words: tuple[str, ...], root: Path | None = None) -> list[tuple[str, ...]]:
+    """Other words for a word or phrase: built-in groups and the archive's own."""
+    return synonyms.alternatives(words, root)
 
 
 # --- level 3: similar spellings (OCR and typing errors) ---------------------------------------
