@@ -46,8 +46,8 @@ LOW_FACTOR = 0.7  # a document that stands out needs at least this share of min_
 MEANING_WEIGHT = 0.5  # keywords: the word search counts double (measured, docs/search.md)
 # written-out questions (search.written_question): meaning counts more, and a small k gives the
 # first places of both rankings more weight (measured on real questions, docs/search.md)
-MEANING_WEIGHT_QUESTION = 1.5
-RRF_K_QUESTION = 60
+MEANING_WEIGHT_QUESTION = 2.0
+RRF_K_QUESTION = 5
 
 
 def _prefix(embedder, kind: str) -> str:
