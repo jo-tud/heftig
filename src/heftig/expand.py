@@ -41,80 +41,29 @@ INFLECTIONS = ("en", "es", "e", "n", "s", "er", "ern")
 # Function words that carry no meaning of their own in a search ("die Rechnung vom Zahnarzt").
 # They are left out when the query has other words; phrases in quotes keep them.
 STOPWORDS = frozenset(
-    [
-        "der",
-        "die",
-        "das",
-        "den",
-        "dem",
-        "des",
-        "ein",
-        "eine",
-        "einer",
-        "eines",
-        "einem",
-        "einen",
-        "und",
-        "oder",
-        "von",
-        "vom",
-        "zu",
-        "zum",
-        "zur",
-        "im",
-        "in",
-        "ins",
-        "am",
-        "an",
-        "auf",
-        "aus",
-        "bei",
-        "mit",
-        "fuer",
-        "ueber",
-        "unter",
-        "nach",
-        "vor",
-        "bis",
-        "ab",
-        "als",
-        "wie",
-        "was",
-        "wo",
-        "mein",
-        "meine",
-        "meiner",
-        "meines",
-        "meinem",
-        "meinen",
-        "dein",
-        "deine",
-        "unser",
-        "unsere",
-        "ihr",
-        "ihre",
-        "sein",
-        "seine",
-        "es",
-        "ist",
-        "sind",
-        "war",
-        "the",
-        "a",
-        "an",
-        "of",
-        "for",
-        "from",
-        "to",
-        "on",
-        "at",
-        "by",
-        "and",
-        "or",
-        "my",
-        "with",
-        "about",
-    ]
+    """
+    der die das den dem des ein eine einer eines einem einen kein keine keinen keinem keiner
+    und oder aber denn doch sondern dass ob wenn als weil damit sodass falls sobald bevor
+    nachdem waehrend obwohl
+    von vom zu zum zur im in ins am an auf aus bei beim mit fuer ueber unter nach vor bis ab
+    durch gegen ohne um seit zwischen hinter neben per pro je
+    ich du er sie es wir ihr mich mir dich dir sich uns euch ihn ihm ihnen man
+    mein meine meiner meines meinem meinen dein deine deiner deines deinem deinen
+    sein seine seiner seines seinem seinen ihre ihrer ihres ihrem ihren
+    unser unsere unserer unseres unserem unseren euer eure eurer eures eurem euren
+    dies diese dieser dieses diesem diesen jene jener jenes jenem jenen welche welcher welches
+    welchem welchen was wer wen wem wessen wie wo woher wohin wann warum weshalb wieso womit
+    wofuer worueber wobei wozu
+    bin bist ist sind seid war warst waren wart waere waeren gewesen habe hast hat haben habt
+    hatte hattest hatten haette haetten gehabt werde wirst wird werden werdet wurde wurden
+    wuerde wuerden geworden kann kannst koennen koennt konnte konnten koennte koennten muss
+    musst muessen muesst musste mussten muesste soll sollst sollen sollt sollte sollten darf
+    darfst duerfen durfte duerfte will willst wollen wollte moechte moechten mag
+    nicht auch noch schon nur sehr so dann da hier dort jetzt immer bitte gibt etwas alle
+    allem allen aller alles andere anderen mehr viel viele einige etwa ja nein
+    the a an of for from to on at by and or my with about is are was were be been do does did
+    how what when where which who why can could should would will i you we it this that
+    """.split()  # noqa: SIM905 - readable as a block
 )
 
 _STEMMER = _snowball("german")
