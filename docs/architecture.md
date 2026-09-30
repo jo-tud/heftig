@@ -188,7 +188,7 @@ on its own (provider, model, base URL, key, cloud permission).
 |---|---|---|
 | `TextExtractor` | `extract_page(image_png: bytes, page_number: int, languages: str) -> str` plus `capabilities` (`images`, `pdf`) | `tesseract`, `openai`, `openai_compatible`, `anthropic`, `mock` |
 | `Classifier` | `classify(ClassifyRequest) -> ClassifyResponse` (parsed JSON + raw text) | `rules`, `openai`, `openai_compatible`, `anthropic`, `mock` |
-| `Embedder` | `embed(texts: list[str]) -> list[list[float]]` | `openai`, `openai_compatible` (search by meaning, `semantic.py`) |
+| `Embedder` | `embed(texts: list[str]) -> list[list[float]]` | built-in ONNX model (`local_embed.py`, search by meaning, `semantic.py`) |
 
 Every provider exposes `name`, `model`, `target` (where data goes, e.g. `local` or an API host),
 `adapter_version` and, for classifiers, `prompt_version`; these are stored in the processing
@@ -294,7 +294,7 @@ reach Heftig (e.g. ClamAV in front of the consume folder, see
 | Feature | Status | Extension point |
 |---|---|---|
 | Searchable OCR-PDF / PDF/A derivative | Not generated | Derivatives belong next to the sidecars in `documents/<uuid>/` (like the regenerable `preview.webp`), never replacing the original; the original's hash and path stay the contract. `ExtractCapabilities.pdf` already reports whether an extractor could take PDFs. |
-| Semantic search / embeddings | Optional "search by meaning" ([search.md](search.md#search-by-meaning-optional)): off by default, an explicitly chosen mode on the results page, merged with the word search by rank fusion | Vectors in `doc_embeddings`; a vector index (sqlite-vec) would only be needed far beyond household sizes. The normal FTS search stays local and deterministic and never calls a model. |
+| Semantic search / embeddings | Search by meaning ([search.md](search.md#search-by-meaning)): a built-in model on the CPU, off unless the setup assistant or the settings switch it on; used by every search once documents are embedded, merged with the word search by rank fusion | Vectors in `doc_embeddings`; a vector index (sqlite-vec) would only be needed far beyond household sizes. The word search stays local and deterministic. |
 | Editing OCR text | Not in the UI | `text_pages.json` has `user_confirmed` and the page method `user`; re-extraction already respects confirmed text. |
 | Multiple users, roles, sharing, workflows | Not planned for V1 | - |
 | Digital signatures, revision-proof storage | Not provided | - |

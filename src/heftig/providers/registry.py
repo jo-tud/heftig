@@ -102,30 +102,24 @@ def get_classifier(s: Settings) -> Classifier | None:
     raise ProviderUnavailable(N_("Unknown classification provider %(name)s") % {"name": name})
 
 
+_EMBEDDERS: dict = {}
+
+
 def get_embedder(s: Settings):
-    """The embedding model for the search by meaning, or None if it is switched off."""
+    """The built-in embedding model (search by meaning), or None if it is switched off. One
+    instance per archive and process: the model is loaded once, on first use."""
     if "embedder" in _override:
         return _override["embedder"]
-    name = s.embed_provider
-    if name == "none":
+    if not s.semantic_search:
         return None
-    blocked = s.embed_blocked_reason()
-    if blocked:
-        raise ProviderUnavailable(blocked)
-    from .openai_compat import OpenAICompatEmbedder
+    from ..local_embed import DEFAULT, LocalEmbedder
 
-    base = s.embed_base_url or (OPENAI_BASE if name == "openai" else "")
-    model = s.embed_model or ("text-embedding-3-small" if name == "openai" else "")
-    key = s.secret("embed_api_key") or (shared_openai_key(s) if name == "openai" else None)
-    return OpenAICompatEmbedder(name, base, key, model, s.provider_timeout_seconds)
-
-
-def shared_openai_key(s: Settings) -> str | None:
-    """The classification's key for OpenAI embeddings - only if it is a key for the OpenAI API
-    itself (not for a proxy or another server)."""
-    if s.classify_provider != "openai" or s.classify_base_url.rstrip("/") not in ("", OPENAI_BASE):
-        return None
-    return s.secret("classify_api_key")
+    key = (str(s.archive_dir), DEFAULT.name, s.semantic_threads)
+    if key not in _EMBEDDERS:
+        _EMBEDDERS[key] = LocalEmbedder(
+            DEFAULT, s.archive_dir / "models", s.semantic_threads or None
+        )
+    return _EMBEDDERS[key]
 
 
 def get_search_planner(s: Settings):

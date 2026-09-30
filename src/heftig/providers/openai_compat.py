@@ -133,47 +133,6 @@ class _Client:
         return body
 
 
-class OpenAICompatEmbedder:
-    """Embeddings (search by meaning) from ``/embeddings``: OpenAI, or a local server such as
-    Ollama (``bge-m3``, ``embeddinggemma``, ``qwen3-embedding``)."""
-
-    adapter_version = "openai-embed-v1"
-    BATCH = 64  # inputs per request
-
-    def __init__(
-        self, name: str, base_url: str, api_key: str | None, model: str, timeout: int
-    ) -> None:
-        self._client = _Client(name, base_url, api_key, model, timeout)
-        self.name = name
-        self.model = model
-        self.target = self._client.target
-        self.usage = self._client.usage
-
-    def embed(self, texts: list[str]) -> list[list[float]]:
-        out: list[list[float]] = []
-        for i in range(0, len(texts), self.BATCH):
-            batch = texts[i : i + self.BATCH]
-            body: dict = {"model": self.model, "input": batch}
-            if self.name == "openai" and self.model.startswith("text-embedding-3"):
-                body["dimensions"] = 512  # a third of the size, nearly the same quality
-            data = self._client.post("/embeddings", body)
-            try:
-                rows = sorted(data["data"], key=lambda d: d.get("index", 0))
-                vectors = [[float(x) for x in d["embedding"]] for d in rows]
-            except (KeyError, TypeError, ValueError) as e:
-                raise ProviderError(
-                    N_("%(provider)s: unexpected response") % {"provider": self.name}
-                ) from e
-            if len(vectors) != len(batch) or not all(vectors):
-                raise ProviderError(
-                    N_("%(provider)s: unexpected response") % {"provider": self.name}
-                )
-            usage = data.get("usage") or {}
-            self.usage.add(self.model, int(usage.get("prompt_tokens") or 0), 0)
-            out += vectors
-        return out
-
-
 # reasoning models served locally (Qwen, DeepSeek, ...) put their thinking into the answer
 _REASONING = re.compile(r"<(think|thinking|reasoning)>.*?</\1>", re.S | re.I)
 

@@ -1,11 +1,10 @@
 """Search by meaning (heftig.semantic): embedding in the worker, fusion with the word search,
 settings. A fake embedding model maps words to a few "meanings"."""
 
-import json
-import math
+import os
 import zlib
+from pathlib import Path
 
-import httpx
 import pytest
 
 from heftig import semantic
@@ -84,7 +83,6 @@ def _ids(archive, q, embedder=None, **kw):
 
 
 def test_documents_are_embedded_once(archive, ids, embedder):
-    assert semantic.status(archive.conn, archive.settings)["done"] == 0  # settings: model ""
     n = archive.conn.execute("SELECT COUNT(DISTINCT doc_id) FROM doc_embeddings").fetchone()[0]
     assert n == len(DOCS)
     calls = embedder.calls
@@ -114,13 +112,6 @@ def test_word_matches_stay_first(archive, ids, embedder):
     assert found[0] == ids["zahn.pdf"]  # found by words and by meaning
 
 
-def test_normal_search_never_calls_the_model(archive, ids, embedder):
-    calls = embedder.calls
-    _ids(archive, "Wertpapiere", embedder)  # meaning not asked for
-    _ids(archive, "Wertpapiere", None, meaning=True)  # asked for, but no model given
-    assert embedder.calls == calls
-
-
 def test_filters_apply_to_meaning(archive, ids, embedder):
     found, _ = _ids(archive, "Wertpapiere", embedder, meaning=True, date_from="2030")
     assert found == []
@@ -135,100 +126,6 @@ def test_failing_model_keeps_word_results(archive, ids):
 def test_fuse_rewards_both_lists():
     fused = [d for d, _ in semantic.fuse(["a", "b", "c"], ["c", "x"])]
     assert fused[0] == "c" and set(fused) == {"a", "b", "c", "x"}
-
-
-def test_prefixes_for_models():
-    assert semantic.prefix("multilingual-e5-small", "query") == "query: "
-    assert semantic.prefix("nomic-embed-text-v2-moe", "document") == "search_document: "
-    assert semantic.prefix("bge-m3", "query") == ""
-
-
-def test_openai_embedder_request(monkeypatch):
-    from heftig.providers.openai_compat import OpenAICompatEmbedder
-
-    seen = {}
-
-    def handler(request):
-        seen["url"] = str(request.url)
-        seen["body"] = json.loads(request.content)
-        n = len(seen["body"]["input"])
-        return httpx.Response(
-            200,
-            json={
-                "data": [
-                    {"index": i, "embedding": [1.0, 0.0, float(i)]} for i in reversed(range(n))
-                ],
-                "usage": {"prompt_tokens": 1000},
-            },
-        )
-
-    real = httpx.Client
-    monkeypatch.setattr(
-        httpx, "Client", lambda **kw: real(**{**kw, "transport": httpx.MockTransport(handler)})
-    )
-    e = OpenAICompatEmbedder(
-        "openai", "https://api.openai.com/v1", "sk-x", "text-embedding-3-small", 5
-    )
-    vectors = e.embed(["a", "b"])
-    assert seen["url"] == "https://api.openai.com/v1/embeddings"
-    assert seen["body"]["dimensions"] == 512
-    assert vectors == [[1.0, 0.0, 0.0], [1.0, 0.0, 1.0]]  # in input order
-    assert math.isclose(e.usage.snapshot()[2], 1000 / 1e6 * 0.02)
-
-
-def test_meaning_settings(tmp_path):
-    from heftig.web.ui import meaning_changes
-
-    s = make_settings(tmp_path)
-    changes, err = meaning_changes({"meaning_mode": "openai"}, s)
-    assert err and "API" in err  # no key anywhere
-    changes, err = meaning_changes({"meaning_mode": "openai", "meaning_api_key": "sk-1"}, s)
-    assert err  # cloud without consent
-    changes, err = meaning_changes(
-        {"meaning_mode": "openai", "meaning_api_key": "sk-1", "meaning_consent": "1"}, s
-    )
-    assert (
-        not err
-        and changes["allow_cloud_embed"]
-        and changes["embed_model"] == "text-embedding-3-small"
-    )
-    changes, err = meaning_changes(
-        {
-            "meaning_mode": "local",
-            "meaning_base_url": "http://localhost:11434/v1",
-            "meaning_model": "bge-m3",
-        },
-        s,
-    )
-    assert not err and not changes["allow_cloud_embed"]
-    assert meaning_changes({"meaning_mode": "off"}, s)[0]["embed_provider"] == "none"
-
-
-def test_settings_page_and_search_link(tmp_path):
-    from fastapi.testclient import TestClient
-
-    from heftig import auth
-    from heftig.web.app import create_app
-
-    app = create_app(
-        make_settings(
-            tmp_path,
-            embed_provider="openai_compatible",
-            embed_base_url="http://localhost:11434/v1",
-            embed_model="fake-embed-1",
-        )
-    )
-    registry.override(embedder=FakeEmbedder())
-    auth.create_user(app.state.archive.conn, "jo", "richtig-langes-passwort")
-    c = TestClient(app)
-    c.post("/api/auth/login", json={"username": "jo", "password": "richtig-langes-passwort"})
-    page = c.get("/settings").text
-    assert "Suche nach Bedeutung" in page and "0 von 0 Dokumenten" in page
-    r = c.get("/?q=Wertpapiere")
-    assert "q=Wertpapiere&amp;meaning=1" in r.text and "Auch nach Bedeutung suchen" in r.text
-    r = c.get("/?q=Wertpapiere&meaning=1")
-    assert "Auch nach Bedeutung gesucht" in r.text
-    app.state.archive.close()
 
 
 def test_vector_store_without_numpy(monkeypatch):
@@ -268,9 +165,7 @@ def test_worker_embeds_in_its_own_thread(tmp_path):
     a = Archive(
         make_settings(
             tmp_path,
-            embed_provider="openai_compatible",
-            embed_base_url="http://localhost:11434/v1",
-            embed_model="fake-embed-1",
+            semantic_search=True,
         )
     )
     fake = FakeEmbedder()
@@ -282,7 +177,8 @@ def test_worker_embeds_in_its_own_thread(tmp_path):
     w = Worker(a)
     w._embed_new(1000.0)
     w._embed.join(timeout=30)
-    assert semantic.status(a.conn, a.settings) == {"total": 1, "done": 1, "model": "fake-embed-1"}
+    st = semantic.status(a.conn, a.settings)
+    assert (st["total"], st["done"], st["model"]) == (1, 1, "fake-embed-1")
     calls = fake.calls
     w._embed_new(1010.0)  # not again within 30 s
     assert w._embed is not None and fake.calls == calls
@@ -296,9 +192,7 @@ def test_embed_threads_do_not_leak_connections(tmp_path):
     a = Archive(
         make_settings(
             tmp_path,
-            embed_provider="openai_compatible",
-            embed_base_url="http://localhost:11434/v1",
-            embed_model="fake-embed-1",
+            semantic_search=True,
         )
     )
     registry.override(embedder=FakeEmbedder())
@@ -324,32 +218,176 @@ def test_re_embedding_refreshes_the_vectors_in_memory(archive, ids, embedder, mo
     assert ids["miete.pdf"] in found
 
 
-def test_openai_key_is_shared_only_for_the_openai_api(tmp_path):
-    from pydantic import SecretStr
+def test_words_only_when_asked_or_without_model(archive, ids, embedder):
+    calls = embedder.calls
+    _ids(archive, "Wertpapiere", embedder, meaning=False)
+    _ids(archive, "Wertpapiere", None)
+    assert embedder.calls == calls
 
-    from heftig.providers.registry import shared_openai_key
 
-    s = make_settings(tmp_path, classify_provider="openai", classify_api_key=SecretStr("sk-a"))
-    assert shared_openai_key(s) == "sk-a"
-    proxy = make_settings(
-        tmp_path,
-        classify_provider="openai",
-        classify_api_key=SecretStr("sk-a"),
-        classify_base_url="https://proxy.example/v1",
+def test_task_prefixes_of_the_model(tmp_path):
+    from heftig.local_embed import LocalEmbedder, ModelSpec
+
+    spec = ModelSpec("m", "r/m", "abc", {}, query_prefix="query: ", document_prefix="")
+    e = LocalEmbedder(spec, tmp_path)
+    assert semantic._prefix(e, "query") == "query: " and semantic._prefix(e, "document") == ""
+    assert semantic._prefix(FakeEmbedder(), "query") == ""
+
+
+def test_search_uses_meaning_by_itself_when_documents_are_embedded(tmp_path):
+    """No button: with the search by meaning on and documents embedded, every search uses it."""
+    from fastapi.testclient import TestClient
+
+    from heftig import auth
+    from heftig.web.app import create_app
+
+    app = create_app(make_settings(tmp_path, semantic_search=True))
+    a = app.state.archive
+    fake = FakeEmbedder()
+    registry.override(
+        classifier=ScriptedClassifier(by_filename={n: {"title": t} for n, (_, t) in DOCS.items()}),
+        embedder=fake,
     )
-    assert shared_openai_key(proxy) is None
-    from heftig.web.ui import meaning_changes
+    auth.create_user(a.conn, "jo", "richtig-langes-passwort")
+    c = TestClient(app)
+    c.post("/api/auth/login", json={"username": "jo", "password": "richtig-langes-passwort"})
+    for n, (text, _) in DOCS.items():
+        ingest_bytes(a, text_pdf([text]), n)
+    process_all(a)
+    assert semantic.for_search(a.conn, a.settings) is None  # nothing embedded yet
+    assert "Depotauszug" not in c.get("/?q=Wertpapiere").text
+    semantic.catch_up(a)
+    page = c.get("/?q=Wertpapiere").text
+    assert "Depotauszug" in page and "Bedeutung" in page
+    assert "Depotauszug" not in c.get("/?q=Wertpapiere&meaning=0").text
+    r = c.get("/api/documents", params={"q": "Wertpapiere"}).json()
+    assert r["meaning"] and r["items"][0]["title"] == "Depotauszug 2024"
+    app.state.archive.close()
 
-    changes, err = meaning_changes({"meaning_mode": "openai", "meaning_consent": "1"}, s)
-    assert not err and changes.get("embed_api_key") is None  # used, not copied
-    assert meaning_changes({"meaning_mode": "openai", "meaning_consent": "1"}, proxy)[1]
+
+def test_setup_assistant_asks_and_settings_can_switch_it_off(tmp_path):
+    from fastapi.testclient import TestClient
+
+    from heftig import auth
+    from heftig.web.app import create_app
+
+    app = create_app(make_settings(tmp_path))
+    a = app.state.archive
+    assert not a.settings.semantic_search  # without the assistant: off
+    auth.create_user(a.conn, "jo", "richtig-langes-passwort")
+    c = TestClient(app)
+    csrf = c.post(
+        "/api/auth/login", json={"username": "jo", "password": "richtig-langes-passwort"}
+    ).json()["csrf_token"]
+    # the step after the AI
+    assert 'href="/settings/search?setup=1"' in c.get("/settings/ai?setup=1").text
+    page = c.get("/settings/search?setup=1").text
+    assert "Suche nach Bedeutung verwenden?" in page
+    assert 'name="semantic" value="1" checked' in page  # suggested in the assistant
+    r = c.post("/settings/search?setup=1", data={"csrf_token": csrf, "semantic": "1"},
+               follow_redirects=False)  # fmt: skip
+    assert r.headers["location"] == "/settings/mail?setup=1"
+    a.refresh_settings()
+    assert a.settings.semantic_search
+    assert "das Modell wird geladen" in c.get("/settings").text
+    c.post("/settings/search", data={"csrf_token": csrf, "semantic": "0"})
+    a.refresh_settings()
+    assert not a.settings.semantic_search
+    assert 'name="semantic" value="0" checked' in c.get("/settings/search").text
+    app.state.archive.close()
 
 
-def test_form_is_locked_when_the_environment_sets_the_permission(tmp_path):
-    from heftig.archive import Archive
-    from heftig.web.ui import _meaning_view
+def test_local_model_download_is_checked(tmp_path, monkeypatch):
+    import hashlib
 
-    a = Archive(make_settings(tmp_path, allow_cloud_embed=False))
-    a.base_settings.model_fields_set.add("allow_cloud_embed")
-    assert _meaning_view(a)["fixed"]
-    a.close()
+    import httpx
+
+    from heftig.local_embed import LocalEmbedder, ModelSpec
+
+    files = {"model.onnx": b"onnx-bytes", "tokenizer.json": b"{}"}
+
+    def handler(request):
+        name = request.url.path.rsplit("/", 1)[-1]
+        return httpx.Response(200, content=files[name])
+
+    real = httpx.stream
+    monkeypatch.setattr(
+        httpx, "stream",
+        lambda method, url, **kw: httpx.Client(transport=httpx.MockTransport(handler)).stream(
+            method, url
+        ),
+    )  # fmt: skip
+    good = {k: hashlib.sha256(v).hexdigest() for k, v in files.items()}
+    spec = ModelSpec("m", "r/m", "abc", {k: k for k in files}, sha256=good)
+    e = LocalEmbedder(spec, tmp_path)
+    assert not e.downloaded()
+    e.download()
+    assert e.downloaded() and (e.directory / "model.onnx").read_bytes() == b"onnx-bytes"
+    bad = ModelSpec("m2", "r/m", "abc", {k: k for k in files}, sha256={"model.onnx": "0" * 64})
+    e2 = LocalEmbedder(bad, tmp_path)
+    with pytest.raises(ProviderError):
+        e2.download()
+    assert not e2.downloaded() and not list(e2.directory.glob(".*part"))
+    assert real is not None
+
+
+def test_local_model_pools_token_vectors(tmp_path, monkeypatch):
+    """Mean or CLS pooling over the ONNX output, padding masked out, input order kept."""
+    import numpy as np
+    from tokenizers import Tokenizer
+    from tokenizers.models import WordLevel
+    from tokenizers.pre_tokenizers import Whitespace
+
+    from heftig.local_embed import LocalEmbedder, ModelSpec
+
+    vocab = {"[PAD]": 0, "[UNK]": 1, "a": 2, "b": 3, "c": 4}
+    tok = Tokenizer(WordLevel(vocab, unk_token="[UNK]"))
+    tok.pre_tokenizer = Whitespace()
+    d = tmp_path / "m"
+    d.mkdir()
+    tok.save(str(d / "tokenizer.json"))
+    (d / "model.onnx").write_bytes(b"x")
+
+    class Session:
+        def get_inputs(self):
+            return [type("I", (), {"name": n})() for n in ("input_ids", "attention_mask")]
+
+        def run(self, _outputs, feed):
+            ids = feed["input_ids"].astype(np.float32)
+            return [np.stack([ids, ids * 0 + 1], axis=-1)]  # token vector (id, 1)
+
+    import onnxruntime
+
+    monkeypatch.setattr(onnxruntime, "InferenceSession", lambda *a, **k: Session())
+    e = LocalEmbedder(ModelSpec("m", "r", "x", {"model.onnx": "", "tokenizer.json": ""}), tmp_path)
+    out = e.embed(["a b c", "c"])
+    assert out[0] == [3.0, 1.0] and out[1] == [4.0, 1.0]  # mean of ids 2,3,4 / only 4
+    cls = LocalEmbedder(
+        ModelSpec("m", "r", "x", {"model.onnx": "", "tokenizer.json": ""}, pooling="cls"), tmp_path
+    )
+    assert cls.embed(["b c", "a"]) == [[3.0, 1.0], [2.0, 1.0]]
+
+
+MODEL_CACHE = Path(
+    os.environ.get("HEFTIG_TEST_MODEL_DIR", Path.home() / ".cache" / "heftig-models")
+)
+
+
+@pytest.mark.skipif(
+    not (MODEL_CACHE / "snowflake-arctic-embed-m-v2.0-int8" / "model.onnx").exists(),
+    reason="the built-in model is not downloaded (scripts/search_bench.py --meaning does it)",
+)
+def test_built_in_model_finds_by_meaning(archive):
+    """The real model on the benchmark archive (61 documents): words it cannot find."""
+    from heftig.local_embed import DEFAULT, LocalEmbedder
+
+    from . import search_bench
+
+    ids = search_bench.load(archive)
+    model = LocalEmbedder(DEFAULT, MODEL_CACHE, threads=2)
+    registry.override(embedder=model)
+    assert semantic.catch_up(archive)["embedded"] == len(ids)
+    for q, doc in (("Wertpapiere", "depot_2024.pdf"), ("Elektriker", "elektriker.pdf")):
+        found, res = _ids(archive, q, model)
+        assert found and found[0] == ids[doc] and "Meaning" in res.items[0]["reasons"], q
+    assert semantic.nearest(archive.conn, model, "Rezept Apfelkuchen") == []

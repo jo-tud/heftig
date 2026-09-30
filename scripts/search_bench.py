@@ -3,6 +3,7 @@
     uv run python scripts/search_bench.py            # table per query + summary
     uv run python scripts/search_bench.py --json     # machine-readable
     uv run python scripts/search_bench.py -q Kaltmiete   # only queries containing the text
+    uv run python scripts/search_bench.py --meaning      # with the built-in embedding model
 
 Lines start with ' ' (first hit is right), '~' (a right one among the first five) or '!'
 (neither). See docs/search.md, "Measuring search quality".
@@ -50,10 +51,10 @@ def main() -> int:
     ap.add_argument("--heldout", action="store_true", help="the held-out queries")
     ap.add_argument(
         "--meaning",
-        nargs=2,
-        metavar=("URL", "MODEL"),
-        help="search by meaning too, with an OpenAI-compatible embedding server "
-        "(e.g. http://localhost:11434/v1 bge-m3)",
+        metavar="MODEL_DIR",
+        nargs="?",
+        const=str(Path.home() / ".cache" / "heftig-models"),
+        help="search by meaning too, with the built-in model (downloaded into MODEL_DIR once)",
     )
     args = ap.parse_args()
     with tempfile.TemporaryDirectory() as tmp:
@@ -63,10 +64,10 @@ def main() -> int:
             embedder = None
             if args.meaning:
                 from heftig import semantic
-                from heftig.providers.openai_compat import OpenAICompatEmbedder
+                from heftig.local_embed import DEFAULT, LocalEmbedder
 
-                url, model = args.meaning
-                embedder = OpenAICompatEmbedder("openai_compatible", url, None, model, 300)
+                embedder = LocalEmbedder(DEFAULT, Path(args.meaning))
+                embedder.download()
                 registry.override(embedder=embedder)
                 print(semantic.catch_up(archive), file=sys.stderr)
             summary, results = searcheval.evaluate(

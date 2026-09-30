@@ -83,9 +83,9 @@ Other ways to run it (Docker Compose, without containers, behind a reverse proxy
   groups too), OCR errors in scans, typos, umlauts and spacing in numbers; it understands
   phrases like “March 2025” or “last year”, shows filters with counts and a timeline, suggests
   while you type, and marks the hits on the page. Its quality is measured (docs/search.md).
-  The search itself never leaves your computer. Optionally, an AI turns a question like
-  “phone bills over $50 last year” into filters, and an embedding model - local or OpenAI -
-  adds a search by meaning (“securities” finds the ETF statement).
+  With the search by meaning switched on, a built-in language model also finds documents that
+  say it in other words (“securities” finds the ETF statement) - on your computer, no server.
+  Optionally, an AI turns a question like “phone bills over $50 last year” into filters.
 - **Paper without archive numbers:** file letters in binders with a section per month, newest
   on top. Heftig records the binder and the position when you mark a letter as filed and later
   shows exactly where it is, and which letters lie above and below it.
