@@ -140,6 +140,24 @@ def test_meaning_counts_more_for_questions(archive, ids, embedder, monkeypatch):
     assert semantic.MEANING_WEIGHT_QUESTION > semantic.MEANING_WEIGHT
 
 
+@pytest.mark.parametrize(
+    "q,question",
+    [
+        ("Wie beantrage ich einen Parkausweis?", True),
+        ("wann bekomme ich den Bescheid für die Kur", True),
+        ("What is the best way to save for retirement", True),
+        ("Rechnung Telekom 2023", False),  # keywords
+        ("die Rechnung vom Zahnarzt", False),  # two words with articles: still keywords
+        ("Zahnarzt?", False),
+        ("Kfz Versicherung Beitrag Allianz", False),
+    ],
+)
+def test_written_questions_are_told_from_keywords(q, question):
+    from heftig.search import parse_query, written_question
+
+    assert written_question(q, parse_query(q)) is question
+
+
 def test_vector_store_without_numpy(monkeypatch):
     import sys
     from array import array
