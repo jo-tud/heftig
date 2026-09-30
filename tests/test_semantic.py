@@ -366,6 +366,10 @@ def test_local_model_pools_token_vectors(tmp_path, monkeypatch):
         ModelSpec("m", "r", "x", {"model.onnx": "", "tokenizer.json": ""}, pooling="cls"), tmp_path
     )
     assert cls.embed(["b c", "a"]) == [[3.0, 1.0], [2.0, 1.0]]
+    last = LocalEmbedder(
+        ModelSpec("m", "r", "x", {"model.onnx": "", "tokenizer.json": ""}, pooling="last"), tmp_path
+    )
+    assert last.embed(["a b c", "b"]) == [[4.0, 1.0], [3.0, 1.0]]  # padding is not the last
 
 
 MODEL_CACHE = Path(

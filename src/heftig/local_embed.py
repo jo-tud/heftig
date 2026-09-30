@@ -28,7 +28,7 @@ class ModelSpec:
     revision: str
     files: dict[str, str]  # local name -> path in the repository
     sha256: dict[str, str] = field(default_factory=dict)  # local name -> expected hash
-    pooling: str = "mean"  # "mean" or "cls"
+    pooling: str = "mean"  # "mean", "cls" or "last" (the last token, decoder models)
     query_prefix: str = ""
     document_prefix: str = ""
     max_tokens: int = 512
@@ -159,10 +159,14 @@ class LocalEmbedder:
             feed = {"input_ids": ids, "attention_mask": mask}
             if "token_type_ids" in names:
                 feed["token_type_ids"] = np.zeros_like(ids)
+            if "position_ids" in names:  # decoder models
+                feed["position_ids"] = np.broadcast_to(np.arange(ids.shape[1]), ids.shape).copy()
             result = session.run(None, feed)[0]
             if result.ndim == 3:  # token vectors: pool them
                 if self.spec.pooling == "cls":
                     pooled = result[:, 0]
+                elif self.spec.pooling == "last":  # the last real token (right padding)
+                    pooled = result[np.arange(len(idx)), mask.sum(axis=1) - 1]
                 else:
                     m = mask[..., None].astype(np.float32)
                     pooled = (result * m).sum(axis=1) / np.maximum(m.sum(axis=1), 1e-9)
