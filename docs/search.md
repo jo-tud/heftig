@@ -504,9 +504,11 @@ similar chunk
 and is not more than 0.15 below the best one. (With fewer than ten documents only the first rule
 applies.) Up to 20 of them are, within the active filters,
 merged with the word search's ranking by weighted Reciprocal Rank Fusion (Cormack et al.
-2009): score = 1 / (60 + word rank) + 0.5 / (60 +
-meaning rank). A document found both ways comes first, one found only by meaning is added with
-the reason "Meaning", and the word search's order counts double. `meaning=0` in the URL (API:
+2009): score = 1 / (60 + word rank) + w / (60 + meaning rank). For one or two words (keywords)
+w = 0.5 - the word search's order counts double; for three words or more (a written-out
+question) w = 1.5 - the meaning counts more, because a question's words are rarely the answer's
+words (measured on real questions, below). A document found both ways comes first, one found
+only by meaning is added with the reason "Meaning". `meaning=0` in the URL (API:
 `meaning=false`) searches by words only. Suggestions while typing use the words only.
 
 **Measured** (benchmark with the built-in model; `uv run python scripts/search_bench.py
