@@ -232,7 +232,7 @@ Downgrading to an older version after a migration is not supported; restore the 
 With the search by meaning switched on ([search.md](search.md#search-by-meaning)), the worker
 downloads the embedding model once (about 330 MB from huggingface.co) into
 `<archive>/models/` when it prepares documents for the first time, and then prepares new
-documents in the background. While the model works it needs up to about 850 MB of memory (the
+documents in the background. While the model works it needs up to about 750 MB of memory (the
 worker while it prepares documents, the web process while searches use it); after ten minutes
 without use it is unloaded and the memory is given back to the system, so an idle Heftig stays
 small. Preparing uses half the CPU cores (`HEFTIG_SEMANTIC_THREADS`). Without internet access at that moment the download is retried

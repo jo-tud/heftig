@@ -475,7 +475,7 @@ limits the CPU threads the model uses (default: half the cores).
 no torch, no model server. It is downloaded **once, when documents are prepared for the first
 time** (about 330 MB from huggingface.co, a fixed revision, every file checked against its
 SHA-256) into `<archive>/models/`. That folder is not part of backups or exports; it is
-downloaded again when missing. While it works it needs up to about 850 MB of memory - in the
+downloaded again when missing. While it works it needs up to about 750 MB of memory - in the
 worker while documents are prepared, in the web process while searches use it; after ten minutes
 without use it is unloaded and the memory given back (loading it again takes a second or two).
 `heftig embed` downloads it and prepares all pending documents right away (for example before
@@ -523,7 +523,10 @@ with title, sender, type, tags, date and summary, then the text twice: in large 
 about 600 (at most 80), each starting with the title line. **Keywords** name what a document is
 about: the best large piece decides (a tax return that mentions the chimney sweep in one line
 does not pass the chimney sweep's notice). A **written-out question** asks for a passage: the
-mean of the best large and the best small piece decides (measured below). The vectors are stored in SQLite
+mean of the best large and the best small piece decides (measured below). On two cores of a
+notebook CPU the model embeds about 13 pieces per second: a document of three pages (about 12
+pieces) takes a second, 2,000 of them about half an hour; searches are answered meanwhile. The
+vectors are stored in SQLite
 (`doc_embeddings`), normalised, as 8-bit integers with a scale per vector - a quarter of the
 size of 32-bit floats with the same ranking (on the Munich, LegalQuAD and FiQA questions nDCG@10
 changed by at most 0.001; shortening the vectors to 256 of their 768 dimensions cost up to
@@ -567,7 +570,7 @@ A document found only by meaning has the reason "Meaning". `meaning=0` in the UR
 | | MRR@10 | Success@1 | Recall@10 | no result |
 |---|---|---|---|---|
 | main set, words only | 0.979 | 94 % | 96 % | 1 |
-| main set, words + meaning | 0.995 | 96 % | 98 % | 0 |
+| main set, words + meaning | 0.992 | 96 % | 98 % | 0 |
 | held-out set, words only | 0.940 | 94 % | 93 % | 2 |
 | held-out set, words + meaning | 0.990 | 98 % | 100 % | 0 |
 
