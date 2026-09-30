@@ -2,11 +2,13 @@
 
 The search is local and deterministic: SQLite FTS5 with BM25 ranking and per-field weights, and
 German word handling on top - word stems, compounds, other words for the same thing, and
-spellings one or two letters away for OCR errors. It never calls a network service or a
-language model (the optional AI search only turns a question into the filters of this search,
-see [providers.md](providers.md#what-is-sent)). The code is in `src/heftig/search.py` (queries
-and ranking), `src/heftig/expand.py` (what a search word stands for), `src/heftig/synonyms.py`
-and `src/heftig/index.py` (index rows). How well it works is measured, see
+spellings one or two letters away for OCR errors. The word search never calls a network service
+or a language model. The optional [search by meaning](#search-by-meaning) adds a language model
+that runs on this computer (downloaded once, nothing is sent anywhere); the optional AI search
+only turns a question into the filters of this search (see
+[providers.md](providers.md#what-is-sent)). The code is in `src/heftig/search.py` (queries and
+ranking), `src/heftig/expand.py` (what a search word stands for), `src/heftig/synonyms.py`,
+`src/heftig/index.py` (index rows) and `src/heftig/semantic.py` / `local_embed.py` (meaning). How well it works is measured, see
 [Measuring search quality](#measuring-search-quality).
 
 ## Tokenisation and German folding
@@ -193,8 +195,8 @@ Each result contains ID, title, document date (and its status), received date, i
 correspondent, document type, tags, source, status, text status, MIME type, page count, paper and
 filing information, the BM25 rank, a highlighted snippet (HTML-escaped, matches in `<mark>`) and
 the **reasons**: the fields that matched (`Number/ID`, `Title`, `Sender`, `Document type`, `Tag`,
-`Custom field`, `File name`, `Date`, `Summary`, `Text`, `Note/attachment`; in the interface
-language).
+`Custom field`, `File name`, `Date`, `Summary`, `Text`, `Note/attachment`, `Meaning` for a
+document found by the search by meaning; in the interface language).
 
 ## Typo correction
 
@@ -262,6 +264,7 @@ The web UI's filter panel and the API (`GET /api/documents`) accept:
 | `cf_key`, `cf_min`, `cf_max` | numeric range on a custom field, e.g. `Betrag` between 40 and 50 |
 | `tag_mode` | `all` (default) or `any` |
 | `literal` | `1`: do not interpret date phrases in `q` |
+| `meaning` | `0` (API: `false`): words only, without the search by meaning |
 | `sort` | `relevance`, `received`, `document_date`, `title` |
 | `page`, `per_page` | pagination (`per_page` max. 100) |
 
@@ -334,11 +337,13 @@ Kaltmiete` one query); `tests/test_search_quality.py` fails when the figures dro
 | held-out set, before → now | 0.90 → 0.94 | 90 % → 94 % | 90 % → 94 % | 5 → 2 of 50 |
 
 The queries that still fail need knowledge of the world, not of words: `Wertpapiere` for an ETF
-statement, `Elektriker` for a bill from "Elektro Schulz".
+statement, `Elektriker` for a bill from "Elektro Schulz" - the search by meaning finds them.
 
 **Real questions.** Queries written for a benchmark by the person who wrote the rules flatter
 them. So the whole search (not only a part of it) was also measured on questions real people
-asked, each over its documents ingested as PDFs into an ordinary archive:
+asked, each over its documents ingested as PDFs into an ordinary archive
+(`uv run --with pyarrow python scripts/real_bench.py munich|fiqa [--meaning]` downloads the data
+and repeats the measurement):
 
 - **German:** 1,491 citizen questions to the City of Munich ("Wie beantrage ich einen
   Anwohnerparkausweis?") with the answering service article among 810 articles
@@ -349,7 +354,7 @@ asked, each over its documents ingested as PDFs into an ordinary archive:
 
 | | Munich: MRR@10 | first right | Recall@10 | FiQA: MRR@10 | first right | Recall@10 |
 |---|---|---|---|---|---|---|
-| before (main branch) | 0.511 | 45 % | 64 % | 0.433 | 33 % | 45 % |
+| before (previous search: prefixes, stems, compounds ending in the word) | 0.511 | 45 % | 64 % | 0.433 | 33 % | 45 % |
 | words (this page) | 0.723 | 64 % | 88 % | 0.477 | 37 % | 50 % |
 | words + meaning (built-in model) | **0.880** | **82 %** | **98 %** | **0.740** | **66 %** | **71 %** |
 
@@ -433,7 +438,7 @@ sheet (search.js). The timeline shows years, and months after choosing one year.
   replaces - the UI then turns it into a filter chip and keeps the rest as text;
 - numbers from custom fields containing the typed digits (separators ignored) - opens the document;
 - a recognised date phrase (information only);
-- up to four matching documents (the normal search, only if all words match).
+- up to ten matching documents (the word search, only if all words match).
 
 ## Saved and recent searches
 
@@ -519,7 +524,7 @@ pointed the same way: Arctic M 0.976 MRR@10, jina-embeddings-v2-base-de 0.893, b
 granite-embedding-107m 0.878, multilingual-e5-small 0.848, MiniLM-L12 0.666.
 
 **Preparing the documents.** The worker embeds archived documents in the background, in a
-thread of its own, a few seconds after they are processed (`src/heftig/semantic.py`): one piece
+thread of its own, within about half a minute after they are processed (`src/heftig/semantic.py`): one piece
 with title, sender, type, tags, date and summary, then the text twice: in large pieces of about
 1,200 characters (at most 40) and - when it is longer than 600 characters - in small pieces of
 about 600 (at most 80), each starting with the title line. **Keywords** name what a document is

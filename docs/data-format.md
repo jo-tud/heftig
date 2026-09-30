@@ -19,6 +19,9 @@ archive/
   taxonomy.json                      correspondents, document types, tags + aliases (sidecar)
   saved_searches.json                saved searches of the search page (optional)
   binders.json                       the binders of the paper filing: name, started, full since
+  synonyms.json                      the archive's own words that mean the same, for the search (optional)
+  models/                            the search model of the search by meaning (downloaded again when
+                                     missing; not in backups or exports)
   index.sqlite                       database: index, metadata copy, jobs, auth, import state
   index.sqlite-wal, -shm             SQLite write-ahead log (part of the database while running)
   setup-token                        one-time code for /setup, only while no user exists
@@ -196,6 +199,13 @@ Saved searches: `{"version": 1, "searches": [{"id", "name", "query", "created_at
 the query string of the search page, restricted to the known search parameters. Missing file =
 no saved searches.
 
+## synonyms.json
+
+The archive's own groups of words that mean the same, added to the built-in ones by the search
+(Settings → Search: words that mean the same): `{"version": 1, "groups": [["Kita", "Kindergarten",
+"Kindertagesstätte"], ...]}`. Each group has at least two words or phrases as the user wrote them
+(at most 12 per group, 500 groups). Missing file = only the built-in groups.
+
 ## binders.json
 
 The binders of the paper filing, oldest first:
@@ -270,6 +280,7 @@ heftig-export-20260928-120000/
   taxonomy.json            correspondents, document types, tags with aliases
   saved_searches.json      saved searches (only if there are any; merged on import)
   binders.json             binders of the paper filing (merged on import; imported ones count as full)
+  synonyms.json            your own words that mean the same (only if there are any; merged on import)
   state/sequences.json     last_ingest_sequence, last_filing_sequence
   state/ingest_events.jsonl
   state/imap_state.json

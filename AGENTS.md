@@ -12,10 +12,11 @@ FTS5, vanilla JavaScript, no build step. Read `docs/architecture.md` before larg
 | `src/heftig/classify.py` | validates what a classifier returns before anything is applied |
 | `src/heftig/providers/` | OCR and AI adapters (Tesseract, rules, Anthropic, OpenAI-compatible), prompts |
 | `src/heftig/documents.py` | loading/saving a document (`persist`: sidecar + DB row + index), user edits |
-| `src/heftig/search.py`, `datephrases.py` | search: query parsing, date phrases, FTS5, ranking, facets, suggestions |
+| `src/heftig/search.py`, `expand.py`, `synonyms.py`, `datephrases.py` | search: query parsing, what a word stands for (forms, compounds, similar spellings, synonyms), date phrases, FTS5, ranking, facets, suggestions; quality measured by `searcheval.py` and `tests/search_bench.py` (docs/search.md) |
+| `src/heftig/semantic.py`, `local_embed.py` | the optional search by meaning: pieces, vectors, fusion with the word search; the built-in ONNX model |
 | `src/heftig/binders.py`, `titles.py`, `duplicates.py`, `trash.py`, `combine.py` | paper filing in named binders, consistent titles, duplicates, trash, combining documents |
 | `src/heftig/web/ui.py`, `web/templates/` | the HTML pages; `web/api.py` the REST API; `web/setup.py` setup and connection pages, their "Test" buttons in `connections.py` |
-| `src/heftig/worker.py` | background loop: scanner folder, IMAP, jobs, hourly maintenance |
+| `src/heftig/worker.py` | background loop: scanner folder, IMAP, jobs, embedding for the search by meaning, hourly maintenance |
 | `src/heftig/config.py`, `settings_store.py` | settings: environment variables win over values saved in the web interface |
 | `src/heftig/i18n.py`, `locale/de/messages.po` | interface languages |
 | `src/heftig/migrations/` | SQL migrations, applied in order on start |
@@ -38,7 +39,8 @@ FTS5, vanilla JavaScript, no build step. Read `docs/architecture.md` before larg
 - **No inline scripts or style attributes** – the Content Security Policy forbids them. Put code
   in `web/static/*.js`, styles in `app.css`.
 - **Nothing leaves the machine unless the user switched it on** (cloud AI needs an explicit
-  permission per task). Search never calls a network service.
+  permission per task). Search never calls a network service (the model of the search by
+  meaning runs locally; only the worker downloads it, once, after the user switched it on).
 - **One worker per archive.** Jobs are leased; long work must renew its lease.
 
 ## Checks

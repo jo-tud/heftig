@@ -99,8 +99,9 @@ The interface is in English and German.
 
 ## AI is optional
 
-Heftig works completely offline: Tesseract reads scans, simple rules sort documents. An AI model
-makes titles, dates, senders and types much better. You choose it on the setup page:
+Heftig works completely offline: Tesseract reads scans, simple rules sort documents (the search
+by meaning, if you switch it on, downloads its model once - about 330 MB - and then runs offline
+too). An AI model makes titles, dates, senders and types much better. You choose it on the setup page:
 
 | | What it costs | What leaves your computer |
 |---|---|---|

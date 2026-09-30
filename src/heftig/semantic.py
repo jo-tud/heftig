@@ -3,7 +3,7 @@
 Finds documents that describe what was searched for in other words - "Wertpapiere" finds the
 ETF statement, "Elektriker" the bill from "Elektro Schulz" - which no word rule can. The model
 runs on this computer (local_embed.py); nothing is sent anywhere. Off unless switched on (the
-setup assistant asks; Settings -> Search).
+setup assistant asks; Settings -> Search by meaning).
 
 - The worker embeds every archived document in the background (worker.py): a piece with title,
   sender, type, tags and date, then the text twice - in pieces of about 1,200 characters and

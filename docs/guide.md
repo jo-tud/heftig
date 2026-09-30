@@ -148,13 +148,25 @@ paid text recognition) and puts the parts in the trash as one batch – *Undo* r
 
 ![Search with filters, counts and highlighted hits](screenshots/search.png)
 
-- Just type: `telekom invoice`. All words must match; if nothing does, Heftig falls back to any
-  word and says so. Words match as prefixes (`insur` finds *insurance*).
+- Just type: `telekom invoice`. One or two words must all match; if nothing has them all,
+  Heftig shows the documents with the most important of them and says so. Words match as
+  prefixes (`insur` finds *insurance*).
+- Other forms and compounds count too: `Verträge` finds *Vertrag*, `Steuerbescheid` finds
+  *Einkommensteuerbescheid*, `Stromrechnung` a letter about *Strom* and *Rechnung*. Words that
+  mean the same are included (`Handy` finds *Mobilfunk*); add your own under *Settings → Search:
+  words that mean the same*. Exact matches still come first.
+- Ask a question: `when does my phone contract end?` – words like *when*, *my*, *does* are left
+  out, and the documents with the rare words of the question come first.
+- With the *search by meaning* switched on (setup assistant or *Settings → Search by meaning*),
+  every search also finds documents that say it in other words – `securities` finds the ETF
+  statement, `electrician` the bill from “Elektro Schulz”. The model runs on your computer;
+  nothing is sent anywhere. `meaning=0` in the address searches by words only.
 - Case, umlauts and spacing in numbers don't matter: `Müllerstraße` = `muellerstrasse`,
   `83729381` also finds `8372 9381`. Numbers match exactly and rank higher in fields such as a
   contract number.
-- Typos are corrected when a word occurs nowhere in the archive; the result says which
-  correction was used.
+- Typos and scanning errors: words one or two letters away are found too (ranked below the exact
+  ones, `Kündiqung` for *Kündigung*); a word that occurs nowhere in the archive is corrected,
+  and the result says which correction was used.
 - Date phrases become a filter: `invoice March 2025`, `phone last year`, `since 2023`,
   `last 3 months`, `between January and March 2025` (German works too: `Rechnung März 2025`,
   `letztes Jahr`). A bare `2025` stays a search word.
