@@ -143,6 +143,8 @@ class Worker:
                 self.stop.wait(1.0)
         finally:
             pool.shutdown(wait=True, cancel_futures=False)
+            if self._embed is not None:
+                self._embed.join(timeout=60)  # stops after the document it is embedding
             self.archive.close()
             log.info("worker stopped")
 
