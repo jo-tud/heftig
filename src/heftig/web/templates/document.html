@@ -135,7 +135,7 @@
         {% elif tags_added %}<p class="hint">{{ _("Manually added: %(added)s – kept when reprocessing.", added=tags_added) }}</p>
         {% elif tags_removed %}<p class="hint">{{ _("Manually removed: %(removed)s – kept when reprocessing.", removed=tags_removed) }}</p>{% endif %}</div>
       <div class="field"><label for="f-sum">{{ _("Summary") }}</label>{{ lockbox('summary') }}
-        <textarea id="f-sum" name="summary" rows="3" class="pv-input">{{ m.summary }}</textarea></div>
+        <textarea id="f-sum" name="summary" rows="4" class="pv-input autogrow">{{ m.summary }}</textarea></div>
       <fieldset class="field"><legend>{{ _("Custom fields") }}</legend>{{ lockbox('custom_fields') }}
         {% set cf_types = {'string': _("Text"), 'number': pgettext("field type", "Number"), 'monetary': _("Amount"), 'date': _("Date")} %}
         <table class="cf">
