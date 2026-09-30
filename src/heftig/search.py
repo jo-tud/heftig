@@ -617,8 +617,12 @@ def _with_meaning(
     by_meaning.update(near)
     # a written-out question is better understood by meaning than by its words (measured on
     # real citizen questions, docs/search.md); a few keywords are matched best by the words
-    weight = semantic.MEANING_WEIGHT_QUESTION if question else semantic.MEANING_WEIGHT
-    return [(d, -score) for d, score in semantic.fuse([d for d, _ in ranked], near, weight=weight)]
+    if question:
+        weight, k = semantic.MEANING_WEIGHT_QUESTION, semantic.RRF_K_QUESTION
+    else:
+        weight, k = semantic.MEANING_WEIGHT, semantic.RRF_K
+    fused = semantic.fuse([d for d, _ in ranked], near, k=k, weight=weight)
+    return [(d, -score) for d, score in fused]
 
 
 # --- main entry --------------------------------------------------------------------------
