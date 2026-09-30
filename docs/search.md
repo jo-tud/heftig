@@ -481,25 +481,40 @@ without use it is unloaded and the memory given back (loading it again takes a s
 `heftig embed` downloads it and prepares all pending documents right away (for example before
 going offline).
 
-Chosen by measurement on this page's benchmark, on a notebook CPU (4 cores, 2 threads used):
+**Chosen by measurement** - on questions real people asked (see "Measuring search quality"),
+German and English, each model ranking the documents by meaning alone (nDCG@10, the text in
+pieces of 1,200 characters; speed relative to the built-in model, measured under the same
+load):
 
-| Model (ONNX) | Download | Meaning alone: MRR@10 | Success@1 | Words + meaning, held-out MRR | Chunks per second |
-|---|---|---|---|---|---|
-| **Arctic Embed M v2.0, int8** | 330 MB | **0.976** | **93 %** | **0.990** | 17 |
-| jina-embeddings-v2-base-de, fp32 | 660 MB | 0.893 | 78 % | 0.990 | 9 |
-| bge-m3, fp32 (reference, too large for a notebook) | 2,300 MB | 0.892 | 81 % | 0.990 | 4 |
-| granite-embedding-107m-multilingual, fp32 | 440 MB | 0.878 | 79 % | 0.970 | 24 |
-| multilingual-e5-small, int8 | 135 MB | 0.848 | 77 % | 0.970 | 34 |
-| multilingual-e5-base, int8 | 295 MB | 0.823 | 72 % | 0.967 | 21 |
-| granite-embedding-97m-multilingual-r2, fp32 | 415 MB | 0.781 | 71 % | 0.970 | 18 |
-| granite-embedding-97m-multilingual-r2, int8 | 125 MB | 0.736 | 63 % | 0.970 | 30 |
-| jina-embeddings-v2-base-de, int8 | 165 MB | 0.726 | 56 % | 0.967 | 32 |
-| paraphrase-multilingual-MiniLM-L12-v2, int8 | 135 MB | 0.666 | 51 % | 0.970 | 40 |
+| Model (ONNX) | Munich (de) | LegalQuAD (de) | GermanQuAD (de) | FiQA (en) | Speed | Licence |
+|---|---|---|---|---|---|---|
+| Arctic Embed L v2.0, int8 | 0.895 | 0.780 | 0.968 | 0.714 | 0.3 | Apache-2.0 |
+| EmbeddingGemma 300M, q4 | 0.889 | 0.742 | 0.976 | 0.735 | 0.2 | Gemma terms |
+| **Arctic Embed M v2.0, int8** | **0.888** | **0.762** | **0.961** | **0.685** | **1** | **Apache-2.0** |
+| mxbai-embed-de-large v1, int8 | 0.884 | 0.720 | - | 0.710 | 0.5 | Apache-2.0 |
+| harrier-oss v1 270M | 0.861 | 0.708 | - | 0.671 | 0.4 | MIT |
+| bekko-embedding v1 a25m | 0.857 | 0.745 | - | 0.641 | 1.5 | MIT |
+| granite-embedding-311m-multilingual-r2, int8 | 0.843 | 0.621 | - | 0.634 | 0.3 | Apache-2.0 |
+| gte-multilingual-base, int8 | 0.833 | 0.660 | 0.944 | 0.669 | 0.7 | Apache-2.0 |
 
-"Meaning alone" ranks the 144 benchmark queries by the model only, without the word search -
-the figure that separates the models; combined with the word search the differences shrink,
-because the words already find most documents. A household archive of 2,000 documents
-(about 6,000 chunks) is prepared in about six minutes.
+- LegalQuAD: 200 questions on long German legal texts; GermanQuAD: 2,204 questions on
+  Wikipedia passages ([deepset](https://www.deepset.ai/germanquad)); both as published in MTEB.
+- The two models ahead of the built-in one are three to five times slower: preparing an
+  archive would take hours instead of minutes on a notebook, every search would wait longer
+  for its query. EmbeddingGemma is not under an open-source licence. Larger models were not
+  measured to the end - Qwen3-Embedding, harrier-oss and pplx-embed with 0.6 billion
+  parameters managed less than one piece per second, bge-m3 is the size of Arctic L;
+  jina-embeddings-v5 is non-commercial.
+- A separate model for English would have gained 2-5 points on FiQA only for a second
+  download, twice the memory and a language guess for every short query; not done.
+- Cutting the text differently gained more than any other model: large and small pieces
+  (below) raised LegalQuAD from 0.762 to 0.812 and GermanQuAD from 0.961 to 0.972.
+- 8-bit weights cost almost nothing (fp32: Munich 0.894, LegalQuAD 0.764, GermanQuAD 0.964)
+  at a quarter of the download and three times the speed.
+
+An earlier comparison on this page's synthetic benchmark (keyword queries, meaning alone)
+pointed the same way: Arctic M 0.976 MRR@10, jina-embeddings-v2-base-de 0.893, bge-m3 0.892,
+granite-embedding-107m 0.878, multilingual-e5-small 0.848, MiniLM-L12 0.666.
 
 **Preparing the documents.** The worker embeds archived documents in the background, in a
 thread of its own, a few seconds after they are processed (`src/heftig/semantic.py`): one piece
