@@ -174,6 +174,10 @@ paid text recognition) and puts the parts in the trash as one batch – *Undo* r
   `tag:Insurance`, `year:2025`, `received:2026-09`, `source:scanner`.
 - The filter column shows counts per sender, type, tag and source, a timeline, date shortcuts,
   filing state and ranges for amounts. On a phone the filters open as a sheet.
+- Documents that came by e-mail show who sent them: on the document page, when hovering over
+  *E-mail* in the list, and in the filter *E-mail from* (e.g. everything your partner forwarded).
+  Under *Settings → E-mail senders* you can give an address a name – “Anna” instead of
+  anna.example@…
 - *✦ AI* (when an AI is set up) turns a question into filters – “phone bills over $50 last
   year” – and shows them as chips you can remove. Only the question and the names of your
   categories are sent, never document contents.

@@ -20,6 +20,7 @@ archive/
   saved_searches.json                saved searches of the search page (optional)
   binders.json                       the binders of the paper filing: name, started, full since
   synonyms.json                      the archive's own words that mean the same, for the search (optional)
+  senders.json                       names for the e-mail addresses documents came from (optional)
   models/                            the search model of the search by meaning (downloaded again when
                                      missing; not in backups or exports)
   index.sqlite                       database: index, metadata copy, jobs, auth, import state
@@ -206,6 +207,13 @@ The archive's own groups of words that mean the same, added to the built-in ones
 "Kindertagesstätte"], ...]}`. Each group has at least two words or phrases as the user wrote them
 (at most 12 per group, 500 groups). Missing file = only the built-in groups.
 
+## senders.json
+
+Names for the addresses documents were e-mailed from (`source_details.from`), set on
+Settings → E-mail senders and shown instead of the address: `{"version": 1, "names":
+{"anna@example.org": "Anna"}}`. Addresses are stored in lower case (at most 1,000 names of up to
+80 characters). Missing file = addresses only.
+
 ## binders.json
 
 The binders of the paper filing, oldest first:
@@ -281,6 +289,7 @@ heftig-export-20260928-120000/
   saved_searches.json      saved searches (only if there are any; merged on import)
   binders.json             binders of the paper filing (merged on import; imported ones count as full)
   synonyms.json            your own words that mean the same (only if there are any; merged on import)
+  senders.json             names for e-mail sender addresses (only if there are any; merged on import)
   state/sequences.json     last_ingest_sequence, last_filing_sequence
   state/ingest_events.jsonl
   state/imap_state.json

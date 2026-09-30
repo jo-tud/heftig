@@ -34,7 +34,7 @@ from datetime import date
 from functools import lru_cache
 from typing import Any
 
-from . import datephrases, expand, i18n
+from . import datephrases, expand, i18n, senders
 from . import taxonomy as tax
 from .expand import STOPWORDS, Vocab
 from .i18n import N_, _
@@ -88,6 +88,7 @@ class SearchParams:
     received_from: str | None = None
     received_to: str | None = None
     source: list[str] = field(default_factory=list)
+    email_from: list[str] = field(default_factory=list)  # sender addresses of e-mailed documents
     status: list[str] = field(default_factory=list)
     filed: str | None = None  # "yes" | "no"
     filing_section: str | None = None
@@ -863,6 +864,10 @@ def _in(values: list[Any]) -> str:
     return ",".join("?" for _ in values)
 
 
+# the address an e-mailed document came from (the IMAP import stores it with the document)
+EMAIL_FROM = "lower(json_extract(d.metadata_json, '$.source_details.from'))"
+
+
 def _filters(
     conn: sqlite3.Connection,
     p: SearchParams,
@@ -915,6 +920,9 @@ def _filters(
                 )
             )
         add("source", f"d.source IN ({_in(sources)})", *sources)
+    if p.email_from:
+        froms = [senders.normalized(v) for v in p.email_from]
+        add("email_from", f"{EMAIL_FROM} IN ({_in(froms)})", *froms)
     if p.status:
         add("status", f"d.status IN ({_in(p.status)})", *p.status)
     if p.filed == "yes":
@@ -995,6 +1003,15 @@ def _facets(
         {"value": r[0], "count": r[1]}
         for r in conn.execute(
             f"SELECT d.source, COUNT(*) AS n {base} GROUP BY d.source ORDER BY n DESC", params
+        )
+    ]
+    base, params = _base(match, clauses, exclude="" if within else "email_from")
+    out["email_from"] = [
+        {"value": r[0], "count": r[1]}
+        for r in conn.execute(
+            f"SELECT {EMAIL_FROM} AS a, COUNT(*) AS n {base} AND d.source = 'email' "
+            "GROUP BY a HAVING a IS NOT NULL ORDER BY n DESC, a",
+            params,
         )
     ]
     base, params = _base(match, clauses, exclude="" if within else "date")
@@ -1256,6 +1273,7 @@ def _hydrate(
             "document_type": meta.get("document_type"),
             "tags": meta.get("tags", []),
             "source": d["source"],
+            "email_from": (meta.get("source_details") or {}).get("from"),
             "status": d["status"],
             "text_status": d["text_status"],
             "mime_type": d["mime_type"],

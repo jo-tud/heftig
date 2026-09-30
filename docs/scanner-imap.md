@@ -308,6 +308,11 @@ HEFTIG_IMAP_ALLOWED_SENDERS=ich@example.org,partnerin@example.org,@meine-bank.ex
   UID. `received_at` is the time of import, not the mail date. With
   `HEFTIG_IMAP_ARCHIVE_EML=true` the raw message is additionally kept as
   `archive/email/<import_ref>.eml`.
+- **Who sent it** shows on the document page ("E-mail from anna@… · “subject”", linked to all
+  documents from that address), when hovering over *E-mail* in the document list, and as the
+  filter *E-mail from* with counts per address. *Settings → E-mail senders* lists the addresses;
+  a name given there ("Anna") is shown instead of the address for all documents from it, also
+  the ones imported before (`senders.json`).
 - **Skip rules** (only for images, only these): inline images smaller than
   `HEFTIG_IMAP_SKIP_INLINE_IMAGES_BELOW_KB` (30 KB), and image attachments whose file name
   matches `HEFTIG_IMAP_SKIP_FILENAME_PATTERNS` (`logo*,image0*,signature*`, shell-style,

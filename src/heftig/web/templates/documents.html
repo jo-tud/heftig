@@ -91,6 +91,20 @@
   </section>
   {% endif %}
 
+  {% set g = v.email_senders %}
+  {% if g['values'] %}
+  <section class="facet" aria-labelledby="f-email-from">
+    <h2 id="f-email-from">{{ _("E-mail from") }}</h2>
+    <ul class="facet-list">
+      {% for x in g['values'][:8] %}<li><a class="fv{% if x.on %} on{% endif %}" href="{{ x.href }}"{% if x.on %} aria-current="true"{% endif %}><span class="fv-l">{{ x.label }}</span><span class="fv-n">{{ x.count }}</span></a></li>{% endfor %}
+    </ul>
+    {% if g.more %}<details class="more"><summary>{{ _("%(num)s more", num=g.more) }}</summary><ul class="facet-list">
+      {% for x in g['values'][8:] %}<li><a class="fv{% if x.on %} on{% endif %}" href="{{ x.href }}"><span class="fv-l">{{ x.label }}</span><span class="fv-n">{{ x.count }}</span></a></li>{% endfor %}
+    </ul></details>{% endif %}
+    <p class="small"><a href="/settings/senders">{{ _("Names for addresses …") }}</a></p>
+  </section>
+  {% endif %}
+
   <details class="facet advanced"{% if params.status or params.filed or params.filing_section or params.filing_binder or params.cf_key or params.received_from or params.received_to %} open{% endif %}>
     <summary>{{ _("More filters") }}</summary>
     {% set adv = ('status', 'filed', 'filing_section', 'filing_binder', 'cf_key', 'cf_min', 'cf_max', 'received_from', 'received_to') %}
@@ -220,7 +234,8 @@
           {% if it.document_type %}<span>{{ it.document_type }}</span>{% endif %}
           <span title="{{ _("Document date") }}">{% if it.document_date %}📄 {{ it.document_date | date }}{% if it.document_date_status == 'ai_uncertain' %} <span class="badge st-needs_review">{{ _("uncertain") }}</span>{% endif %}{% else %}📄 –{% endif %}</span>
           <span title="{{ _("Received") }}">📥 {{ time(it.received_at) }}</span>
-          <span>{{ SOURCE_LABELS.get(it.source, it.source) }}</span>
+          {% if it.email_from %}{% set who = (email_names or {}).get(it.email_from | lower) %}<span class="has-tip" title="{{ _("E-mail from %(sender)s", sender=(who ~ ' <' ~ it.email_from ~ '>') if who else it.email_from) }}">{{ SOURCE_LABELS.get(it.source, it.source) }}</span>
+          {% else %}<span>{{ SOURCE_LABELS.get(it.source, it.source) }}</span>{% endif %}
           {% if it.taken_out %}<span title="{{ _("Taken out of the binder") }}">🗂 {{ _("taken out") }}</span>{% elif it.filed %}<span title="{{ _("Paper filed") }}">🗂 {% if it.filing_binder %}{{ it.filing_binder }} · {% endif %}{{ it.filing_section }}</span>{% elif it.paper %}<span class="muted">{{ _("Paper not filed") }}</span>{% endif %}
           {% if it.status != 'done' %}{{ status_badge(it.status) }}{% endif %}
         </p>

@@ -30,7 +30,7 @@ onnxruntime, tokenizers and numpy). There is no message broker, no external data
 | Worker | `heftig worker` | Consume folder polling, IMAP polling, processing jobs (OCR, classification), export/import/reindex/rebuild/title jobs, embedding documents for the search by meaning, heartbeat, hourly maintenance |
 | Both | `heftig run` | Web server plus the worker in a thread of the same process (simple local setup) |
 | Database | `archive/index.sqlite` | Search index and a queryable copy of all document metadata; primary store for jobs, users, sessions, API tokens, IMAP cursors, the ingest event log and the settings saved in the web interface |
-| Sidecars | `archive/documents/<uuid>/`, `archive/trash/<uuid>/`, `taxonomy.json`, `binders.json`, `saved_searches.json`, `synonyms.json` | Authoritative, human-readable document data; the database can be rebuilt from them |
+| Sidecars | `archive/documents/<uuid>/`, `archive/trash/<uuid>/`, `taxonomy.json`, `binders.json`, `saved_searches.json`, `synonyms.json`, `senders.json` | Authoritative, human-readable document data; the database can be rebuilt from them |
 
 Settings come from environment variables (`config.Settings`) plus the values saved on the setup
 and settings pages (`settings_store`, stored in the database's `meta` table). An environment

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}{{ _("E-mail senders") }}{% endblock %}
+{% block content %}
+<nav class="crumbs"><a href="/settings">← {{ _("Settings") }}</a></nav>
+<h1>{{ _("E-mail senders") }}</h1>
+{% if message %}<p class="notice ok" role="status">{{ message }}</p>{% endif %}
+<p>{{ _("The addresses your documents were e-mailed from. A name you give is shown instead of the address – on the document, in the list and in the filter – for all documents from that address.") }}</p>
+{% if rows %}
+<form method="post" action="/settings/senders" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf }}">
+  <table class="senders">
+    <thead><tr><th scope="col">{{ _("Address") }}</th><th scope="col">{{ _("Name") }}</th><th scope="col">{{ _("Documents") }}</th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td><input type="hidden" name="address" value="{{ r.address }}"><label for="sn-{{ loop.index }}">{{ r.address }}</label></td>
+        <td><input id="sn-{{ loop.index }}" name="name" value="{{ r.name }}" maxlength="80" placeholder="{{ _("e.g. Anna") }}"></td>
+        <td>{% if r.count %}<a href="/?email_from={{ r.address | urlencode }}">{{ r.count }}</a>{% else %}0{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="buttons"><button class="primary">{{ _("Save") }}</button></p>
+</form>
+{% else %}
+<p class="card">{{ _("No documents have come by e-mail yet.") }}</p>
+{% endif %}
+{% endblock %}
