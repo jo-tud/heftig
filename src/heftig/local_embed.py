@@ -40,9 +40,9 @@ class ModelSpec:
     min_similarity: float = 0.0  # cosine below which texts count as unrelated (calibrated)
 
 
-# Chosen by measurement (docs/search.md, "Search by meaning"): on the German benchmark it ranks
-# best by meaning alone (MRR 0.98; multilingual-e5-small 0.85, granite-97m 0.74), multilingual,
-# Apache-2.0, int8-quantised for the CPU (about 17 chunks/s on two cores of a notebook CPU).
+# Chosen by measurement (docs/search.md, "Search by meaning"): on real German and English
+# questions only models three to five times slower rank better by meaning; multilingual,
+# Apache-2.0, int8-quantised for the CPU (about 13 pieces/s on two cores of a notebook CPU).
 DEFAULT = ModelSpec(
     name="snowflake-arctic-embed-m-v2.0-int8",
     repo="Snowflake/snowflake-arctic-embed-m-v2.0",
@@ -77,14 +77,15 @@ class LocalEmbedder:
     """Embedder protocol (providers/base.py) on a local ONNX model.
 
     Loaded on first use and unloaded after IDLE_SECONDS without use, in the worker as in the web
-    process: about 850 MB while texts are embedded, back to almost nothing when idle.
+    process: about 750 MB while texts are embedded, back to almost nothing when idle.
     """
 
     adapter_version = "local-onnx-v1"
     target = "local"
-    # small batches and no memory arena keep the peak low (1.56 GB -> 0.85 GB for 1,200-character
-    # chunks) at little cost in speed
-    BATCH = 4
+    # one text at a time and no memory arena: nothing is padded to the longest text of a batch,
+    # which is faster and keeps the peak low (real pieces, two cores: batches of 4 - 9 pieces/s,
+    # 970 MB; one at a time - 13 pieces/s, 730 MB)
+    BATCH = 1
 
     def __init__(self, spec: ModelSpec, directory: Path, threads: int | None = None):
         self.spec = spec
