@@ -197,7 +197,7 @@ def parse_query(q: str) -> ParsedQuery:
             continue
         _add_text(out, m.group(6))
     # "die Rechnung vom Zahnarzt": function words need not occur (unless that is all there is)
-    meaningful = [t for t in out.terms if t.phrase or t.tokens[0] not in STOPWORDS]
+    meaningful = [t for t in out.terms if t.phrase or t.quoted or t.tokens[0] not in STOPWORDS]
     if meaningful:
         out.terms = meaningful
     if len(out.terms) > MAX_TERMS:
@@ -372,7 +372,7 @@ def _prepare_terms(
         if any(c.isdigit() for c in tok) or len(tok) < 4 or _found_anywhere(v, t):
             continue
         fixed = expand.correct(v, tok, stats)
-        if fixed:
+        if fixed and fixed != tok:
             corrections.append((tok, fixed))
             t.tokens = [fixed]
             _expand(v, t)

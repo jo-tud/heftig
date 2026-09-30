@@ -85,6 +85,22 @@ def build_row(conn: sqlite3.Connection, doc_row: sqlite3.Row, text: str) -> dict
     }
 
 
+GENERATION_KEY = "index_generation"  # meta: counts every change of the index (search caches)
+
+
+def _changed(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        "INSERT INTO meta(key, value) VALUES(?, '1') ON CONFLICT(key) DO UPDATE SET "
+        "value = CAST(value AS INTEGER) + 1",
+        (GENERATION_KEY,),
+    )
+
+
+def generation(conn: sqlite3.Connection) -> str:
+    row = conn.execute("SELECT value FROM meta WHERE key = ?", (GENERATION_KEY,)).fetchone()
+    return row[0] if row else "0"
+
+
 def index_document(conn: sqlite3.Connection, doc_id: str) -> None:
     row = conn.execute("SELECT rowid, * FROM documents WHERE id=?", (doc_id,)).fetchone()
     if row is None:
@@ -98,14 +114,17 @@ def index_document(conn: sqlite3.Connection, doc_id: str) -> None:
         f"INSERT INTO doc_fts(rowid, {cols}) VALUES(?, {marks})",
         (row["rowid"], *[data[c] for c in FTS_COLUMNS]),
     )
+    _changed(conn)
 
 
 def remove_document(conn: sqlite3.Connection, rowid: int) -> None:
     conn.execute("DELETE FROM doc_fts WHERE rowid=?", (rowid,))
+    _changed(conn)
 
 
 def rebuild(conn: sqlite3.Connection) -> int:
     conn.execute("DELETE FROM doc_fts")
+    _changed(conn)
     ids = [r[0] for r in conn.execute("SELECT id FROM documents ORDER BY ingest_sequence")]
     for doc_id in ids:
         index_document(conn, doc_id)

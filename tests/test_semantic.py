@@ -287,3 +287,69 @@ def test_worker_embeds_in_its_own_thread(tmp_path):
     w._embed_new(1010.0)  # not again within 30 s
     assert w._embed is not None and fake.calls == calls
     a.close()
+
+
+def test_embed_threads_do_not_leak_connections(tmp_path):
+    from heftig.archive import Archive
+    from heftig.worker import Worker
+
+    a = Archive(
+        make_settings(
+            tmp_path,
+            embed_provider="openai_compatible",
+            embed_base_url="http://localhost:11434/v1",
+            embed_model="fake-embed-1",
+        )
+    )
+    registry.override(embedder=FakeEmbedder())
+    w = Worker(a)
+    before = len(a._all)
+    for i in range(5):
+        w._embed_new(1000.0 + 60 * i)
+        w._embed.join(timeout=30)
+    assert len(a._all) == before
+    a.close()
+
+
+def test_re_embedding_refreshes_the_vectors_in_memory(archive, ids, embedder, monkeypatch):
+    from heftig import documents as docs
+
+    first = semantic._vectors(archive.conn, embedder.model)
+    # same number of chunks, other content: the rows get the same rowids again
+    docs.update_fields(archive, ids["miete.pdf"], {"title": "Depotauszug Wertpapiere"})
+    assert semantic.embed_pending(archive)["embedded"] == 1
+    second = semantic._vectors(archive.conn, embedder.model)
+    assert second is not first
+    found, _ = _ids(archive, "Wertpapiere", embedder, meaning=True)
+    assert ids["miete.pdf"] in found
+
+
+def test_openai_key_is_shared_only_for_the_openai_api(tmp_path):
+    from pydantic import SecretStr
+
+    from heftig.providers.registry import shared_openai_key
+
+    s = make_settings(tmp_path, classify_provider="openai", classify_api_key=SecretStr("sk-a"))
+    assert shared_openai_key(s) == "sk-a"
+    proxy = make_settings(
+        tmp_path,
+        classify_provider="openai",
+        classify_api_key=SecretStr("sk-a"),
+        classify_base_url="https://proxy.example/v1",
+    )
+    assert shared_openai_key(proxy) is None
+    from heftig.web.ui import meaning_changes
+
+    changes, err = meaning_changes({"meaning_mode": "openai", "meaning_consent": "1"}, s)
+    assert not err and changes.get("embed_api_key") is None  # used, not copied
+    assert meaning_changes({"meaning_mode": "openai", "meaning_consent": "1"}, proxy)[1]
+
+
+def test_form_is_locked_when_the_environment_sets_the_permission(tmp_path):
+    from heftig.archive import Archive
+    from heftig.web.ui import _meaning_view
+
+    a = Archive(make_settings(tmp_path, allow_cloud_embed=False))
+    a.base_settings.model_fields_set.add("allow_cloud_embed")
+    assert _meaning_view(a)["fixed"]
+    a.close()

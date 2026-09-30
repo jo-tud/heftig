@@ -51,7 +51,11 @@ def test_function_words_are_left_out_unless_that_is_all():
 DOCS = {
     "a.pdf": (
         "Hausverwaltung Lindenhof\nAbrechnung der Nebenkosten für 2023\nNachzahlung 80 EUR",
-        {"title": "Abrechnung Nebenkosten 2023", "correspondent": "Hausverwaltung Lindenhof"},
+        {
+            "title": "Abrechnung Nebenkosten 2023",
+            "correspondent": "Hausverwaltung Lindenhof",
+            "correspondent_confidence": 0.95,
+        },
     ),
     "b.pdf": ("Beispiel Versicherung\nVersicherunqsschein Hausrat\nKündiqunq zum Jahresende", {}),
     "c.pdf": (
@@ -136,3 +140,20 @@ def test_synonym_ranked_below_the_word_itself(archive):
     assert found == [ids["a.pdf"]]  # "Nebenkosten" stands for it
     reasons = search(archive.conn, SearchParams(q="Betriebskosten")).items[0]["reasons"]
     assert "Title" in reasons
+
+
+def test_new_alias_is_searchable_at_once(archive):
+    """The vocabulary caches follow every change of the index, also an alias (no persist)."""
+    from heftig import documents as docs
+    from heftig import taxonomy as tax
+
+    _archive_with(archive)
+    assert search(archive.conn, SearchParams(q="Lindenhofverwaltung")).total == 0
+    term = tax.find_term(archive.conn, "correspondent", "Hausverwaltung Lindenhof")
+    docs.add_term_alias(archive, term, "Lindenhofverwaltung")
+    res = search(archive.conn, SearchParams(q="Lindenhofverwaltung"))
+    assert res.total == 1 and not res.corrections
+
+
+def test_quoted_function_word_is_kept():
+    assert [t.tokens for t in parse_query('"die" Rechnung').terms] == [["die"], ["rechnung"]]

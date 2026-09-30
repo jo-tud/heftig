@@ -34,6 +34,7 @@ MAX_FORMS = 30
 MAX_COMPOUNDS = 40
 MAX_SIMILAR = 12
 MAX_SCAN = 4000  # vocabulary rows read per lookup at most
+SIMILAR_SCAN = 20000  # rows read to find similar spellings
 LINKS = ("s", "es", "n", "en", "e", "er")  # joints between the parts of German compounds
 INFLECTIONS = ("en", "es", "e", "n", "s", "er", "ern")
 
@@ -146,11 +147,11 @@ class Vocab:
 
     @property
     def state(self) -> tuple:
+        """Changes with every change of the index and of the archive's own synonyms."""
         if self._state is None:
-            count, last = self.conn.execute(
-                "SELECT COUNT(*), MAX(updated_at) FROM documents"
-            ).fetchone()
-            self._state = (str(self.root), count, last, synonyms.version(self.root))
+            from .index import generation
+
+            self._state = (str(self.root), generation(self.conn), synonyms.version(self.root))
         return self._state
 
     def cached(self, kind: str, key: Any, fn):
@@ -471,7 +472,10 @@ def similar(v: Vocab, tok: str, covered) -> list[str]:
     def run() -> list[str]:
         found = []
         lengths = (len(tok) - 2 * max_d, len(tok) + 2 * max_d)
-        for term, n in v.starting(tok[:2], 20000, lengths):
+        rows = v.starting(tok[:2], SIMILAR_SCAN, lengths)
+        if len(rows) == SIMILAR_SCAN:  # a large vocabulary: the first three letters then
+            rows = v.starting(tok[:3], SIMILAR_SCAN, lengths)
+        for term, n in rows:
             if not term.isalpha() or term == tok or not _close_letters(tok, term, max_d):
                 continue
             dist = distance(tok, term, max_d)
@@ -484,7 +488,14 @@ def similar(v: Vocab, tok: str, covered) -> list[str]:
 
 def correct(v: Vocab, tok: str, stats: dict[str, Any]) -> str | None:
     """The closest indexed word for a word that matches nothing: edit distance 1 (up to five
-    letters) or 2; the first letter may be one that sounds alike (Wodafone -> vodafone)."""
+    letters) or 2; the first letter may be one that sounds alike (Wodafone -> vodafone).
+    Cached (suggestions while typing search again with every letter)."""
+    found, checked = v.cached("fix", tok, lambda: _correct(v, tok))
+    stats["candidates_checked"] = stats.get("candidates_checked", 0) + checked
+    return found
+
+
+def _correct(v: Vocab, tok: str) -> tuple[str | None, int]:
     max_d = 1 if len(tok) <= 5 else 2
     best: tuple[int, int, str] | None = None
     checked = 0
@@ -499,5 +510,4 @@ def correct(v: Vocab, tok: str, stats: dict[str, Any]) -> str | None:
                 key = (d + extra, -doc_count, term)
                 if best is None or key < best:
                     best = key
-    stats["candidates_checked"] = stats.get("candidates_checked", 0) + checked
-    return best[2] if best else None
+    return (best[2] if best else None), checked

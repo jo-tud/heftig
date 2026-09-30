@@ -116,9 +116,16 @@ def get_embedder(s: Settings):
 
     base = s.embed_base_url or (OPENAI_BASE if name == "openai" else "")
     model = s.embed_model or ("text-embedding-3-small" if name == "openai" else "")
-    return OpenAICompatEmbedder(
-        name, base, s.secret("embed_api_key"), model, s.provider_timeout_seconds
-    )
+    key = s.secret("embed_api_key") or (shared_openai_key(s) if name == "openai" else None)
+    return OpenAICompatEmbedder(name, base, key, model, s.provider_timeout_seconds)
+
+
+def shared_openai_key(s: Settings) -> str | None:
+    """The classification's key for OpenAI embeddings - only if it is a key for the OpenAI API
+    itself (not for a proxy or another server)."""
+    if s.classify_provider != "openai" or s.classify_base_url.rstrip("/") not in ("", OPENAI_BASE):
+        return None
+    return s.secret("classify_api_key")
 
 
 def get_search_planner(s: Settings):

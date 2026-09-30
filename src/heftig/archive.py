@@ -95,6 +95,20 @@ class Archive:
                 self._all.append(c)
         return c
 
+    def close_thread_connection(self) -> None:
+        """Close this thread's connection (a thread that ends; the next use opens a new one)."""
+        c = getattr(self._local, "conn", None)
+        if c is None:
+            return
+        self._local.conn = None
+        with self._lock:
+            if c in self._all:
+                self._all.remove(c)
+        try:
+            c.close()
+        except sqlite3.Error:
+            pass
+
     def close(self) -> None:
         with self._lock:
             for c in self._all:
