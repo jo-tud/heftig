@@ -336,6 +336,29 @@ Kaltmiete` one query); `tests/test_search_quality.py` fails when the figures dro
 The queries that still fail need knowledge of the world, not of words: `Wertpapiere` for an ETF
 statement, `Elektriker` for a bill from "Elektro Schulz".
 
+**Real questions.** Queries written for a benchmark by the person who wrote the rules flatter
+them. So the whole search (not only a part of it) was also measured on questions real people
+asked, each over its documents ingested as PDFs into an ordinary archive:
+
+- **German:** 1,491 citizen questions to the City of Munich ("Wie beantrage ich einen
+  Anwohnerparkausweis?") with the answering service article among 810 articles
+  ([it-at-m/LHM-Dienstleistungen-QA](https://huggingface.co/datasets/it-at-m/LHM-Dienstleistungen-QA),
+  MIT);
+- **English:** 648 questions from a finance forum with the answering posts among 2,000 posts
+  (FiQA-2018 as published in [BEIR](https://github.com/beir-cellar/beir)).
+
+| | Munich: MRR@10 | first right | Recall@10 | FiQA: MRR@10 | first right | Recall@10 |
+|---|---|---|---|---|---|---|
+| before (main branch) | 0.511 | 45 % | 64 % | 0.433 | 33 % | 45 % |
+| words (this page) | 0.723 | 64 % | 88 % | 0.477 | 37 % | 50 % |
+| words + meaning (built-in model) | **0.876** | **81 %** | **97 %** | **0.737** | **65 %** | **70 %** |
+
+Every setting was chosen on a part of the questions (the first two fifths) and checked on the
+rest; the figures above are over all of them. The words gained most from ranking a question by
+its important words (see ranking) and from leaving out function words; the meaning gained from
+counting more for questions (see "Search by meaning"). Forum questions are harder for words:
+answers written by other people rarely use the asker's words.
+
 **Your own archive.** `heftig search-eval queries.json` runs your queries against your archive
 and prints the same table. The file is a list of queries and the documents they should find,
 named by title or by the start of their ID (8+ characters):
