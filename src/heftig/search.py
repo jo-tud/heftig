@@ -128,6 +128,7 @@ class ParsedQuery:
     terms: list[Term] = field(default_factory=list)
     filters: dict[str, list[str]] = field(default_factory=dict)
     errors: list[str] = field(default_factory=list)
+    function_words: int = 0  # left out ("die", "wann", "ich" ...)
 
 
 @dataclass
@@ -199,6 +200,7 @@ def parse_query(q: str) -> ParsedQuery:
     # "die Rechnung vom Zahnarzt": function words need not occur (unless that is all there is)
     meaningful = [t for t in out.terms if t.phrase or t.quoted or t.tokens[0] not in STOPWORDS]
     if meaningful:
+        out.function_words = len(out.terms) - len(meaningful)
         out.terms = meaningful
     if len(out.terms) > MAX_TERMS:
         out.terms = out.terms[:MAX_TERMS]
@@ -267,6 +269,16 @@ PROXIMITY_BOOST = 0.5  # BM25 x 1.5 when the search words stand close together
 TITLE_BOOST = 1.0  # BM25 x 2 when the title has every search word (in some form)
 WEAK_MATCH = 0.5  # partial search: a word found only through another word or a similar spelling
 QUESTION_TERMS = 3  # from this many words on, rank by the words found instead of requiring all
+
+
+def written_question(q: str, parsed: ParsedQuery) -> bool:
+    """A written-out question rather than keywords - a question mark, or function words among
+    three words or more ("wann bekomme ich den Bescheid" but not "Rechnung Telekom 2023"): its
+    words are rarely the answer's words, the search by meaning counts more (docs/search.md)."""
+    n = len(parsed.terms)
+    return n > 1 and ("?" in q or (n >= QUESTION_TERMS and parsed.function_words >= 2))
+
+
 NEAR_DISTANCE = 10  # words in between
 
 _INFLECTIONS = ("en", "es", "e", "n", "s")
@@ -784,7 +796,7 @@ def search(
             if meaning:
                 ranked = _with_meaning(
                     conn, embedder, q, clauses, ranked, errors, by_meaning,
-                    question=len(terms) >= QUESTION_TERMS,
+                    question=written_question(q, parsed),
                 )  # fmt: skip
                 total = len(ranked)
             rows = ranked[(page - 1) * per_page : page * per_page]
