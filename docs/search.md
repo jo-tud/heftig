@@ -454,9 +454,11 @@ overview (task `embed`, and `search` for each query).
 
 **Searching.** On the results page, *≈ Search by meaning too* (URL parameter `meaning=1`, API
 `meaning=true`) embeds the query - one call to the model - and compares it with every stored
-chunk (cosine, in memory; no database extension). The 20 documents with the most similar chunk,
-within the active filters, are merged with the word search's ranking by weighted Reciprocal Rank
-Fusion (Cormack et al. 2009): score = 1 / (60 + word rank) + 0.5 / (60 + meaning rank). A
+chunk (cosine, in memory; no database extension). Up to 20 documents whose most similar chunk
+**stands out** - at least max(2, √(2 ln n) − 0.8) standard deviations above the average over all
+n documents; every query is similar to something, and how similar unrelated texts are depends on
+the model - are, within the active filters, merged with the word search's ranking by weighted
+Reciprocal Rank Fusion (Cormack et al. 2009): score = 1 / (60 + word rank) + 0.5 / (60 + meaning rank). A
 document found both ways comes first, one found only by meaning is added (reason "Meaning"),
 and the word search's order counts double. When the model fails, the word search's results are
 shown with the error.
@@ -468,12 +470,14 @@ against any OpenAI-compatible server):
 | | MRR@10 | Success@1 | Recall@10 | no result | time per query |
 |---|---|---|---|---|---|
 | main set, words only | 0.979 | 94 % | 96 % | 1 | ~4 ms |
-| main set, words + meaning | 0.985 | 96 % | 100 % | 0 | ~120 ms |
+| main set, words + meaning | 0.984 | 96 % | 98 % | 0 | ~120 ms |
 | held-out set, words only | 0.940 | 94 % | 93 % | 2 | ~3 ms |
 | held-out set, words + meaning | 0.990 | 98 % | 100 % | 0 | ~130 ms |
 
 With equal weights (1 : 1) the main set dropped to 0.974: the model then pushed an ad for
-insurance above the car insurance itself. The time is the embedding of the query on the
+insurance above the car insurance itself. Without the "stands out" rule every query - also
+"Rezept Apfelkuchen" in an archive without recipes - brought 20 documents; with it such
+queries bring none to two, while the figures above stay the same. The time is the embedding of the query on the
 benchmark machine's CPU. Comparing it with 30,000 stored chunks (roughly 10,000 documents, 768
 dimensions) takes about 20 ms with numpy (in the container image; `pip install
 "heftig[semantic]"`) and about 1 s in pure Python without it.

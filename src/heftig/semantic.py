@@ -38,6 +38,8 @@ MAX_CHUNKS = 12
 DOCS_PER_ROUND = 32
 NEAREST = 20  # documents by meaning merged into the results
 RRF_K = 60
+MIN_Z = 2.0  # a document counts as near when it is this many standard deviations above average
+MIN_DOCS_FOR_CUTOFF = 10
 MEANING_WEIGHT = 0.5  # the word search counts double: measured in docs/search.md
 
 # Task prefixes some models need to embed a query differently from a document.
@@ -288,7 +290,17 @@ def nearest(
     for doc_id, sim in store.similarities(q):
         if sim > best.get(doc_id, -2.0):
             best[doc_id] = sim
-    return sorted(best.items(), key=lambda x: -x[1])[:limit]
+    ranked = sorted(best.items(), key=lambda x: -x[1])
+    if len(ranked) >= MIN_DOCS_FOR_CUTOFF:
+        # only documents that stand out from the rest: every query is "similar" to something,
+        # and how similar unrelated texts are differs from model to model
+        sims = [x[1] for x in ranked]
+        mean = sum(sims) / len(sims)
+        std = math.sqrt(sum((x - mean) ** 2 for x in sims) / len(sims)) or 1.0
+        # the largest of n random values lies about sqrt(2 ln n) deviations above average
+        min_z = max(MIN_Z, math.sqrt(2 * math.log(len(sims))) - 0.8)
+        ranked = [(d, sim) for d, sim in ranked if (sim - mean) / std >= min_z]
+    return ranked[:limit]
 
 
 def fuse(
