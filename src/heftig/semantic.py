@@ -85,12 +85,14 @@ def model_name(settings) -> str:
 
 
 def status(conn: sqlite3.Connection, settings) -> dict[str, Any]:
-    """How many documents are embedded with the model, and whether it is downloaded."""
+    """How many of the documents that are embedded (archived ones, as `pending`) are embedded
+    with the model, and whether it is downloaded."""
     model = model_name(settings)
-    total = conn.execute("SELECT COUNT(*) FROM documents").fetchone()[0]
+    archived = "d.status IN ('done', 'needs_review')"
+    total = conn.execute(f"SELECT COUNT(*) FROM documents d WHERE {archived}").fetchone()[0]
     done = conn.execute(
         "SELECT COUNT(*) FROM doc_embed_state s JOIN documents d ON d.id = s.doc_id "
-        "WHERE s.model = ?",
+        f"WHERE s.model = ? AND {archived}",
         (model,),
     ).fetchone()[0]
     e = embedder_for(settings) if available(settings) else None

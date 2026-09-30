@@ -16,7 +16,9 @@
       <span><strong>{{ _("No") }}</strong><br><span class="hint">{{ _("Search by words only. You can switch it on later under Settings.") }}</span></span></label>
   </fieldset>
   {% if not wizard and s.semantic_search %}
-  <p class="hint">{% if not status.downloaded %}{{ _("The model is downloaded when the next documents are prepared.") }}{% else %}{% trans done=status.done, total=status.total %}{{ done }} of {{ total }} documents prepared.{% endtrans %}{% endif %}
+  {% set done %}<span data-meaning="done">{{ status.done }}</span>{% endset %}
+  {% set total %}<span data-meaning="total">{{ status.total }}</span>{% endset %}
+  <p class="hint" data-meaning-progress><span data-meaning="waiting" {% if status.downloaded %}hidden{% endif %}>{{ _("The model is downloaded when the next documents are prepared.") }}</span><span data-meaning="counts" {% if not status.downloaded %}hidden{% endif %}>{% trans done=done, total=total %}{{ done }} of {{ total }} documents prepared.{% endtrans %}</span>
     {% if last_error %}<br><span class="error-text">{{ _("Last error:") }} {{ last_error | reason }}</span>{% endif %}</p>
   {% endif %}
   <p class="buttons"><button type="submit" class="primary">{{ _("Save") if not wizard else _("Save and continue") }}</button>

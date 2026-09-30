@@ -113,6 +113,25 @@
     };
     setTimeout(tick, 3000);
   }
+  // Search by meaning: the number of prepared documents updates in place while the worker
+  // embeds them (settings pages)
+  const meaning = document.querySelector("[data-meaning-progress]");
+  if (meaning) {
+    const show = (name, on) => meaning.querySelectorAll(`[data-meaning="${name}"]`).forEach((el) => { el.hidden = !on; });
+    const tick = async () => {
+      try {
+        const r = await fetch("/settings/search/progress", { headers: { Accept: "application/json" } });
+        if (!r.ok) return;
+        const s = await r.json();
+        meaning.querySelectorAll("[data-meaning=done]").forEach((el) => { el.textContent = s.done; });
+        meaning.querySelectorAll("[data-meaning=total]").forEach((el) => { el.textContent = s.total; });
+        show("waiting", !s.downloaded);
+        show("counts", s.downloaded);
+        if (s.active && (!s.downloaded || s.done < s.total)) setTimeout(tick, 5000);
+      } catch (_) { setTimeout(tick, 15000); }
+    };
+    setTimeout(tick, 5000);
+  }
   // "Mehr" menus close on a click elsewhere or Escape
   document.addEventListener("click", (e) => {
     document.querySelectorAll("details.menu[open]").forEach((m) => { if (!m.contains(e.target)) m.open = false; });

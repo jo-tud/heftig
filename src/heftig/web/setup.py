@@ -475,6 +475,15 @@ def search_page(request: Request, p: Principal = Depends(require_user)):
     return render(request, "setup_search.html", **ctx)
 
 
+@router.get("/settings/search/progress")
+def search_progress(request: Request, p: Principal = Depends(require_user)):
+    """The number of prepared documents, for the settings pages to update in place."""
+    from .. import semantic
+
+    a = get_archive(request)
+    return {"active": semantic.available(a.settings), **semantic.status(a.conn, a.settings)}
+
+
 @router.post("/settings/search")
 async def search_submit(request: Request, p: Principal = Depends(require_write)):
     form = dict(await request.form())

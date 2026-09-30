@@ -77,8 +77,9 @@
 <section class="card" aria-labelledby="meaning-h">
   <h2 id="meaning-h">{{ _("Search by meaning") }}</h2>
   {% if meaning.active %}
-  <p>{% if not meaning.status.downloaded %}{{ _("On – the model is downloaded when the next documents are prepared.") }}
-    {% else %}{% trans done=meaning.status.done, total=meaning.status.total %}On – {{ done }} of {{ total }} documents prepared.{% endtrans %}{% endif %}
+  {% set done %}<span data-meaning="done">{{ meaning.status.done }}</span>{% endset %}
+  {% set total %}<span data-meaning="total">{{ meaning.status.total }}</span>{% endset %}
+  <p data-meaning-progress><span data-meaning="waiting" {% if meaning.status.downloaded %}hidden{% endif %}>{{ _("On – the model is downloaded when the next documents are prepared.") }}</span><span data-meaning="counts" {% if not meaning.status.downloaded %}hidden{% endif %}>{% trans done=done, total=total %}On – {{ done }} of {{ total }} documents prepared.{% endtrans %}</span>
     {% if meaning.error %}<br><span class="error-text small">{{ _("Last error:") }} {{ meaning.error | reason }}</span>{% endif %}</p>
   {% else %}<p>{{ _("Off – the search finds documents by their words only.") }}</p>{% endif %}
   <p><a class="button" href="/settings/search">{{ _("Change") }}</a></p>

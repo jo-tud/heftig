@@ -348,7 +348,11 @@ def test_setup_assistant_asks_and_settings_can_switch_it_off(tmp_path):
     assert r.headers["location"] == "/settings/mail?setup=1"
     a.refresh_settings()
     assert a.settings.semantic_search
-    assert "das Modell wird geladen" in c.get("/settings").text
+    page = c.get("/settings").text
+    assert "das Modell wird geladen" in page
+    assert '<span data-meaning="done">0</span>' in page  # updated in place (app.js)
+    progress = c.get("/settings/search/progress").json()
+    assert progress["active"] and progress["done"] == 0 and progress["total"] == 0
     c.post("/settings/search", data={"csrf_token": csrf, "semantic": "0"})
     a.refresh_settings()
     assert not a.settings.semantic_search
