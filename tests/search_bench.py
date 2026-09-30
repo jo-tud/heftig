@@ -941,3 +941,68 @@ def load(archive) -> dict[str, str]:
     }
     process_all(archive)
     return ids
+
+
+# Held out: written after the search changes, without looking at the results, to check that
+# the rules are not fitted to QUERIES. Some need knowledge no word rule has (Wertpapiere for an
+# ETF statement) and are expected to fail.
+HELDOUT: list[tuple[str, dict[str, int], tuple[str, ...]]] = [
+    ("Mobilfunkvertrag kündigen", {"vodafone_kuendigung.pdf": 2}, ()),
+    ("Wasserrechnung", {"wasser_2023.pdf": 2}, ()),
+    ("Stromabschlag", {"stadtwerke_abschlag_2024.pdf": 2}, ()),
+    ("Abschläge Strom", {"stadtwerke_abschlag_2024.pdf": 2}, ()),
+    ("Mieterhöhung", {"mieterhoehung_2024.pdf": 2}, ()),
+    ("Bello", {"tierarzt.pdf": 2, "hundesteuer.pdf": 2}, ()),
+    ("Zahnreinigung", {"zahnarzt_2024.pdf": 2}, ()),
+    ("Physiotherapie", {"klinikum_brief.pdf": 2}, ()),
+    ("Unfall", {"klinikum_brief.pdf": 2}, ()),
+    ("Lohnsteuer 2023", {"lohnsteuerbescheinigung_2023.pdf": 2}, ()),
+    ("Kirchensteuer", {"est_bescheid_2023.pdf": 2}, ()),
+    (
+        "Solidaritätszuschlag",
+        {"est_bescheid_2023.pdf": 2, "est_bescheid_2022.pdf": 2, "lohn_2024_03.pdf": 1},
+        (),
+    ),
+    ("Einkommensteuerbescheide", {"est_bescheid_2023.pdf": 2, "est_bescheid_2022.pdf": 2}, ()),
+    ("Steuerbescheid Finanzamt 2022", {"est_bescheid_2022.pdf": 2}, ()),
+    ("Gehaltsabrechnungen 2024", {"lohn_2024_03.pdf": 2, "lohn_2024_04.pdf": 2}, ()),
+    ("Kontoauszug Februar", {"kontoauszug_2024_02.pdf": 2}, ()),
+    ("Sparkasse", {"kontoauszug_2024_01.pdf": 2, "kontoauszug_2024_02.pdf": 2}, ()),
+    ("Darlehen Zins", {"darlehen.pdf": 2}, ()),
+    ("ETF", {"depot_2024.pdf": 2}, ()),
+    ("Wertpapiere", {"depot_2024.pdf": 2}, ()),
+    ("Altersvorsorge", {"riester.pdf": 2, "renteninfo_2024.pdf": 1}, ()),
+    ("Reisepass abholen", {"reisepass.pdf": 2}, ()),
+    ("Kindergeld Paul", {"kindergeld.pdf": 2}, ()),
+    ("Elternbeitrag", {"kita_2024.pdf": 2}, ()),
+    ("Fahrkarte München", {"bahn_ticket.pdf": 2}, ()),
+    ("Hotel Mallorca", {"reise_mallorca.pdf": 2}, ()),
+    ("Fernsehgerät", {"fernseher.pdf": 2}, ()),
+    ("OLED", {"fernseher.pdf": 2}, ()),
+    ("Bosch", {"waschmaschine.pdf": 2}, ()),
+    ("Garantie", {"waschmaschine.pdf": 2, "fernseher.pdf": 2}, ()),
+    ("Elektriker", {"elektriker.pdf": 2}, ()),
+    ("FI-Schalter", {"elektriker.pdf": 2}, ()),
+    ("Brennwerttherme", {"schornsteinfeger.pdf": 2}, ()),
+    ("Abgasmessung 2024", {"schornsteinfeger.pdf": 2}, ()),
+    ("Wohnung Lindenweg", {"mietvertrag.pdf": 2}, ()),
+    ("Grundschuld", {"darlehen.pdf": 2}, ()),
+    ("Kaution", {"mietvertrag.pdf": 2}, ()),
+    ("Heizkosten", {"mietvertrag.pdf": 2, "betriebskosten_2023.pdf": 1, "gas_2023.pdf": 1}, ()),
+    ("Versicherungsnummer", {"renteninfo_2024.pdf": 2, "allianz_haftpflicht.pdf": 2}, ()),
+    (
+        "Kundennummer 5566778899",
+        {"telekom_2024_05.pdf": 2, "telekom_2024_06.pdf": 2, "telekom_festnetz_2024.pdf": 2},
+        (),
+    ),
+    ("Beitragsnummer", {"rundfunkbeitrag.pdf": 2}, ()),
+    ("Zeugnis Mathematik", {"schulzeugnis_mia.pdf": 2}, ()),
+    ("arbeitsunfähig", {"hausarzt_au.pdf": 2}, ()),
+    ("Krankenversicherung Beitrag 2024", {"tk_beitrag.pdf": 2}, ()),
+    ("Autohaus", {"werkstatt_2024.pdf": 2}, ()),
+    ("Ölwechsel", {"werkstatt_2024.pdf": 2}, ()),
+    ("Reifen", {"werkstatt_2024.pdf": 2}, ()),
+    ("Kfz-Haftpflicht", {"huk_kfz_2024.pdf": 2}, ()),
+    ("Teilkasko", {"huk_kfz_2024.pdf": 2}, ()),
+    ("Golf", {"tuev_2024.pdf": 2, "werkstatt_2024.pdf": 2, "huk_kfz_2024.pdf": 2}, ()),
+]

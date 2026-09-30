@@ -30,6 +30,8 @@ dependencies = [
 anthropic = ["anthropic>=0.70"]
 # `heftig mcp`: connect Claude (Desktop / Code) to the archive, see docs/mcp.md
 mcp = ["mcp>=2.2"]
+# search by meaning: fast vector comparison for large archives (works without, slower)
+semantic = ["numpy>=1.26"]
 
 [project.scripts]
 heftig = "heftig.cli:main"

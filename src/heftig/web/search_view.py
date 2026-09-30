@@ -243,4 +243,6 @@ def build(
     }
     if result.date_phrase:
         view["literal_href"] = with_values(items, literal="1")
+    view["meaning_on_href"] = with_values(items, meaning="1")
+    view["meaning_off_href"] = with_values(items, meaning=None)
     return view

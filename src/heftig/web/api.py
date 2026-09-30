@@ -174,6 +174,7 @@ def _search_params(
     tag_mode: Literal["all", "any"] = "all",
     literal: bool = False,
     session: str | None = None,
+    meaning: bool = False,
 ) -> SearchParams:
     return SearchParams(
         q=q, correspondent=correspondent, document_type=document_type, tags=tag,
@@ -183,6 +184,7 @@ def _search_params(
         filing_binder=filing_binder or None,
         cf_key=cf_key or None, cf_min=cf_min, cf_max=cf_max, sort=sort, page=page,
         per_page=per_page, tag_mode=tag_mode, literal=literal, session=session or None,
+        meaning=meaning,
     )  # fmt: skip
 
 
@@ -194,9 +196,13 @@ def api_search(
     p: Principal = Depends(require_user),
 ):
     """``facets=true``: counts as on the search page (each group without its own filter);
-    ``facets=within``: every count within all filters (statistics)."""
+    ``facets=within``: every count within all filters (statistics). ``meaning=true``: also
+    search by meaning, if an embedding model is set up (one call to it per search)."""
+    from .ui import meaning_embedder
+
+    a = get_archive(request)
     mode = {"false": False, "0": False, "true": True, "1": True, "within": "within"}[facets]
-    return search(get_archive(request).conn, params, with_facets=mode).as_dict()
+    return search(a.conn, params, with_facets=mode, embedder=meaning_embedder(a, params)).as_dict()
 
 
 @router.get("/suggest", tags=["search"])

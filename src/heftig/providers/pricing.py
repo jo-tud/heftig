@@ -10,6 +10,9 @@ MODEL_PRICES: dict[str, tuple[float, float]] = {
     "claude-opus-5": (5.0, 25.0),
     "claude-sonnet-5": (2.0, 10.0),
     "claude-haiku-4-5": (1.0, 5.0),
+    # embeddings (search by meaning): input only
+    "text-embedding-3-small": (0.02, 0.0),
+    "text-embedding-3-large": (0.13, 0.0),
 }
 
 

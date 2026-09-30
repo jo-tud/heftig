@@ -21,6 +21,7 @@ from .i18n import N_
 
 OcrProviderName = Literal["none", "tesseract", "openai", "anthropic", "openai_compatible", "mock"]
 ClassifyProviderName = Literal["none", "rules", "openai", "anthropic", "openai_compatible", "mock"]
+EmbedProviderName = Literal["none", "openai", "openai_compatible"]
 
 CLOUD_PROVIDERS = {"openai", "anthropic"}
 
@@ -158,6 +159,14 @@ class Settings(BaseSettings):
     # AI search (question -> filters) with Anthropic: a small, fast model; empty = classify model
     ai_search_model: str = "claude-haiku-4-5-20251001"
     allow_cloud_classify: bool = False
+    # --- search by meaning (embeddings, optional; see docs/search.md) ---------------------
+    embed_provider: EmbedProviderName = "none"
+    embed_model: str = ""
+    embed_base_url: str = ""
+    embed_api_key: SecretStr | None = None
+    embed_api_key_file: str | None = None
+    allow_cloud_embed: bool = False
+
     provider_timeout_seconds: int = 120
     # when a remote AI provider is unreachable: process locally right away (Tesseract / rules)
     # and redo the AI steps automatically once it answers again
@@ -250,6 +259,17 @@ class Settings(BaseSettings):
             return N_(
                 "Cloud classification is not allowed (set HEFTIG_ALLOW_CLOUD_CLASSIFY=true if "
                 "document texts may be sent to this provider)."
+            )
+        return None
+
+    def embed_blocked_reason(self) -> str | None:
+        if (
+            self.provider_is_cloud(self.embed_provider, self.embed_base_url)
+            and not self.allow_cloud_embed
+        ):
+            return N_(
+                "Search by meaning with a cloud service is not allowed (set "
+                "HEFTIG_ALLOW_CLOUD_EMBED=true if document texts may be sent to this provider)."
             )
         return None
 

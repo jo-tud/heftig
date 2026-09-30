@@ -598,3 +598,6 @@ html.privacy .pv-media.pv-open .pv-hide:hover { opacity: 1; }
 .card:has(> h2:target) { animation: target-flash 1.6s ease-out; }
 @keyframes target-flash { 0%, 30% { box-shadow: 0 0 0 3px var(--accent); } 100% { box-shadow: none; } }
 @media (prefers-reduced-motion: reduce) { .card:has(> h2:target) { animation: none; box-shadow: 0 0 0 3px var(--accent); } }
+.meaning-form fieldset { border: 0; padding: 0; margin: 0 0 .5rem; }
+.meaning-form > label:not(.choice) { display: block; margin: .4rem 0; }
+.meaning-offer { margin: .2rem 0 .6rem; }

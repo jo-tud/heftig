@@ -31,13 +31,14 @@ EDITABLE = {
     "ocr_provider", "ocr_model", "ocr_base_url", "ocr_api_key", "allow_cloud_ocr",
     "classify_provider", "classify_model", "classify_base_url", "classify_api_key",
     "allow_cloud_classify", "ai_search_model", "ocr_languages",
+    "embed_provider", "embed_model", "embed_base_url", "embed_api_key", "allow_cloud_embed",
     # e-mail
     "imap_host", "imap_port", "imap_user", "imap_password", "imap_mailbox", "imap_move_to",
     "imap_delete_after_import", "imap_allowed_senders",
     # paper, scanner, trash
     "auto_file_sources", "consume_after", "filing_granularity", "trash_retention_days",
 }  # fmt: skip
-SECRETS = {"ocr_api_key", "classify_api_key", "imap_password"}
+SECRETS = {"ocr_api_key", "classify_api_key", "embed_api_key", "imap_password"}
 
 
 class SettingsError(ValueError):

@@ -49,8 +49,12 @@ class CaseResult:
     notes: list[str] = field(default_factory=list)
 
 
-def evaluate_case(conn: sqlite3.Connection, case: Case, today: date | None = None) -> CaseResult:
-    res = search(conn, SearchParams(q=case.q, per_page=K), today=today)
+def evaluate_case(
+    conn: sqlite3.Connection, case: Case, today: date | None = None, embedder=None
+) -> CaseResult:
+    """`embedder`: search by meaning too (semantic.py)."""
+    params = SearchParams(q=case.q, per_page=K, meaning=embedder is not None)
+    res = search(conn, params, today=today, embedder=embedder)
     ranked = [it["id"] for it in res.items]
     best = max(case.grades.values())
     first = next((i + 1 for i, d in enumerate(ranked) if case.grades.get(d) == best), None)
@@ -94,9 +98,9 @@ def summarize(results: list[CaseResult]) -> dict[str, float]:
 
 
 def evaluate(
-    conn: sqlite3.Connection, cases: list[Case], today: date | None = None
+    conn: sqlite3.Connection, cases: list[Case], today: date | None = None, embedder=None
 ) -> tuple[dict[str, float], list[CaseResult]]:
-    results = [evaluate_case(conn, c, today) for c in cases]
+    results = [evaluate_case(conn, c, today, embedder) for c in cases]
     return summarize(results), results
 
 

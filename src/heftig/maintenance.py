@@ -10,6 +10,7 @@ Export format (directory or ZIP), see docs/data-format.md::
     taxonomy.json            correspondents, document types, tags incl. aliases
     saved_searches.json      saved searches (optional)
     binders.json             the binders of the paper filing (optional)
+    synonyms.json            the archive's own words that mean the same (optional)
     state/                   sequences, ingest event log, IMAP cursors, user/token names
                              (never passwords, password hashes, tokens or API keys)
 """
@@ -29,7 +30,7 @@ from datetime import UTC, timedelta
 from pathlib import Path
 from typing import Any
 
-from . import __version__, binders, jobs, saved_searches
+from . import __version__, binders, jobs, saved_searches, synonyms
 from . import documents as docs
 from . import index as fts
 from . import taxonomy as tax
@@ -54,6 +55,7 @@ metadata.jsonl    all metadata objects, one per line, in ingest order
 taxonomy.json     correspondents, document types and tags with aliases
 saved_searches.json  saved searches of the search page (optional)
 binders.json      the binders of the paper filing (optional)
+synonyms.json     words that mean the same, for the search (optional)
 state/            sequences, ingest events, IMAP cursors, user names (no secrets)
 manifest.json     list of all files with SHA-256 for verification
 
@@ -453,6 +455,9 @@ def export_archive(
         known_binders = binders.load(archive.paths)
         if known_binders:
             _write_json(work / binders.FILENAME, {"version": 1, "binders": known_binders})
+        own_synonyms = synonyms.load(archive.paths)
+        if own_synonyms:
+            _write_json(work / synonyms.FILENAME, {"version": 1, "groups": own_synonyms})
         _write_json(work / "state" / "sequences.json", sequences)
         _write_json(work / "state" / "imap_state.json", imap_state)
         _write_json(work / "state" / "users.json", {"users": users, "api_tokens": tokens})
@@ -602,6 +607,11 @@ def import_archive(archive: Archive, src: Path, progress=None) -> dict[str, Any]
             data = read_json(root / binders.FILENAME)
             report["binders"] = binders.merge(
                 archive.paths, data.get("binders", []) if isinstance(data, dict) else []
+            )
+        if (root / synonyms.FILENAME).exists():
+            data = read_json(root / synonyms.FILENAME)
+            report["synonyms"] = synonyms.merge(
+                archive.paths, data.get("groups", []) if isinstance(data, dict) else []
             )
 
         lines = (root / "metadata.jsonl").read_text(encoding="utf-8").splitlines()
@@ -851,7 +861,7 @@ def backup(archive: Archive, dest_parent: Path) -> Path:
                 shutil.copytree(src, work / sub)
         if archive.paths.taxonomy.exists():
             shutil.copyfile(archive.paths.taxonomy, work / "taxonomy.json")
-        for name in (saved_searches.FILENAME, binders.FILENAME):
+        for name in (saved_searches.FILENAME, binders.FILENAME, synonyms.FILENAME):
             if (root / name).exists():
                 shutil.copyfile(root / name, work / name)
         _write_json(

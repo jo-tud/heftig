@@ -77,10 +77,15 @@ Other ways to run it (Docker Compose, without containers, behind a reverse proxy
   an AI model). Title, date, sender, document type, tags, amounts and contract numbers are
   suggested; dates and numbers are only accepted if they really appear in the text. Anything you
   correct is locked and never overwritten.
-- **Finding:** full-text search that tolerates typos, umlauts and spacing in numbers, understands
+- **Finding:** full-text search built for German paperwork: word forms (Kindern → Kind),
+  compounds in both directions (Steuerbescheid → Einkommensteuerbescheid, Stromrechnung →
+  Strom + Rechnung), other words for the same thing (Nebenkosten → Betriebskosten, your own
+  groups too), OCR errors in scans, typos, umlauts and spacing in numbers; it understands
   phrases like “March 2025” or “last year”, shows filters with counts and a timeline, suggests
-  while you type, and marks the hits on the page. Optionally, an AI turns a question like
-  “phone bills over $50 last year” into filters. The search itself never leaves your computer.
+  while you type, and marks the hits on the page. Its quality is measured (docs/search.md).
+  The search itself never leaves your computer. Optionally, an AI turns a question like
+  “phone bills over $50 last year” into filters, and an embedding model - local or OpenAI -
+  adds a search by meaning (“securities” finds the ETF statement).
 - **Paper without archive numbers:** file letters in binders with a section per month, newest
   on top. Heftig records the binder and the position when you mark a letter as filed and later
   shows exactly where it is, and which letters lie above and below it.
@@ -126,7 +131,7 @@ know:
 | [docs/operations.md](docs/operations.md) | Installation variants, HTTPS and phones, backup and restore, updates, logs |
 | [docs/scanner-imap.md](docs/scanner-imap.md) | Scanners (network folder, scan-to-email), SMB shares, mail import |
 | [docs/providers.md](docs/providers.md) | AI and OCR providers, local models, privacy |
-| [docs/search.md](docs/search.md) | How search works: ranking, typos, syntax, date phrases |
+| [docs/search.md](docs/search.md) | How search works: ranking, word forms, synonyms, typos, syntax, date phrases, search by meaning, measured quality |
 | [docs/mcp.md](docs/mcp.md) | Ask Claude about your archive (read-only) |
 | [docs/data-format.md](docs/data-format.md) | The archive on disk, export and import |
 | [docs/architecture.md](docs/architecture.md) | Components, pipeline, security model – the place to start before changing things |
