@@ -1208,11 +1208,8 @@ def word_matches(word: str, terms: list[Term]) -> bool:
 
 
 def count_hits(text: str, terms: list[Term]) -> int:
-    return sum(
-        1
-        for m in TOKEN_RE.finditer(fold(text or ""))
-        if any(_term_matches(t, m.group(0)) for t in terms)
-    )
+    hits = _Hits(terms)
+    return sum(1 for m in TOKEN_RE.finditer(fold(text or "")) if hits.any(m.group(0)))
 
 
 # --- result hydration, snippets and reasons ----------------------------------------------
@@ -1222,6 +1219,7 @@ def _hydrate(
     conn: sqlite3.Connection, rows: list[tuple[str, float | None]], terms: list[Term]
 ) -> list[dict[str, Any]]:
     out = []
+    hits = _Hits(terms)
     for doc_id, rank in rows:
         d = conn.execute("SELECT rowid, * FROM documents WHERE id=?", (doc_id,)).fetchone()
         if d is None:
@@ -1256,13 +1254,32 @@ def _hydrate(
         }
         if terms:
             fts_row = conn.execute("SELECT * FROM doc_fts WHERE rowid=?", (d["rowid"],)).fetchone()
-            item["reasons"] = _reasons(fts_row, terms) if fts_row else []
-            item["snippet_html"] = snippet_html(text or meta.get("summary", ""), terms)
+            item["reasons"] = _reasons(fts_row, terms, hits) if fts_row else []
+            item["snippet_html"] = snippet_html(text or meta.get("summary", ""), terms, hits=hits)
         else:
             item["reasons"] = []
             item["snippet_html"] = html.escape((meta.get("summary") or text[:220]).strip()[:220])
         out.append(item)
     return out
+
+
+class _Hits:
+    """_term_matches (all levels) remembered per word: documents repeat their words, and the
+    results of one page share most of them."""
+
+    def __init__(self, terms: list[Term]):
+        self.terms = terms
+        self._seen: dict[tuple[int, str], bool] = {}
+
+    def term(self, t: Term, word: str) -> bool:
+        key = (id(t), word)
+        hit = self._seen.get(key)
+        if hit is None:
+            hit = self._seen[key] = _term_matches(t, word)
+        return hit
+
+    def any(self, word: str) -> bool:
+        return any(self.term(t, word) for t in self.terms)
 
 
 def _literal_match(tok: str, word: str, forms: tuple[str, ...]) -> bool:
@@ -1292,7 +1309,8 @@ def _term_matches(t: Term, word: str, level: int = SIMILAR) -> bool:
     return level >= SIMILAR and word in t.similar
 
 
-def _reasons(fts_row: sqlite3.Row, terms: list[Term]) -> list[str]:
+def _reasons(fts_row: sqlite3.Row, terms: list[Term], hits: _Hits | None = None) -> list[str]:
+    hits = hits or _Hits(terms)
     found = []
     for col in FTS_COLUMNS[1:]:
         words = (fts_row[col] or "").split()
@@ -1305,24 +1323,26 @@ def _reasons(fts_row: sqlite3.Row, terms: list[Term]) -> list[str]:
                 if (
                     " ".join(t.tokens) in " ".join(TOKEN_RE.findall(fts_row[col] or ""))
                     or any(_term_matches(x, w, LITERAL) for x in t.synonyms for w in wordset)
-                    or (t.parts and all(any(_term_matches(x, w) for w in wordset) for x in t.parts))
+                    or (t.parts and all(any(hits.term(x, w) for w in wordset) for x in t.parts))
                 ):
                     hit = True
-            elif any(_term_matches(t, w) for w in wordset):
+            elif any(hits.term(t, w) for w in wordset):
                 hit = True
         if hit:
             found.append(COLUMN_LABELS[col])
     return found
 
 
-def snippet_html(text: str, terms: list[Term], width: int = 220) -> str:
+def snippet_html(text: str, terms: list[Term], width: int = 220, hits: _Hits | None = None) -> str:
     """Escaped excerpt around the first match with <mark> highlighting."""
     if not text:
         return ""
-    spans = []
+    hits = hits or _Hits(terms)
+    spans: list[tuple[int, int]] = []
     for m in TOKEN_RE.finditer(text):
-        w = fold(m.group(0))
-        if any(_term_matches(t, w) for t in terms):
+        if spans and m.start() >= spans[0][0] + width:
+            break  # beyond the excerpt
+        if hits.any(fold(m.group(0))):
             spans.append((m.start(), m.end()))
     if not spans:
         excerpt = text[:width].strip()
