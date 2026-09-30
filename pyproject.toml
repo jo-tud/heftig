@@ -1,6 +1,6 @@
 [project]
 name = "heftig"
-version = "0.1.0"
+version = "0.2.0"
 description = "Self-hosted, portable document archive with local search and optional AI text extraction and classification"
 readme = "README.md"
 license = "MIT"

@@ -296,7 +296,7 @@ heftig-export-20260928-120000/
   "format": "heftig-export",
   "format_version": 1,
   "metadata_schema_version": 1,
-  "app_version": "0.1.0",
+  "app_version": "0.2.0",
   "created_at": "2026-09-28T12:00:00Z",
   "document_count": 10,
   "files": [{"path": "metadata.jsonl", "sha256": "5059b9...", "size": 19497}]
