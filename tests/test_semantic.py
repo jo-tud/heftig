@@ -259,3 +259,31 @@ def test_only_documents_that_stand_out_count(archive, monkeypatch):
     store = semantic._Store(rows)
     monkeypatch.setattr(semantic, "_vectors", lambda conn, model: store)
     assert [d for d, _ in semantic.nearest(archive.conn, OneDirection(), "x")] == ["near"]
+
+
+def test_worker_embeds_in_its_own_thread(tmp_path):
+    from heftig.archive import Archive
+    from heftig.worker import Worker
+
+    a = Archive(
+        make_settings(
+            tmp_path,
+            embed_provider="openai_compatible",
+            embed_base_url="http://localhost:11434/v1",
+            embed_model="fake-embed-1",
+        )
+    )
+    fake = FakeEmbedder()
+    registry.override(
+        classifier=ScriptedClassifier(default={"title": "Depotauszug"}), embedder=fake
+    )
+    ingest_bytes(a, text_pdf(["Depotauszug MSCI World ETF"]), "d.pdf")
+    process_all(a)
+    w = Worker(a)
+    w._embed_new(1000.0)
+    w._embed.join(timeout=30)
+    assert semantic.status(a.conn, a.settings) == {"total": 1, "done": 1, "model": "fake-embed-1"}
+    calls = fake.calls
+    w._embed_new(1010.0)  # not again within 30 s
+    assert w._embed is not None and fake.calls == calls
+    a.close()
