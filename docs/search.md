@@ -505,8 +505,10 @@ because the words already find most documents. A household archive of 2,000 docu
 thread of its own, a few seconds after they are processed (`src/heftig/semantic.py`): one piece
 with title, sender, type, tags, date and summary, then the text in chunks of about 1,200
 characters (at most 12), each starting with the title line. The vectors are stored in SQLite
-(`doc_embeddings`), normalised, as 32-bit floats - derived data like the word index, kept by
-`rebuild-db`. A document is embedded again only when the embedded pieces change (a hash of them
+(`doc_embeddings`), normalised, as 8-bit integers with a scale per vector - a quarter of the
+size of 32-bit floats with the same ranking (on the Munich, LegalQuAD and FiQA questions nDCG@10
+changed by at most 0.001; shortening the vectors to 256 of their 768 dimensions cost up to
+0.025) - derived data like the word index, kept by `rebuild-db`. A document is embedded again only when the embedded pieces change (a hash of them
 is kept), not when it is only filed or its status changes. Settings → Search by meaning shows
 how many documents are prepared and the last error (for example a failed download, retried
 after ten minutes).

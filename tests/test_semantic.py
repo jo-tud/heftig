@@ -162,14 +162,15 @@ def test_vector_store_without_numpy(monkeypatch):
     import sys
     from array import array
 
-    rows = [("a", semantic._normalized([1.0, 0.0])), ("b", semantic._normalized([1.0, 1.0]))]
+    rows = [("a", *semantic._packed([1.0, 0.0])), ("b", *semantic._packed([1.0, 1.0]))]
     q = semantic._normalized([1.0, 0.2])
     fast = semantic._Store(rows).similarities(q)
     monkeypatch.setitem(sys.modules, "numpy", None)  # import fails
     slow = semantic._Store(rows)
     assert slow.matrix is None
     for (d1, s1), (d2, s2) in zip(fast, slow.similarities(q), strict=True):
-        assert d1 == d2 and abs(s1 - s2) < 1e-6
+        assert d1 == d2 and abs(s1 - s2) < 1e-5
+    assert abs(fast[1][1] - (1.0 + 0.2) / (2**0.5 * (1 + 0.04) ** 0.5)) < 0.01  # int8: close
     assert slow.similarities(array("f", [1.0, 0.0, 0.0])) == []  # other dimensions
 
 
@@ -181,8 +182,8 @@ def test_only_documents_that_stand_out_count(archive, monkeypatch):
         def embed(self, texts):
             return [[1.0, 0.0, 0.0, 0.0] for _ in texts]
 
-    rows = [(f"d{i}", semantic._normalized([0.2, 1.0, 0.1 * (i % 5), 0.3])) for i in range(30)]
-    rows.append(("near", semantic._normalized([1.0, 0.1, 0.0, 0.0])))
+    rows = [(f"d{i}", *semantic._packed([0.2, 1.0, 0.1 * (i % 5), 0.3])) for i in range(30)]
+    rows.append(("near", *semantic._packed([1.0, 0.1, 0.0, 0.0])))
     store = semantic._Store(rows)
     monkeypatch.setattr(semantic, "_vectors", lambda conn, model: store)
     assert [d for d, _ in semantic.nearest(archive.conn, OneDirection(), "x")] == ["near"]

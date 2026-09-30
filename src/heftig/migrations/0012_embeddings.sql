@@ -4,7 +4,8 @@ CREATE TABLE doc_embeddings (
     doc_id TEXT NOT NULL,
     chunk INTEGER NOT NULL,
     model TEXT NOT NULL,
-    vector BLOB NOT NULL,
+    vector BLOB NOT NULL,  -- normalised, as 8-bit integers: value = byte * scale
+    scale REAL NOT NULL,
     PRIMARY KEY (doc_id, chunk)
 );
 CREATE TABLE doc_embed_state (
