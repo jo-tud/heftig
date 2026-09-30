@@ -157,3 +157,44 @@ def test_new_alias_is_searchable_at_once(archive):
 
 def test_quoted_function_word_is_kept():
     assert [t.tokens for t in parse_query('"die" Rechnung').terms] == [["die"], ["rechnung"]]
+
+
+QUESTION_DOCS = {
+    "amtsblatt.pdf": ("Das Amtsblatt erscheint zweimal im Monat.", "Amtsblatt"),
+    "amt.pdf": (
+        "Das Amt stellt ein Blatt mit den Kosten bereit. Kosten und Gebühren.",
+        "Kosten beim Amt",
+    ),
+    "kita.pdf": ("Übernahme der Kosten für die Kita. Was kostet ein Platz?", "Kita-Kosten"),
+    "kur.pdf": ("Amtsärztliche Begutachtung vor einer Kur.", "Begutachtung für eine Kur"),
+    "wohngeld.pdf": (
+        "Wann bekomme ich Wohngeld? Der Bescheid wird zugeschickt, wenn der Antrag bewilligt wurde.",
+        "Wohngeld",
+    ),
+}
+
+
+def _question_archive(archive):
+    from heftig.providers import registry
+
+    registry.override(
+        classifier=ScriptedClassifier(
+            by_filename={n: {"title": t} for n, (_, t) in QUESTION_DOCS.items()}
+        )
+    )
+    ids = {
+        n: ingest_bytes(archive, text_pdf([text]), n).doc_id
+        for n, (text, _) in QUESTION_DOCS.items()
+    }
+    process_all(archive)
+    return ids
+
+
+def test_rare_word_of_a_question_wins_over_everyday_words(archive):
+    """Real citizen questions (Munich service portal): the one rare word decides, not the
+    words every document has - and documents that have all words only through other forms
+    ("Amt" + "Blatt") must not hide the one with the word itself."""
+    ids = _question_archive(archive)
+    assert _ids(archive, "Was kostet das Amtsblatt?")[0] == ids["amtsblatt.pdf"]
+    found = _ids(archive, "Wann bekomme ich Bescheid, ob meine Kur bewilligt wurde?")
+    assert ids["kur.pdf"] in found[:2]  # "Kur" is rare; the other words are everywhere

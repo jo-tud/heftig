@@ -265,6 +265,8 @@ META_COLUMNS = ("ident", "title", "correspondent", "doctype", "tags", "custom", 
 TIER_STEP = 10000.0  # far beyond any BM25 score: tiers decide first
 PROXIMITY_BOOST = 0.5  # BM25 x 1.5 when the search words stand close together
 TITLE_BOOST = 1.0  # BM25 x 2 when the title has every search word (in some form)
+WEAK_MATCH = 0.5  # partial search: a word found only through another word or a similar spelling
+QUESTION_TERMS = 3  # from this many words on, rank by the words found instead of requiring all
 NEAR_DISTANCE = 10  # words in between
 
 _INFLECTIONS = ("en", "es", "e", "n", "s")
@@ -531,15 +533,39 @@ def _relevance(
                 y in (r["title"] or "") for y in years
             ):
                 boost[r[0]] += YEAR_BOOST - 1
-    missing = dict.fromkeys(tier, 0)
+    coverage = dict.fromkeys(tier, 1.0)
     if partial:
+        # Not every word occurs: first the documents with the most important words - each word
+        # weighted by how rare it is (IDF), found only through another word or a similar
+        # spelling it counts half - in steps of a tenth, then BM25 of the words themselves
+        # (a question's everyday words must not outweigh its one rare word).
+        n = conn.execute("SELECT COUNT(*) FROM documents").fetchone()[0] or 1
+        found = []
         for t in terms:
-            has = members(_term_expr(t))
-            for rid in missing:
-                missing[rid] += rid not in has
+            strong, weak = members(_term_expr(t, FORMS)), members(_term_expr(t))
+            found.append(
+                (strong, weak, math.log(1 + n / max(1, len(strong))), math.log(1 + n / len(weak)))
+                if weak
+                else (strong, weak, 0.0, 0.0)
+            )
+        whole = sum(f[2] or f[3] for f in found) or 1.0
+        for rid in coverage:
+            got = sum(
+                idf_strong if rid in strong else WEAK_MATCH * idf_weak if rid in weak else 0.0
+                for strong, weak, idf_strong, idf_weak in found
+            )
+            coverage[rid] = round(got / whole, 1)
+        strong_bm25 = bm25(" OR ".join(_term_expr(t, FORMS) for t in terms))
+        for rid in score:
+            tier[rid] = 0  # tiers only order complete matches
+            score[rid] = strong_bm25.get(rid, 0.0)
 
     def rank(rid: int) -> float:
-        return missing[rid] * TIER_STEP * 10 + tier[rid] * TIER_STEP + score[rid] * boost[rid]
+        return (
+            (1.0 - coverage[rid]) * TIER_STEP * 100
+            + tier[rid] * TIER_STEP
+            + score[rid] * boost[rid]
+        )
 
     ordered = sorted(rows, key=lambda r: r["ingest_sequence"], reverse=True)
     ordered.sort(key=lambda r: r["received_at"] or "", reverse=True)
@@ -599,6 +625,11 @@ class _Clause:
     facet: str  # which filter group it belongs to (facet counts ignore their own group)
     sql: str
     params: list[Any]
+
+
+def _count(conn: sqlite3.Connection, match: str, clauses: list[_Clause]) -> int:
+    base, params = _base(match, clauses)
+    return conn.execute(f"SELECT COUNT(*) {base}", params).fetchone()[0]
 
 
 def _base(match: str | None, clauses: list[_Clause], exclude: str = "") -> tuple[str, list[Any]]:
@@ -704,24 +735,29 @@ def search(
     }[sort]
 
     partial = False
+    complete = 0
     match: str | None = None
     if terms:
         match = build_match(terms, "AND")
         base, params = _base(match, clauses)
         total = conn.execute(f"SELECT COUNT(*) {base}", params).fetchone()[0]
         merged = _merge_number_runs(terms)
-        if total == 0 and merged != terms:
-            # "8372 9381" typed with a space: try it as one number (and as a phrase)
-            match = build_match(merged, "AND")
-            base, params = _base(match, clauses)
-            total = conn.execute(f"SELECT COUNT(*) {base}", params).fetchone()[0]
-            if total:
+        complete = len(terms) > 1 and _count(conn, build_match(terms, "AND", FORMS), clauses)
+        if len(terms) >= QUESTION_TERMS or (len(terms) > 1 and not complete):
+            # no document has every word as typed or in one of its forms: documents that have
+            # them only through other words or similar spellings ("Amt" + "Blatt" for
+            # "Amtsblatt") must not hide the ones with the most important words (partial search)
+            if not complete and merged != terms and _count(conn, build_match(merged, "AND"), clauses):
+                # "8372 9381" typed with a space: one number (and a phrase)
                 terms = merged
-        if total == 0 and len(terms) > 1:
-            match = build_match(terms, "OR")
-            base, params = _base(match, clauses)
-            total = conn.execute(f"SELECT COUNT(*) {base}", params).fetchone()[0]
-            partial = total > 0
+                match = build_match(terms, "AND")
+                base, params = _base(match, clauses)
+                total = conn.execute(f"SELECT COUNT(*) {base}", params).fetchone()[0]
+            else:
+                match = build_match(terms, "OR")
+                base, params = _base(match, clauses)
+                total = conn.execute(f"SELECT COUNT(*) {base}", params).fetchone()[0]
+                partial = total > 0
         # Years are too common for BM25's IDF: a year in the query that is the document's
         # year counts extra (see _rank_sql).
         years = sorted(
@@ -760,7 +796,7 @@ def search(
     for it in items:
         if it["id"] in by_meaning:
             it["reasons"].append(_("Meaning"))
-    if partial and not by_meaning:
+    if partial and not complete and not by_meaning:
         notes.append(_("Not all search terms occur together – showing partial matches."))
     result = SearchResult(
         items=items,
