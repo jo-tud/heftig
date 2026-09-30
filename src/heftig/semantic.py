@@ -146,6 +146,14 @@ def _normalized(v: list[float]) -> array:
     return array("f", (x / norm for x in v))
 
 
+def _packed(v: list[float]) -> tuple[bytes, float]:
+    """A vector normalised and stored as 8-bit integers with a scale: a quarter of the size of
+    32-bit floats and the same ranking (measured, docs/search.md)."""
+    n = _normalized(v)
+    scale = (max(map(abs, n), default=0.0) or 1.0) / 127
+    return array("b", (round(x / scale) for x in n)).tobytes(), scale
+
+
 # --- the worker: embed what is new or changed ----------------------------------------------
 
 
@@ -212,8 +220,9 @@ def embed_pending(archive, max_docs: int = DOCS_PER_ROUND, stop=None) -> dict[st
         with write_tx(conn):
             conn.execute("DELETE FROM doc_embeddings WHERE doc_id = ?", (doc_id,))
             conn.executemany(
-                "INSERT INTO doc_embeddings(doc_id, chunk, model, vector) VALUES(?, ?, ?, ?)",
-                [(doc_id, i, model, _normalized(v).tobytes()) for i, v in enumerate(vectors)],
+                "INSERT INTO doc_embeddings(doc_id, chunk, model, vector, scale) "
+                "VALUES(?, ?, ?, ?, ?)",
+                [(doc_id, i, model, *_packed(v)) for i, v in enumerate(vectors)],
             )
             conn.execute(
                 "INSERT INTO doc_embed_state(doc_id, model, content_hash, revision) "
@@ -250,21 +259,25 @@ def _record(conn, embedder, task: str, doc_id: str, started: str, before) -> Non
 
 
 class _Store:
-    """All stored vectors of one model: a numpy matrix if numpy is installed (heftig[semantic],
-    the container image), else plain float arrays (about 1 s per 30,000 chunks)."""
+    """All stored vectors of one model (8-bit integers and a scale per vector): a numpy matrix
+    if numpy is installed (heftig[semantic], the container image), else plain arrays (about 1 s
+    per 30,000 chunks)."""
 
-    def __init__(self, rows: list[tuple[str, array]]):
-        self.ids = [d for d, _ in rows]
+    BLOCK = 8192  # rows converted to floats at a time: little memory, same speed
+
+    def __init__(self, rows: list[tuple[str, bytes, float]]):
+        self.ids = [d for d, _, _ in rows]
         self.matrix = None
-        self.rows = rows
-        dims = {len(v) for _, v in rows}
+        self.rows = [(d, array("b", v), s) for d, v, s in rows]
+        dims = {len(v) for _, v, _ in rows}
         try:
             import numpy as np
         except ImportError:
             return
         if len(dims) == 1:
-            self.matrix = np.frombuffer(b"".join(v.tobytes() for _, v in rows), dtype=np.float32)
+            self.matrix = np.frombuffer(b"".join(v for _, v, _ in rows), dtype=np.int8)
             self.matrix = self.matrix.reshape(len(rows), dims.pop())
+            self.scales = np.array([s for _, _, s in rows], dtype=np.float32)
             self.rows = []
 
     def similarities(self, q: array) -> list[tuple[str, float]]:
@@ -273,10 +286,18 @@ class _Store:
 
             if self.matrix.shape[1] != len(q):
                 return []
-            sims = self.matrix @ np.frombuffer(q.tobytes(), dtype=np.float32)
-            return list(zip(self.ids, sims.tolist(), strict=True))
+            qv = np.frombuffer(q.tobytes(), dtype=np.float32)
+            sims = np.concatenate(
+                [
+                    self.matrix[i : i + self.BLOCK].astype(np.float32) @ qv
+                    for i in range(0, len(self.ids), self.BLOCK)
+                ]
+            )
+            return list(zip(self.ids, (sims * self.scales).tolist(), strict=True))
         return [
-            (doc_id, sum(map(operator.mul, q, v))) for doc_id, v in self.rows if len(v) == len(q)
+            (doc_id, sum(map(operator.mul, q, v)) * s)
+            for doc_id, v, s in self.rows
+            if len(v) == len(q)
         ]
 
 
@@ -292,14 +313,10 @@ def _vectors(conn: sqlite3.Connection, model: str) -> _Store:
     with _LOCK:
         if key in _VECTORS:
             return _VECTORS[key]
-    rows = []
-    for doc_id, blob in conn.execute(
-        "SELECT doc_id, vector FROM doc_embeddings WHERE model = ?", (model,)
-    ):
-        v = array("f")
-        v.frombytes(blob)
-        rows.append((doc_id, v))
-    store = _Store(rows)
+    rows = conn.execute(
+        "SELECT doc_id, vector, scale FROM doc_embeddings WHERE model = ?", (model,)
+    ).fetchall()
+    store = _Store([tuple(r) for r in rows])
     with _LOCK:
         for k in [k for k in _VECTORS if k[0] == db]:
             del _VECTORS[k]  # one generation per archive
