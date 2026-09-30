@@ -578,19 +578,19 @@ msgstr "Hash-Konflikt in %(path)s – bitte `heftig check` ausführen"
 msgid "The worker was interrupted – will continue"
 msgstr "Worker wurde unterbrochen – wird fortgesetzt"
 
-#: src/heftig/local_embed.py:100
+#: src/heftig/local_embed.py:124
 msgid "Downloading the search model failed (HTTP %(status)s)."
 msgstr "Herunterladen des Suchmodells fehlgeschlagen (HTTP %(status)s)."
 
-#: src/heftig/local_embed.py:113
+#: src/heftig/local_embed.py:137
 msgid "Downloading the search model failed (%(error)s)."
 msgstr "Herunterladen des Suchmodells fehlgeschlagen (%(error)s)."
 
-#: src/heftig/local_embed.py:120
+#: src/heftig/local_embed.py:144
 msgid "The downloaded search model is damaged (checksum)."
 msgstr "Das heruntergeladene Suchmodell ist beschädigt (Prüfsumme)."
 
-#: src/heftig/local_embed.py:129
+#: src/heftig/local_embed.py:153
 msgid "The search model is not downloaded yet."
 msgstr "Das Suchmodell ist noch nicht heruntergeladen."
 
@@ -4291,8 +4291,8 @@ msgid "Yes (recommended)"
 msgstr "Ja (empfohlen)"
 
 #: src/heftig/web/templates/setup_search.html:14
-msgid "A language model (%(name)s) runs on this computer – nothing is sent anywhere. It is downloaded once (about %(size)s MB) when the first documents are prepared, and needs about 500 MB of memory. New documents are prepared in the background shortly after they are archived."
-msgstr "Ein Sprachmodell (%(name)s) läuft auf diesem Computer – nichts wird irgendwohin gesendet. Es wird einmalig heruntergeladen (etwa %(size)s MB), wenn die ersten Dokumente vorbereitet werden, und braucht etwa 500 MB Arbeitsspeicher. Neue Dokumente werden im Hintergrund kurz nach dem Archivieren vorbereitet."
+msgid "A language model (%(name)s) runs on this computer – nothing is sent anywhere. It is downloaded once (about %(size)s MB) when the first documents are prepared, and needs up to about 850 MB of memory while it works – after ten minutes without use it is unloaded again. New documents are prepared in the background shortly after they are archived."
+msgstr "Ein Sprachmodell (%(name)s) läuft auf diesem Computer – nichts wird irgendwohin gesendet. Es wird einmalig heruntergeladen (etwa %(size)s MB), wenn die ersten Dokumente vorbereitet werden, und braucht während der Arbeit bis zu etwa 850 MB Arbeitsspeicher – nach zehn Minuten ohne Nutzung wird es wieder entladen. Neue Dokumente werden im Hintergrund kurz nach dem Archivieren vorbereitet."
 
 #: src/heftig/web/templates/setup_search.html:16
 msgid "No"

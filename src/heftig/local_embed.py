@@ -8,10 +8,13 @@ Inference uses onnxruntime and the Hugging Face tokenizer, both small native whe
 
 from __future__ import annotations
 
+import ctypes
+import gc
 import hashlib
 import logging
 import os
 import threading
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -58,12 +61,30 @@ DEFAULT = ModelSpec(
 )
 
 
+IDLE_SECONDS = 600  # unload the model after this long without use; loaded again when needed
+
+
+def _return_memory() -> None:
+    """Give freed memory back to the operating system (glibc keeps it otherwise)."""
+    gc.collect()
+    try:
+        ctypes.CDLL("libc.so.6").malloc_trim(0)
+    except (OSError, AttributeError):
+        pass  # not glibc (macOS, musl): the memory is reused by the process instead
+
+
 class LocalEmbedder:
-    """Embedder protocol (providers/base.py) on a local ONNX model."""
+    """Embedder protocol (providers/base.py) on a local ONNX model.
+
+    Loaded on first use and unloaded after IDLE_SECONDS without use, in the worker as in the web
+    process: about 850 MB while texts are embedded, back to almost nothing when idle.
+    """
 
     adapter_version = "local-onnx-v1"
     target = "local"
-    BATCH = 16
+    # small batches and no memory arena keep the peak low (1.56 GB -> 0.85 GB for 1,200-character
+    # chunks) at little cost in speed
+    BATCH = 4
 
     def __init__(self, spec: ModelSpec, directory: Path, threads: int | None = None):
         self.spec = spec
@@ -74,6 +95,9 @@ class LocalEmbedder:
         self._session = None
         self._tokenizer = None
         self._lock = threading.Lock()
+        self._last_use = 0.0
+        self._timer: threading.Timer | None = None
+        self.idle_seconds = IDLE_SECONDS
 
     # --- files ---------------------------------------------------------------------------
 
@@ -133,6 +157,7 @@ class LocalEmbedder:
                 opts = ort.SessionOptions()
                 opts.intra_op_num_threads = self.threads or max(1, (os.cpu_count() or 2) // 2)
                 opts.inter_op_num_threads = 1
+                opts.enable_cpu_mem_arena = False
                 self._session = ort.InferenceSession(
                     str(self.directory / "model.onnx"), opts, providers=["CPUExecutionProvider"]
                 )
@@ -142,9 +167,46 @@ class LocalEmbedder:
                 self._tokenizer = tok
         return self._session, self._tokenizer
 
+    def loaded(self) -> bool:
+        return self._session is not None
+
+    def unload(self) -> None:
+        """Release the model (the next embed loads it again)."""
+        with self._lock:
+            if self._timer is not None:
+                self._timer.cancel()
+                self._timer = None
+            if self._session is None:
+                return
+            self._session = None
+            self._tokenizer = None
+        _return_memory()
+        log.info("search model unloaded after %s s without use", self.idle_seconds)
+
+    def _unload_if_idle(self) -> None:
+        if time.monotonic() - self._last_use >= self.idle_seconds - 1:
+            self.unload()
+
+    def _touch(self) -> None:
+        """Note a use; unload the model when it is not used for idle_seconds."""
+        self._last_use = time.monotonic()
+        with self._lock:
+            if self._timer is not None:
+                self._timer.cancel()
+            self._timer = threading.Timer(self.idle_seconds, self._unload_if_idle)
+            self._timer.daemon = True
+            self._timer.start()
+
     def embed(self, texts: list[str]) -> list[list[float]]:
+        try:
+            return self._embed(texts)
+        finally:
+            self._touch()
+
+    def _embed(self, texts: list[str]) -> list[list[float]]:
         import numpy as np
 
+        self._last_use = time.monotonic()
         session, tok = self._load()
         names = {i.name for i in session.get_inputs()}
         out: list[list[float]] = []
@@ -161,7 +223,17 @@ class LocalEmbedder:
                 feed["token_type_ids"] = np.zeros_like(ids)
             if "position_ids" in names:  # decoder models
                 feed["position_ids"] = np.broadcast_to(np.arange(ids.shape[1]), ids.shape).copy()
-            result = session.run(None, feed)[0]
+            for inp in session.get_inputs():  # decoder exports with a (here empty) key/value cache
+                if inp.name.startswith("past_key_values"):
+                    dims = [d if isinstance(d, int) else 0 for d in inp.shape]
+                    dims[0] = len(idx)
+                    dtype = np.float16 if "float16" in inp.type else np.float32
+                    feed[inp.name] = np.zeros(dims, dtype=dtype)
+            outputs = [o.name for o in session.get_outputs()]
+            want = next(
+                (n for n in ("sentence_embedding", "last_hidden_state") if n in outputs), outputs[0]
+            )
+            result = session.run([want], feed)[0]
             if result.ndim == 3:  # token vectors: pool them
                 if self.spec.pooling == "cls":
                     pooled = result[:, 0]
