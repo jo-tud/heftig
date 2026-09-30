@@ -45,5 +45,5 @@ schema:
 
 # hash-pinned dependencies for the container image (after changing uv.lock)
 requirements:
-	uv export --frozen --no-dev --extra anthropic --extra mcp --extra semantic --no-emit-project --format requirements-txt --no-header -o requirements.lock
-	sed -i '1i # Exact, hash-pinned dependencies for the container image, generated from uv.lock:\n#   make requirements   (uv export --frozen --no-dev --extra anthropic --extra mcp --extra semantic ...)' requirements.lock
+	uv export --frozen --no-dev --extra anthropic --extra mcp --no-emit-project --format requirements-txt --no-header -o requirements.lock
+	sed -i '1i # Exact, hash-pinned dependencies for the container image, generated from uv.lock:\n#   make requirements   (uv export --frozen --no-dev --extra anthropic --extra mcp ...)' requirements.lock

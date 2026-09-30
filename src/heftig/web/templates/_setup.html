@@ -1,7 +1,7 @@
 {% macro steps_bar(steps, step) -%}
 <ol class="setup-steps" aria-label="{{ _('Setup steps') }}">
   <li class="done">{{ _("Account") }}</li>
-  {% set names = {"ai": _("AI"), "mail": _("E-mail"), "scanner": _("Scanner")} %}
+  {% set names = {"ai": _("AI"), "search": pgettext("setup step", "Search"), "mail": _("E-mail"), "scanner": _("Scanner")} %}
   {% set ns = namespace(seen=false) %}
   {% for name, url in steps %}
     {% if name == step %}{% set ns.seen = true %}<li aria-current="step">{{ names[name] }}</li>

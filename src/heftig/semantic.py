@@ -1,20 +1,20 @@
-"""Search by meaning (optional): documents and the query as vectors of an embedding model.
+"""Search by meaning: documents and the query as vectors of the built-in embedding model.
 
 Finds documents that describe what was searched for in other words - "Wertpapiere" finds the
-ETF statement, "Elektriker" the bill from "Elektro Schulz" - which no word rule can. Off by
-default; switched on in the settings with an OpenAI-compatible embedding model: OpenAI's
-``text-embedding-3-small`` (texts go to OpenAI, needs its own permission) or a local server such
-as Ollama with ``bge-m3`` or ``embeddinggemma`` (nothing leaves the machine).
+ETF statement, "Elektriker" the bill from "Elektro Schulz" - which no word rule can. The model
+runs on this computer (local_embed.py); nothing is sent anywhere. Off unless switched on (the
+setup assistant asks; Settings -> Search).
 
-- The worker embeds every document in pieces (title, sender, type, tags and date, then the text
-  in chunks of about 1,200 characters, at most 12) and stores the vectors in
-  SQLite (``doc_embeddings``, derived data like the word index). A document is embedded again
-  when its text or description changes.
-- The normal search never uses it. Only when the user asks for it (``meaning=1``, "Search by
-  meaning"), the query is embedded - one call to the model - and compared with all stored
-  vectors (cosine, in memory: no database extension; numpy if installed, else pure Python). The documents most alike by
-  meaning are merged with the word search's ranking by Reciprocal Rank Fusion (Cormack et al.
-  2009), so a document found both ways comes first and one found only by meaning is added.
+- The worker embeds every archived document in the background (worker.py): pieces with title,
+  sender, type, tags and date, then the text in chunks of about 1,200 characters (at most 12),
+  stored in SQLite (``doc_embeddings``, derived data like the word index). The model is
+  downloaded when documents are embedded for the first time. A document is embedded again when
+  the embedded pieces change.
+- Every search with words also compares the query with the stored vectors, once the model is
+  there and documents are embedded (cosine, in memory with numpy). Documents that stand out by
+  meaning are merged with the word search's ranking by weighted Reciprocal Rank Fusion
+  (Cormack et al. 2009): a document found both ways comes first, one found only by meaning is
+  added, documents not embedded yet are still found by their words.
 """
 
 from __future__ import annotations
@@ -41,45 +41,63 @@ RRF_K = 60
 GENERATION_KEY = "embeddings_generation"  # meta: counts changes of doc_embeddings (cache key)
 MIN_Z = 2.0  # a document counts as near when it is this many standard deviations above average
 MIN_DOCS_FOR_CUTOFF = 10
+MAX_BELOW_BEST = 0.15  # cosine: documents much less alike than the best one are left out
+LOW_FACTOR = 0.7  # a document that stands out needs at least this share of min_similarity
 MEANING_WEIGHT = 0.5  # the word search counts double: measured in docs/search.md
 
-# Task prefixes some models need to embed a query differently from a document.
-_PREFIXES = (
-    ("e5", "query: ", "passage: "),
-    ("nomic-embed", "search_query: ", "search_document: "),
-    ("embeddinggemma", "task: search result | query: ", "title: none | text: "),
-    ("qwen3-embedding", "Instruct: Find the document that answers the search\nQuery: ", ""),
-)
 
-
-def prefix(model: str, kind: str) -> str:
-    m = model.lower()
-    for key, query, document in _PREFIXES:
-        if key in m:
-            return query if kind == "query" else document
-    return ""
+def _prefix(embedder, kind: str) -> str:
+    """Task prefix of the model ("query: " / "passage: " for e5)."""
+    spec = getattr(embedder, "spec", None)
+    if spec is None:
+        return ""
+    return spec.query_prefix if kind == "query" else spec.document_prefix
 
 
 def available(settings) -> bool:
-    """Switched on and allowed (the worker embeds, the search offers it)."""
-    return settings.embed_provider != "none" and not settings.embed_blocked_reason()
+    """Switched on: the worker embeds, the search uses what is embedded."""
+    return bool(settings.semantic_search)
+
+
+def embedder_for(settings):
+    from .providers import registry
+
+    return registry.get_embedder(settings)
 
 
 def model_name(settings) -> str:
-    if settings.embed_model:
-        return settings.embed_model
-    return "text-embedding-3-small" if settings.embed_provider == "openai" else ""
+    e = embedder_for(settings) if available(settings) else None
+    if e is not None:
+        return e.model
+    from .local_embed import DEFAULT
+
+    return DEFAULT.name
 
 
 def status(conn: sqlite3.Connection, settings) -> dict[str, Any]:
-    """How many documents are embedded with the configured model."""
+    """How many documents are embedded with the model, and whether it is downloaded."""
+    model = model_name(settings)
     total = conn.execute("SELECT COUNT(*) FROM documents").fetchone()[0]
     done = conn.execute(
         "SELECT COUNT(*) FROM doc_embed_state s JOIN documents d ON d.id = s.doc_id "
         "WHERE s.model = ?",
-        (model_name(settings),),
+        (model,),
     ).fetchone()[0]
-    return {"total": total, "done": done, "model": model_name(settings)}
+    e = embedder_for(settings) if available(settings) else None
+    downloaded = bool(e is not None and getattr(e, "downloaded", lambda: True)())
+    return {"total": total, "done": done, "model": model, "downloaded": downloaded}
+
+
+def for_search(conn: sqlite3.Connection, settings):
+    """The embedder for a search, if meaning can be used right now: switched on, the model
+    downloaded, documents embedded. Never downloads anything."""
+    if not available(settings):
+        return None
+    e = embedder_for(settings)
+    if e is None or not getattr(e, "downloaded", lambda: True)():
+        return None
+    row = conn.execute("SELECT 1 FROM doc_embeddings WHERE model = ? LIMIT 1", (e.model,))
+    return e if row.fetchone() else None
 
 
 # --- what is embedded ------------------------------------------------------------------------
@@ -186,7 +204,7 @@ def embed_pending(archive, max_docs: int = DOCS_PER_ROUND, stop=None) -> dict[st
             continue
         started = now_iso()
         before = embedder.usage.snapshot() if hasattr(embedder, "usage") else None
-        vectors = embedder.embed([prefix(model, "document") + p for p in pieces])
+        vectors = embedder.embed([_prefix(embedder, "document") + p for p in pieces])
         with write_tx(conn):
             conn.execute("DELETE FROM doc_embeddings WHERE doc_id = ?", (doc_id,))
             conn.executemany(
@@ -295,7 +313,7 @@ def nearest(
         return []
     started = now_iso()
     before = embedder.usage.snapshot() if hasattr(embedder, "usage") else None
-    q = _normalized(embedder.embed([prefix(model, "query") + query])[0])
+    q = _normalized(embedder.embed([_prefix(embedder, "query") + query])[0])
     with write_tx(conn):
         _record(conn, embedder, "search", "", started, before)
     best: dict[str, float] = {}
@@ -303,16 +321,35 @@ def nearest(
         if sim > best.get(doc_id, -2.0):
             best[doc_id] = sim
     ranked = sorted(best.items(), key=lambda x: -x[1])
-    if len(ranked) >= MIN_DOCS_FOR_CUTOFF:
-        # only documents that stand out from the rest: every query is "similar" to something,
-        # and how similar unrelated texts are differs from model to model
-        sims = [x[1] for x in ranked]
+    return _near_enough(ranked, getattr(embedder, "spec", None))[:limit]
+
+
+def _near_enough(ranked: list[tuple[str, float]], spec) -> list[tuple[str, float]]:
+    """The documents that count as near. Every query is similar to something; two rules decide
+    (docs/search.md): a document **stands out** from the rest of the archive (at least
+    max(2, sqrt(2 ln n) - 0.8) standard deviations above the average - the largest of n random
+    values lies about sqrt(2 ln n) above it), or, for the calibrated built-in model, it is
+    **similar enough** in absolute terms (several documents of one kind, none standing out).
+    Nothing far below the best hit."""
+    if not ranked:
+        return []
+    sims = [x[1] for x in ranked]
+    stands_out: set[str] = set()
+    if len(sims) >= MIN_DOCS_FOR_CUTOFF:
         mean = sum(sims) / len(sims)
         std = math.sqrt(sum((x - mean) ** 2 for x in sims) / len(sims)) or 1.0
-        # the largest of n random values lies about sqrt(2 ln n) deviations above average
         min_z = max(MIN_Z, math.sqrt(2 * math.log(len(sims))) - 0.8)
-        ranked = [(d, sim) for d, sim in ranked if (sim - mean) / std >= min_z]
-    return ranked[:limit]
+        floor = spec.min_similarity * LOW_FACTOR if spec is not None else -2.0
+        stands_out = {d for d, sim in ranked if (sim - mean) / std >= min_z and sim >= floor}
+    elif spec is None:
+        return ranked  # too few documents to tell, and no calibration
+    similar = spec.min_similarity if spec is not None and spec.min_similarity else 2.0
+    best = ranked[0][1]
+    return [
+        (d, sim)
+        for d, sim in ranked
+        if (d in stands_out or sim >= similar) and sim >= best - MAX_BELOW_BEST
+    ]
 
 
 def fuse(
@@ -340,6 +377,16 @@ def catch_up(archive, stop=None, rounds: int = 1000) -> dict[str, Any]:
 
     total = {"embedded": 0, "unchanged": 0}
     try:
+        e = embedder_for(archive.settings)
+        # the model is downloaded when there is something to embed for the first time
+        if (
+            e is not None
+            and hasattr(e, "download")
+            and not e.downloaded()
+            and pending(archive.conn, e.model, 1)
+        ):
+            log.info("search by meaning: downloading the model %s", e.model)
+            e.download()
         for _ in range(rounds):
             r = embed_pending(archive, stop=stop)
             total["embedded"] += r["embedded"]

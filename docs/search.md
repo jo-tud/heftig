@@ -348,8 +348,8 @@ and ranks with BM25 and a title boost; it does not split compounds (`Rentenversi
 not find `Rentenversicherungsnummer`), has no proximity ranking beyond quoted phrases and no
 synonyms, and its fuzzy search is off by default. Elasticsearch's German analysis (normalisation,
 light stemmer, dictionary decompounder, synonyms, `fuzziness: AUTO`) and Meilisearch's ranking
-rules (words, typo, proximity, attribute, exactness) are the models for the levels above; what
-they add beyond that is semantic (vector) search.
+rules (words, typo, proximity, attribute, exactness) are the models for the levels above; the
+search by meaning below is the hybrid (words + vectors) search they offer on top.
 
 ## Date phrases
 
@@ -425,62 +425,93 @@ distinctive words of a document (TF-IDF over the index vocabulary, numbers with 
 included), searches for any of them with BM25 and ranks the same correspondent (x1.6) and type
 (x1.2) higher. Local and deterministic like the rest of the search.
 
-## Search by meaning (optional)
+## Search by meaning
 
 Words cannot find everything: `Wertpapiere` does not occur in an ETF statement, `Elektriker`
 not in a bill from "Elektro Schulz". An embedding model can - it turns texts into vectors that
-are close when the texts mean the same. Heftig offers this as a **separate, explicitly chosen
-mode**; the normal search above stays local, deterministic and model-free.
+are close when the texts mean the same. Heftig has one built in; it runs on the computer Heftig
+runs on and sends nothing anywhere.
 
-**Setting it up.** Settings → *Search by meaning*: off (default), a model server on your network
-(Ollama, LM Studio, llama.cpp - anything with an OpenAI-compatible `/v1/embeddings`; nothing
-leaves your network) or OpenAI (`text-embedding-3-small`, 512 dimensions, about 2 US cents per
-1,000 pages; needs the permission that document texts may be sent). Good local models for German
-documents: `bge-m3`, `embeddinggemma`, `qwen3-embedding:0.6b` (`ollama pull bge-m3`). The same
-with environment variables: `HEFTIG_EMBED_PROVIDER` (`none`, `openai`, `openai_compatible`),
-`HEFTIG_EMBED_MODEL`, `HEFTIG_EMBED_BASE_URL`, `HEFTIG_EMBED_API_KEY(_FILE)`,
-`HEFTIG_ALLOW_CLOUD_EMBED`.
+**Switching it on.** The setup assistant asks ("Use the search by meaning?", suggested: yes);
+Settings → Search by meaning switches it on and off; the environment variable is
+`HEFTIG_SEMANTIC_SEARCH=true`. **Without the assistant it is off.** `HEFTIG_SEMANTIC_THREADS`
+limits the CPU threads the model uses (default: half the cores).
 
-**Preparing the documents.** The worker embeds every document in the background
-(`src/heftig/semantic.py`): one piece with title, sender, type, tags, date and summary, then the
-text in chunks of about 1,200 characters (at most 12), each starting with the title line. The
-vectors are stored in SQLite (`doc_embeddings`), normalised, as 32-bit floats - derived data like
-the word index, kept by `rebuild-db`, created again by the worker when they are missing or the
-model changes. A document is embedded again only when the embedded pieces change (a hash of
-them is kept), not when it is only filed or its status changes. Models that need task prefixes get them (`query:`/`passage:` for e5, `search_query:`
-for nomic, the prompts of EmbeddingGemma and Qwen3). `heftig embed` does it right away; the
-settings page shows how many documents are ready and the last error. Costs appear in the AI cost
-overview (task `embed`, and `search` for each query).
+**The model** is [Snowflake Arctic Embed M v2.0](https://huggingface.co/Snowflake/snowflake-arctic-embed-m-v2.0)
+(multilingual, Apache-2.0), int8-quantised, run with onnxruntime and the Hugging Face tokenizer -
+no torch, no model server. It is downloaded **once, when documents are prepared for the first
+time** (about 330 MB from huggingface.co, a fixed revision, every file checked against its
+SHA-256) into `<archive>/models/`. That folder is not part of backups or exports; it is
+downloaded again when missing. It needs about 400-500 MB of memory in the worker and, once a
+search uses it, in the web process. `heftig embed` downloads it and prepares all pending
+documents right away (for example before going offline).
 
-**Searching.** On the results page, *≈ Search by meaning too* (URL parameter `meaning=1`, API
-`meaning=true`) embeds the query - one call to the model - and compares it with every stored
-chunk (cosine, in memory; no database extension). Up to 20 documents whose most similar chunk
-**stands out** - at least max(2, √(2 ln n) − 0.8) standard deviations above the average over all
-n documents; every query is similar to something, and how similar unrelated texts are depends on
-the model - are, within the active filters, merged with the word search's ranking by weighted
-Reciprocal Rank Fusion (Cormack et al. 2009): score = 1 / (60 + word rank) + 0.5 / (60 + meaning rank). A
-document found both ways comes first, one found only by meaning is added (reason "Meaning"),
-and the word search's order counts double. When the model fails, the word search's results are
-shown with the error.
+Chosen by measurement on this page's benchmark, on a notebook CPU (4 cores, 2 threads used):
 
-**Measured** with `jinaai/jina-embeddings-v2-base-de` (German/English, 0.6 GB, on CPU; `uv run
-python scripts/search_bench.py --meaning http://localhost:8765/v1 <model>` runs the benchmark
-against any OpenAI-compatible server):
-
-| | MRR@10 | Success@1 | Recall@10 | no result | time per query |
+| Model (ONNX) | Download | Meaning alone: MRR@10 | Success@1 | Words + meaning, held-out MRR | Chunks per second |
 |---|---|---|---|---|---|
-| main set, words only | 0.979 | 94 % | 96 % | 1 | ~4 ms |
-| main set, words + meaning | 0.984 | 96 % | 98 % | 0 | ~120 ms |
-| held-out set, words only | 0.940 | 94 % | 93 % | 2 | ~3 ms |
-| held-out set, words + meaning | 0.990 | 98 % | 100 % | 0 | ~130 ms |
+| **Arctic Embed M v2.0, int8** | 330 MB | **0.976** | **93 %** | **0.990** | 17 |
+| jina-embeddings-v2-base-de, fp32 | 660 MB | 0.893 | 78 % | 0.990 | 9 |
+| bge-m3, fp32 (reference, too large for a notebook) | 2,300 MB | 0.892 | 81 % | 0.990 | 4 |
+| granite-embedding-107m-multilingual, fp32 | 440 MB | 0.878 | 79 % | 0.970 | 24 |
+| multilingual-e5-small, int8 | 135 MB | 0.848 | 77 % | 0.970 | 34 |
+| multilingual-e5-base, int8 | 295 MB | 0.823 | 72 % | 0.967 | 21 |
+| granite-embedding-97m-multilingual-r2, fp32 | 415 MB | 0.781 | 71 % | 0.970 | 18 |
+| granite-embedding-97m-multilingual-r2, int8 | 125 MB | 0.736 | 63 % | 0.970 | 30 |
+| jina-embeddings-v2-base-de, int8 | 165 MB | 0.726 | 56 % | 0.967 | 32 |
+| paraphrase-multilingual-MiniLM-L12-v2, int8 | 135 MB | 0.666 | 51 % | 0.970 | 40 |
 
-With equal weights (1 : 1) the main set dropped to 0.974: the model then pushed an ad for
-insurance above the car insurance itself. Without the "stands out" rule every query - also
-"Rezept Apfelkuchen" in an archive without recipes - brought 20 documents; with it such
-queries bring none to two, while the figures above stay the same. The time is the embedding of the query on the
-benchmark machine's CPU. Comparing it with 30,000 stored chunks (roughly 10,000 documents, 768
-dimensions) takes about 20 ms with numpy (in the container image; `pip install
-"heftig[semantic]"`) and about 1 s in pure Python without it.
+"Meaning alone" ranks the 144 benchmark queries by the model only, without the word search -
+the figure that separates the models; combined with the word search the differences shrink,
+because the words already find most documents. A household archive of 2,000 documents
+(about 6,000 chunks) is prepared in about six minutes.
+
+**Preparing the documents.** The worker embeds archived documents in the background, in a
+thread of its own, a few seconds after they are processed (`src/heftig/semantic.py`): one piece
+with title, sender, type, tags, date and summary, then the text in chunks of about 1,200
+characters (at most 12), each starting with the title line. The vectors are stored in SQLite
+(`doc_embeddings`), normalised, as 32-bit floats - derived data like the word index, kept by
+`rebuild-db`. A document is embedded again only when the embedded pieces change (a hash of them
+is kept), not when it is only filed or its status changes. Settings → Search by meaning shows
+how many documents are prepared and the last error (for example a failed download, retried
+after ten minutes).
+
+**Searching.** There is nothing to choose: once documents are embedded, **every search with
+words** also embeds the query (about 10-20 ms) and compares it with every stored chunk (cosine,
+numpy; about 20 ms per 30,000 chunks). Documents not embedded yet are found by their words as
+before. Every query is similar to *something*, so a document counts as near only if its most
+similar chunk
+- is **similar enough**: a cosine of at least 0.22 - calibrated for the built-in model on the
+  benchmark: 85 % of the right documents lie above it, 92 % of the others below; this finds
+  several documents of one kind (all the electricity bills for "power bill"), or
+- **stands out** from the rest of the archive: at least max(2, √(2 ln n) − 0.8) standard
+  deviations above the average over all n documents (the largest of n random values lies about
+  √(2 ln n) above it) and a cosine of at least 0.15 - a single clear match with a low absolute
+  value ("Wertpapiere" → the ETF statement, 0.17),
+
+and is not more than 0.15 below the best one. (With fewer than ten documents only the first rule
+applies.) Up to 20 of them are, within the active filters,
+merged with the word search's ranking by weighted Reciprocal Rank Fusion (Cormack et al.
+2009): score = 1 / (60 + word rank) + 0.5 / (60 +
+meaning rank). A document found both ways comes first, one found only by meaning is added with
+the reason "Meaning", and the word search's order counts double. `meaning=0` in the URL (API:
+`meaning=false`) searches by words only. Suggestions while typing use the words only.
+
+**Measured** (benchmark with the built-in model; `uv run python scripts/search_bench.py
+--meaning`):
+
+| | MRR@10 | Success@1 | Recall@10 | no result |
+|---|---|---|---|---|
+| main set, words only | 0.979 | 94 % | 96 % | 1 |
+| main set, words + meaning | 0.995 | 96 % | 98 % | 0 |
+| held-out set, words only | 0.940 | 94 % | 93 % | 2 |
+| held-out set, words + meaning | 0.990 | 98 % | 100 % | 0 |
+
+With equal weights (1 : 1) a model pushed an ad for insurance above the car insurance itself.
+Without the two rules every query - also "Rezept Apfelkuchen" in an archive without recipes -
+brought 20 documents; with them, five of six such queries bring none and one brings one. The
+absolute rule alone lost "Wertpapiere" (0.17), the "stands out" rule alone lost groups of
+similar documents (eight electricity bills, none standing out from the others).
 
 ## AI search (✦ AI)
 

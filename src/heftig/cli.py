@@ -388,7 +388,7 @@ def cmd_embed(args) -> int:
 
     a = _archive()
     if not semantic.available(a.settings):
-        print("Search by meaning is not set up (settings: HEFTIG_EMBED_PROVIDER ...).",
+        print("The search by meaning is off (Settings -> Search, or HEFTIG_SEMANTIC_SEARCH=true).",
               file=sys.stderr)  # fmt: skip
         return 2
     r = semantic.catch_up(a)
@@ -534,7 +534,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.set_defaults(fn=cmd_search)
 
     sub.add_parser(
-        "embed", help="Search by meaning: embed new and changed documents now"
+        "embed", help="Search by meaning: download the model if needed, embed new documents now"
     ).set_defaults(fn=cmd_embed)
 
     s = sub.add_parser(

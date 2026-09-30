@@ -174,7 +174,7 @@ def _search_params(
     tag_mode: Literal["all", "any"] = "all",
     literal: bool = False,
     session: str | None = None,
-    meaning: bool = False,
+    meaning: bool = True,
 ) -> SearchParams:
     return SearchParams(
         q=q, correspondent=correspondent, document_type=document_type, tags=tag,
@@ -196,8 +196,9 @@ def api_search(
     p: Principal = Depends(require_user),
 ):
     """``facets=true``: counts as on the search page (each group without its own filter);
-    ``facets=within``: every count within all filters (statistics). ``meaning=true``: also
-    search by meaning, if an embedding model is set up (one call to it per search)."""
+    ``facets=within``: every count within all filters (statistics). ``meaning=false``: words
+    only, without the search by meaning (which is used when it is switched on and documents
+    are embedded)."""
     from .ui import meaning_embedder
 
     a = get_archive(request)

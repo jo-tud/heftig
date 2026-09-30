@@ -227,6 +227,19 @@ services after changing one. Settings made on the settings page apply right away
 
 Downgrading to an older version after a migration is not supported; restore the backup instead.
 
+## Search by meaning: model and memory
+
+With the search by meaning switched on ([search.md](search.md#search-by-meaning)), the worker
+downloads the embedding model once (about 330 MB from huggingface.co) into
+`<archive>/models/` when it prepares documents for the first time, and then prepares new
+documents in the background. Plan for about 500 MB more memory in the worker and, after the
+first search, in the web process; preparing uses half the CPU cores
+(`HEFTIG_SEMANTIC_THREADS`). Without internet access at that moment the download is retried
+every ten minutes (the error is shown under Settings → Search by meaning); `heftig embed`
+downloads and prepares everything at once. `models/` is not part of backups and exports - it is
+downloaded again when missing. Switching it off keeps the prepared vectors (they are used again
+when it is switched back on).
+
 ## Backup
 
 Heftig's data is the `archive/` directory. Everything in it except `index.sqlite` is written

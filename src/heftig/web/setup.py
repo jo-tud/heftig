@@ -39,7 +39,12 @@ log = logging.getLogger("heftig.web")
 router = APIRouter(include_in_schema=False, dependencies=[Depends(_browser_only)])
 
 TOKEN_FILE = "setup-token"  # noqa: S105 - a file name
-STEPS = [("ai", "/settings/ai"), ("mail", "/settings/mail"), ("scanner", "/settings/scanner")]
+STEPS = [
+    ("ai", "/settings/ai"),
+    ("search", "/settings/search"),
+    ("mail", "/settings/mail"),
+    ("scanner", "/settings/scanner"),
+]
 
 # what the AI choices mean; model defaults are a good balance of cost and quality
 AI_MODES = ("offline", "anthropic", "openai", "local")
@@ -56,6 +61,7 @@ MAIL_KEYS = {
     "imap_delete_after_import", "imap_allowed_senders",
 }  # fmt: skip
 SCANNER_KEYS = {"auto_file_sources", "consume_after"}
+SEARCH_KEYS = {"semantic_search"}
 
 
 # --- first start ----------------------------------------------------------------------------
@@ -447,6 +453,40 @@ def _mail_submit(request: Request, form: dict[str, Any]) -> Any:
             "Signed in, but the folder %(folder)s does not exist. Folders: %(folders)s",
             folder=missing[0], folders=", ".join(folders[:30])))  # fmt: skip
     return _done(request, "mail", "mail")
+
+
+# --- search by meaning ---------------------------------------------------------------------
+
+
+@router.get("/settings/search")
+def search_page(request: Request, p: Principal = Depends(require_user)):
+    from .. import semantic
+    from ..db import get_meta
+    from ..local_embed import DEFAULT
+
+    a = get_archive(request)
+    q = request.query_params
+    ctx = _ctx(request, "search", message=saved_message(q.get("saved"), a.settings),
+               model=DEFAULT, status=semantic.status(a.conn, a.settings),
+               last_error=get_meta(a.conn, semantic.ERROR_KEY) or "")  # fmt: skip
+    # the assistant suggests it; afterwards the page shows what is set
+    ctx["checked"] = True if ctx["wizard"] else a.settings.semantic_search
+    ctx["locked"] = bool(ctx["fixed"] & SEARCH_KEYS)
+    return render(request, "setup_search.html", **ctx)
+
+
+@router.post("/settings/search")
+async def search_submit(request: Request, p: Principal = Depends(require_write)):
+    form = dict(await request.form())
+    return await run_in_threadpool(_search_submit, request, form)
+
+
+def _search_submit(request: Request, form: dict[str, Any]) -> Any:
+    try:
+        _save(request, {"semantic_search": form.get("semantic") == "1"})
+    except store.SettingsError as e:
+        raise ApiError(400, "invalid", str(e)) from e
+    return _done(request, "search", "ok")
 
 
 # --- scanner --------------------------------------------------------------------------------

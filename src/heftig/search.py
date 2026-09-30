@@ -101,7 +101,7 @@ class SearchParams:
     tag_mode: str = "all"  # "all": every tag must match, "any": at least one
     session: str | None = None  # scan session id
     literal: bool = False  # True: don't turn "März 2025" etc. into a date filter
-    meaning: bool = False  # also search by meaning (embeddings; needs an embedder, semantic.py)
+    meaning: bool = True  # also by meaning, when the caller passes an embedder (semantic.py)
 
 
 @dataclass
@@ -622,8 +622,8 @@ def search(
     today: date | None = None,
     embedder=None,
 ) -> SearchResult:
-    """Search. `embedder`: with ``p.meaning``, also search by meaning (semantic.py) - the
-    caller passes the embedding model only when the user asked for it."""
+    """Search. `embedder`: also search by meaning (semantic.py), unless ``p.meaning`` is off -
+    the caller passes the built-in model when documents are embedded."""
     t0 = time.perf_counter()
     per_page = max(1, min(int(p.per_page or 25), 100))
     page = max(1, int(p.page or 1))

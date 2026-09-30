@@ -76,27 +76,12 @@
 
 <section class="card" aria-labelledby="meaning-h">
   <h2 id="meaning-h">{{ _("Search by meaning") }}</h2>
-  <p>{{ _("Optional: also finds documents that describe what you searched in other words (“securities” finds the ETF statement). The normal search stays as it is; you choose “≈ Search by meaning too” on the results page.") }}</p>
   {% if meaning.active %}
-  <p>{% trans done=meaning.status.done, total=meaning.status.total, model=meaning.status.model %}{{ done }} of {{ total }} documents prepared with <code>{{ model }}</code>.{% endtrans %}
+  <p>{% if not meaning.status.downloaded %}{{ _("On – the model is downloaded when the next documents are prepared.") }}
+    {% else %}{% trans done=meaning.status.done, total=meaning.status.total %}On – {{ done }} of {{ total }} documents prepared.{% endtrans %}{% endif %}
     {% if meaning.error %}<br><span class="error-text small">{{ _("Last error:") }} {{ meaning.error | reason }}</span>{% endif %}</p>
-  {% elif meaning.blocked %}<p class="error-text small">{{ meaning.blocked | reason }}</p>{% endif %}
-  {% if meaning.fixed %}<p class="hint">{{ _("Set by environment variables (HEFTIG_EMBED_...).") }}</p>
-  {% else %}
-  <form method="post" action="/settings/meaning" class="setup-form meaning-form">{{ csrf_field(csrf) }}
-    <fieldset><legend class="sr-only">{{ _("Embedding model") }}</legend>
-      <label class="choice"><input type="radio" name="meaning_mode" value="off" {% if meaning.mode == 'off' %}checked{% endif %}> {{ _("Off") }}</label>
-      <label class="choice"><input type="radio" name="meaning_mode" value="local" {% if meaning.mode == 'local' %}checked{% endif %}> {{ _("Model server on your network (Ollama, LM Studio …) – nothing leaves your network") }}</label>
-      <label class="choice"><input type="radio" name="meaning_mode" value="openai" {% if meaning.mode == 'openai' %}checked{% endif %}> {{ _("OpenAI (text-embedding-3-small, about 2 cents per 1,000 pages)") }}</label>
-    </fieldset>
-    <label>{{ _("Model") }} <input name="meaning_model" value="{{ meaning.model }}" placeholder="bge-m3"></label>
-    <label>{{ _("Server address (model server only)") }} <input name="meaning_base_url" value="{{ meaning.base_url }}" placeholder="http://192.168.1.20:11434/v1"></label>
-    <label>{{ _("API key") }} <input name="meaning_api_key" type="password" autocomplete="off" placeholder="{{ _("stored – leave empty to keep it") if meaning.has_key else _("OpenAI: the key of the classification is used if empty") }}"></label>
-    <label class="choice"><input type="checkbox" name="meaning_consent" value="1"> {{ _("Document texts may be sent to this service (needed for OpenAI and servers outside your network).") }}</label>
-    <p class="buttons"><button>{{ _("Save and test") }}</button></p>
-  </form>
-  <p class="hint">{{ _("Good local models for German: bge-m3, embeddinggemma, qwen3-embedding (ollama pull bge-m3). Each search by meaning sends the search words to the model once.") }}</p>
-  {% endif %}
+  {% else %}<p>{{ _("Off – the search finds documents by their words only.") }}</p>{% endif %}
+  <p><a class="button" href="/settings/search">{{ _("Change") }}</a></p>
 </section>
 
 <section class="card" aria-labelledby="in-h">

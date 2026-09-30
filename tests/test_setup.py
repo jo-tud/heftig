@@ -81,7 +81,7 @@ def test_ai_choices(signed_in, monkeypatch):
                "api_key": "sk-test", "consent": "1", "ocr_ai": "1"},
                follow_redirects=False)  # fmt: skip
     assert r.status_code == 303, r.text[r.text.find("notice") :][:300]
-    assert r.headers["location"] == "/settings/mail?setup=1"
+    assert r.headers["location"] == "/settings/search?setup=1"
     s = arch.settings
     assert (s.classify_provider, s.classify_model, s.allow_cloud_classify) == (
         "anthropic",

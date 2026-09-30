@@ -160,13 +160,6 @@
     {% for a, b in result.corrections %}<del>{{ a }}</del> → <strong>{{ b }}</strong>{% if not loop.last %}, {% endif %}{% endfor %}</p>
   {% endif %}
   {% for n in result.notes %}<p class="notice info" role="status">{{ n }}</p>{% endfor %}
-  {% if result.meaning %}
-  <p class="notice info" role="status">{{ _("≈ Searched by meaning too: also documents that say it in other words.") }}
-    <a href="{{ v.meaning_off_href }}">{{ _("words only") }}</a></p>
-  {% elif meaning_available and not start_page %}
-  <p class="small meaning-offer"><a href="{{ v.meaning_on_href }}">{{ _("≈ Search by meaning too") }}</a>
-    <span class="muted">{{ _("– finds documents that describe it in other words") }}</span></p>
-  {% endif %}
 
   {% if start_page %}
   <section class="start" aria-label="{{ _("Quick access") }}">
