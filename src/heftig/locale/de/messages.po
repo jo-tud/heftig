@@ -4291,8 +4291,8 @@ msgid "Yes (recommended)"
 msgstr "Ja (empfohlen)"
 
 #: src/heftig/web/templates/setup_search.html:14
-msgid "A language model (%(name)s) runs on this computer – nothing is sent anywhere. It is downloaded once (about %(size)s MB) when the first documents are prepared, and needs up to about 850 MB of memory while it works – after ten minutes without use it is unloaded again. New documents are prepared in the background shortly after they are archived."
-msgstr "Ein Sprachmodell (%(name)s) läuft auf diesem Computer – nichts wird irgendwohin gesendet. Es wird einmalig heruntergeladen (etwa %(size)s MB), wenn die ersten Dokumente vorbereitet werden, und braucht während der Arbeit bis zu etwa 850 MB Arbeitsspeicher – nach zehn Minuten ohne Nutzung wird es wieder entladen. Neue Dokumente werden im Hintergrund kurz nach dem Archivieren vorbereitet."
+msgid "A language model (%(name)s) runs on this computer – nothing is sent anywhere. It is downloaded once (about %(size)s MB) when the first documents are prepared, and needs up to about 750 MB of memory while it works – after ten minutes without use it is unloaded again. New documents are prepared in the background shortly after they are archived."
+msgstr "Ein Sprachmodell (%(name)s) läuft auf diesem Computer – nichts wird irgendwohin gesendet. Es wird einmalig heruntergeladen (etwa %(size)s MB), wenn die ersten Dokumente vorbereitet werden, und braucht während der Arbeit bis zu etwa 750 MB Arbeitsspeicher – nach zehn Minuten ohne Nutzung wird es wieder entladen. Neue Dokumente werden im Hintergrund kurz nach dem Archivieren vorbereitet."
 
 #: src/heftig/web/templates/setup_search.html:16
 msgid "No"

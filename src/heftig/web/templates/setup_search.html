@@ -11,7 +11,7 @@
   <fieldset {% if locked %}disabled{% endif %}>
     <legend>{{ _("Use the search by meaning?") }}</legend>
     <label class="choice"><input type="radio" name="semantic" value="1" {% if checked %}checked{% endif %}>
-      <span><strong>{{ _("Yes (recommended)") }}</strong><br><span class="hint">{% trans size=model.size_mb, name=model.label %}A language model ({{ name }}) runs on this computer – nothing is sent anywhere. It is downloaded once (about {{ size }} MB) when the first documents are prepared, and needs up to about 850 MB of memory while it works – after ten minutes without use it is unloaded again. New documents are prepared in the background shortly after they are archived.{% endtrans %}</span></span></label>
+      <span><strong>{{ _("Yes (recommended)") }}</strong><br><span class="hint">{% trans size=model.size_mb, name=model.label %}A language model ({{ name }}) runs on this computer – nothing is sent anywhere. It is downloaded once (about {{ size }} MB) when the first documents are prepared, and needs up to about 750 MB of memory while it works – after ten minutes without use it is unloaded again. New documents are prepared in the background shortly after they are archived.{% endtrans %}</span></span></label>
     <label class="choice"><input type="radio" name="semantic" value="0" {% if not checked %}checked{% endif %}>
       <span><strong>{{ _("No") }}</strong><br><span class="hint">{{ _("Search by words only. You can switch it on later under Settings.") }}</span></span></label>
   </fieldset>
