@@ -55,8 +55,12 @@ long letter full of such words, or a rare compound, outrank the document that *i
 searched for. Results are therefore ordered like Meilisearch's ranking rules - each step only
 decides between documents the steps before left equal:
 
-1. **Words found** - only when not all words occur anywhere (see query processing): documents
-   with more of the search words first.
+1. **Words found** - for questions (three words or more) and when no document has all the words
+   (see query processing): documents with the **important** words first. Each word counts by
+   how rare it is in the archive (IDF: "Amtsblatt" counts much more than "bekomme"), a word
+   found only through another word or a similar spelling counts half, in steps of a tenth;
+   within a step BM25 of the words themselves decides. Counting words instead of weighing
+   them let everyday words outweigh the one word that matters.
 2. **Tier** - where and how the words were found:
    1. all words, as typed, in the document's own description - title, correspondent, type,
       tags, custom fields, IDs, dates, notes;
@@ -136,9 +140,11 @@ with the same two letters and are at most one edit away (words of 5-8 letters) o
 `vv`/`w` count as one edit (the same thresholds as Meilisearch). Numbers and words under five
 letters are never matched this way.
 
-**Function words.** Words like `die`, `vom`, `über`, `für`, `mit` (German and English, see
-`expand.STOPWORDS`) are left out when the query has other words: `die Rechnung vom Zahnarzt`
-searches `Rechnung Zahnarzt`. A quoted phrase keeps them.
+**Function words.** Articles, pronouns, prepositions, conjunctions, question words and auxiliary
+and modal verbs (`die`, `vom`, `über`, `wann`, `ich`, `wurde`, `kann` ... - about 290 German and
+English words, see `expand.STOPWORDS`) are left out when the query has other words: `die
+Rechnung vom Zahnarzt` searches `Rechnung Zahnarzt`, "Wann bekomme ich Bescheid, ob meine Kur
+bewilligt wurde?" searches `bekomme Bescheid Kur bewilligt`. A quoted phrase or word keeps them.
 
 **Quoted words** are searched as typed, without forms, compounds, synonyms or similar
 spellings.
@@ -173,10 +179,14 @@ single document directly, marked as an exact match.
    into the FTS5 expression, so neither SQL nor FTS5 syntax can be injected.
 5. Look up what each term stands for (forms, compounds, parts, synonyms, similar spellings);
    typo correction for terms that match nothing in any of these ways (below).
-6. Search with **all** terms (AND), each in any of its forms. If that finds nothing and there
-   is more than one term, search again with **any** term (OR) and tell the user ("Not all
-   search terms occur together – showing partial matches."); documents with more of the words
-   come first.
+6. One or two words (keywords): documents with **all** of them (AND), each as typed or in one of
+   its forms; other words for them, compound parts and similar spellings add documents but do
+   not count as "all words" - otherwise "Amt" + "Blatt" in one letter would hide the one with
+   "Amtsblatt". If no document has all the words, search again with **any** of them (OR), rank
+   by the important words found (see ranking) and tell the user ("Not all search terms occur
+   together – showing partial matches."). Three words or more (a written-out question): always
+   ranked this way, documents with all words first - a question rarely has all its words in
+   the answer.
 7. Rank, sort and paginate; build snippets and match reasons.
 
 Each result contains ID, title, document date (and its status), received date, ingest sequence,
