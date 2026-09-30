@@ -591,6 +591,7 @@ def _with_meaning(
     ranked: list[tuple[str, float]],
     errors: list[str],
     by_meaning: set[str],
+    question: bool = False,
 ) -> list[tuple[str, float]]:
     """The word search's ranking merged with the documents nearest by meaning (within the
     filters). A failing model is reported; the word search's results stay."""
@@ -614,7 +615,10 @@ def _with_meaning(
     }
     near = [d for d, _ in hits if d in allowed]
     by_meaning.update(near)
-    return [(d, -score) for d, score in semantic.fuse([d for d, _ in ranked], near)]
+    # a written-out question is better understood by meaning than by its words (measured on
+    # real citizen questions, docs/search.md); a few keywords are matched best by the words
+    weight = semantic.MEANING_WEIGHT_QUESTION if question else semantic.MEANING_WEIGHT
+    return [(d, -score) for d, score in semantic.fuse([d for d, _ in ranked], near, weight=weight)]
 
 
 # --- main entry --------------------------------------------------------------------------
@@ -774,7 +778,10 @@ def search(
         if sort == "relevance":
             ranked = _relevance(conn, terms, partial, years, base, params)
             if meaning:
-                ranked = _with_meaning(conn, embedder, q, clauses, ranked, errors, by_meaning)
+                ranked = _with_meaning(
+                    conn, embedder, q, clauses, ranked, errors, by_meaning,
+                    question=len(terms) >= QUESTION_TERMS,
+                )  # fmt: skip
                 total = len(ranked)
             rows = ranked[(page - 1) * per_page : page * per_page]
         else:

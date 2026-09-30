@@ -43,7 +43,8 @@ MIN_Z = 2.0  # a document counts as near when it is this many standard deviation
 MIN_DOCS_FOR_CUTOFF = 10
 MAX_BELOW_BEST = 0.15  # cosine: documents much less alike than the best one are left out
 LOW_FACTOR = 0.7  # a document that stands out needs at least this share of min_similarity
-MEANING_WEIGHT = 0.5  # the word search counts double: measured in docs/search.md
+MEANING_WEIGHT = 0.5  # keywords: the word search counts double (measured, docs/search.md)
+MEANING_WEIGHT_QUESTION = 0.5  # questions (three words or more)
 
 
 def _prefix(embedder, kind: str) -> str:
