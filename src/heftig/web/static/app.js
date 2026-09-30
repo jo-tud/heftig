@@ -132,6 +132,17 @@
     };
     setTimeout(tick, 5000);
   }
+  // Text areas that grow with their text (the summary): the whole text visible, up to a limit
+  document.querySelectorAll("textarea.autogrow").forEach((el) => {
+    const fit = () => {
+      if (!el.offsetParent) return; // hidden (a closed section): keep its rows until shown
+      el.style.height = "auto";
+      el.style.height = `${Math.min(el.scrollHeight + 2, window.innerHeight * 0.5)}px`;
+    };
+    el.addEventListener("input", fit);
+    el.addEventListener("focus", fit);
+    fit();
+  });
   // "Mehr" menus close on a click elsewhere or Escape
   document.addEventListener("click", (e) => {
     document.querySelectorAll("details.menu[open]").forEach((m) => { if (!m.contains(e.target)) m.open = false; });
