@@ -360,7 +360,8 @@ counting more for questions and from small pieces for questions (see "Search by 
 answers written by other people rarely use the asker's words.
 
 **Your own archive.** `heftig search-eval queries.json` runs your queries against your archive
-and prints the same table. The file is a list of queries and the documents they should find,
+and prints the same table (`--meaning`: with the search by meaning, as the web interface
+searches once documents are embedded). The file is a list of queries and the documents they should find,
 named by title or by the start of their ID (8+ characters):
 
 ```json

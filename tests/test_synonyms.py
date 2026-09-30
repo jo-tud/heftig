@@ -119,3 +119,5 @@ def test_search_eval_cli(archive, tmp_path, capsys, monkeypatch):
     assert cli.main(["search-eval", str(queries), "--json"]) == 0
     data = json.loads(capsys.readouterr().out)
     assert data["summary"]["success@1"] == 1.0
+    assert cli.main(["search-eval", str(queries), "--meaning"]) == 2  # off: said so
+    assert "search by meaning is off" in capsys.readouterr().err
