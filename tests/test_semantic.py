@@ -128,6 +128,18 @@ def test_fuse_rewards_both_lists():
     assert fused[0] == "c" and set(fused) == {"a", "b", "c", "x"}
 
 
+def test_meaning_counts_more_for_questions(archive, ids, embedder, monkeypatch):
+    weights = []
+    fuse = semantic.fuse
+    monkeypatch.setattr(
+        semantic, "fuse", lambda *a, weight=None, **kw: weights.append(weight) or fuse(*a, **kw)
+    )
+    _ids(archive, "Rechnung Zahnreinigung", embedder, meaning=True)
+    _ids(archive, "wo ist die Rechnung für die Zahnreinigung beim Zahnarzt", embedder, meaning=True)
+    assert weights == [semantic.MEANING_WEIGHT, semantic.MEANING_WEIGHT_QUESTION]
+    assert semantic.MEANING_WEIGHT_QUESTION > semantic.MEANING_WEIGHT
+
+
 def test_vector_store_without_numpy(monkeypatch):
     import sys
     from array import array
