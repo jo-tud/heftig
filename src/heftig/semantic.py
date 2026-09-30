@@ -354,12 +354,13 @@ def _near_enough(ranked: list[tuple[str, float]], spec) -> list[tuple[str, float
 
 
 def fuse(
-    lexical: list[str], meaning: list[str], k: int = RRF_K, weight: float | None = None
+    lexical: list[str], meaning: list[str], k: int | None = None, weight: float | None = None
 ) -> list[tuple[str, float]]:
     """Weighted Reciprocal Rank Fusion of two rankings: sum of weight / (k + rank). The word
     search counts fully, the meaning with MEANING_WEIGHT; ties keep the word search's order."""
     score: dict[str, float] = {}
     w = MEANING_WEIGHT if weight is None else weight
+    k = RRF_K if k is None else k
     for ranking, factor in ((lexical, 1.0), (meaning, w)):
         for rank, doc_id in enumerate(ranking, 1):
             score[doc_id] = score.get(doc_id, 0.0) + factor / (k + rank)
