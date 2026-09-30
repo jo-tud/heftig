@@ -82,6 +82,19 @@ def _ids(archive, q, embedder=None, **kw):
     return [i["id"] for i in res.items], res
 
 
+def test_long_texts_are_embedded_in_large_and_small_pieces(archive):
+    short = ingest_bytes(archive, text_pdf(["Kurzer Brief " * 10]), "kurz.pdf")
+    long = ingest_bytes(
+        archive, text_pdf(["\n".join(["Lange Vertragsbedingungen gelten hier"] * 80)]), "lang.pdf"
+    )
+    process_all(archive)
+    kinds = [k for k, _ in semantic.chunks(archive.conn, long.doc_id)]
+    assert kinds[0] == semantic.DESCRIPTION
+    assert 2 <= kinds.count(semantic.LARGE) < kinds.count(semantic.SMALL)
+    kinds = [k for k, _ in semantic.chunks(archive.conn, short.doc_id)]
+    assert kinds == [semantic.DESCRIPTION, semantic.LARGE]  # short: one piece is enough
+
+
 def test_documents_are_embedded_once(archive, ids, embedder):
     n = archive.conn.execute("SELECT COUNT(DISTINCT doc_id) FROM doc_embeddings").fetchone()[0]
     assert n == len(DOCS)
@@ -94,7 +107,7 @@ def test_documents_are_embedded_once(archive, ids, embedder):
     docs.update_fields(archive, ids["miete.pdf"], {"title": "Mietvertrag Lindenweg"})
     assert semantic.embed_pending(archive)["embedded"] == 1
     # every chunk starts with the description
-    assert semantic.chunks(archive.conn, ids["miete.pdf"])[1].startswith("Mietvertrag Lindenweg")
+    assert semantic.chunks(archive.conn, ids["miete.pdf"])[1][1].startswith("Mietvertrag Lindenweg")
 
 
 def test_meaning_finds_other_words(archive, ids, embedder):
@@ -162,15 +175,27 @@ def test_vector_store_without_numpy(monkeypatch):
     import sys
     from array import array
 
-    rows = [("a", *semantic._packed([1.0, 0.0])), ("b", *semantic._packed([1.0, 1.0]))]
+    rows = [
+        ("a", semantic.LARGE, *semantic._packed([1.0, 0.0])),
+        ("b", semantic.DESCRIPTION, *semantic._packed([0.0, 1.0])),
+        ("b", semantic.LARGE, *semantic._packed([1.0, 1.0])),
+        ("b", semantic.SMALL, *semantic._packed([1.0, 0.1])),
+    ]
     q = semantic._normalized([1.0, 0.2])
-    fast = semantic._Store(rows).similarities(q)
+    fast = semantic._Store(rows).similarities(q, passages=True)
     monkeypatch.setitem(sys.modules, "numpy", None)  # import fails
     slow = semantic._Store(rows)
     assert slow.matrix is None
-    for (d1, s1), (d2, s2) in zip(fast, slow.similarities(q), strict=True):
+    for (d1, s1), (d2, s2) in zip(fast, slow.similarities(q, passages=True), strict=True):
         assert d1 == d2 and abs(s1 - s2) < 1e-5
-    assert abs(fast[1][1] - (1.0 + 0.2) / (2**0.5 * (1 + 0.04) ** 0.5)) < 0.01  # int8: close
+    # int8 is close; "b": the mean of its best large piece and its best small piece
+    norm = (1 + 0.04) ** 0.5
+    assert abs(fast[0][1] - 1.0 / norm) < 0.01
+    large, small = 1.2 / (2**0.5 * norm), 1.02 / ((1 + 0.01) ** 0.5 * norm)
+    assert [d for d, _ in fast] == ["a", "b"] and abs(fast[1][1] - (large + small) / 2) < 0.01
+    # keywords: the large pieces decide
+    for store in (semantic._Store(rows), slow):
+        assert abs(store.similarities(q)[1][1] - large) < 0.01
     assert slow.similarities(array("f", [1.0, 0.0, 0.0])) == []  # other dimensions
 
 
@@ -182,8 +207,11 @@ def test_only_documents_that_stand_out_count(archive, monkeypatch):
         def embed(self, texts):
             return [[1.0, 0.0, 0.0, 0.0] for _ in texts]
 
-    rows = [(f"d{i}", *semantic._packed([0.2, 1.0, 0.1 * (i % 5), 0.3])) for i in range(30)]
-    rows.append(("near", *semantic._packed([1.0, 0.1, 0.0, 0.0])))
+    rows = [
+        (f"d{i:02}", semantic.LARGE, *semantic._packed([0.2, 1.0, 0.1 * (i % 5), 0.3]))
+        for i in range(30)
+    ]
+    rows.append(("near", semantic.LARGE, *semantic._packed([1.0, 0.1, 0.0, 0.0])))
     store = semantic._Store(rows)
     monkeypatch.setattr(semantic, "_vectors", lambda conn, model: store)
     assert [d for d, _ in semantic.nearest(archive.conn, OneDirection(), "x")] == ["near"]

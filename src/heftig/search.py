@@ -611,7 +611,7 @@ def _with_meaning(
     from .providers.base import ProviderError, ProviderUnavailable
 
     try:
-        hits = semantic.nearest(conn, embedder, _meaning_text(q))
+        hits = semantic.nearest(conn, embedder, _meaning_text(q), passages=question)
     except (ProviderError, ProviderUnavailable) as e:
         errors.append(_("Search by meaning failed: %(error)s", error=i18n.translate_text(str(e))))
         return ranked

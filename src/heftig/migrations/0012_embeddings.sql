@@ -4,6 +4,7 @@ CREATE TABLE doc_embeddings (
     doc_id TEXT NOT NULL,
     chunk INTEGER NOT NULL,
     model TEXT NOT NULL,
+    kind INTEGER NOT NULL,  -- 0 description, 1 large piece of the text, 2 small piece
     vector BLOB NOT NULL,  -- normalised, as 8-bit integers: value = byte * scale
     scale REAL NOT NULL,
     PRIMARY KEY (doc_id, chunk)
