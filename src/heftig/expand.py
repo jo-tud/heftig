@@ -67,7 +67,6 @@ STOPWORDS = frozenset(
 )
 
 _STEMMER = _snowball("german")
-_STEMMER_EN = _snowball("english")
 _STEM_LOCK = threading.Lock()
 
 
@@ -77,14 +76,6 @@ def stem(word: str) -> str:
     umlauts, so the folded forms stem like the original ones: haeusern -> haus."""
     with _STEM_LOCK:  # stemmer objects keep state
         return _STEMMER.stemWord(word)
-
-
-@lru_cache(maxsize=65536)
-def stem_en(word: str) -> str:
-    """English Snowball stem (Porter2): archives hold English letters too (retirement ->
-    retir, like retire, retired, retiring)."""
-    with _STEM_LOCK:
-        return _STEMMER_EN.stemWord(word)
 
 
 def _next(prefix: str) -> str:
@@ -202,17 +193,14 @@ def same_stem(v: Vocab, tok: str, scan: int = 1000) -> list[str]:
         return []
 
     def run() -> list[str]:
-        s, e = stem(tok), stem_en(tok)
+        s = stem(tok)
+        if len(s) < 3:
+            return []
         found: dict[str, int] = {}
-        if len(s) >= 3:
-            for prefix in _umlaut_variants(s):
-                # a word with this stem is at most a few letters longer than it
-                for term, n in v.starting(prefix, scan, (len(prefix), len(prefix) + 6)):
-                    if term.isalpha() and stem(term) == s:
-                        found[term] = n
-        if len(e) >= 3 and e != tok:  # English forms (the stem differs from the word)
-            for term, n in v.starting(e, scan, (len(e), len(e) + 5)):
-                if term.isalpha() and stem_en(term) == e:
+        for prefix in _umlaut_variants(s):
+            # a word with this stem is at most a few letters longer than it
+            for term, n in v.starting(prefix, scan, (len(prefix), len(prefix) + 6)):
+                if term.isalpha() and stem(term) == s:
                     found[term] = n
         found.pop(tok, None)
         return [t for t, _ in sorted(found.items(), key=lambda x: (-x[1], x[0]))[:MAX_FORMS]]
