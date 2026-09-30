@@ -747,7 +747,11 @@ def search(
             # no document has every word as typed or in one of its forms: documents that have
             # them only through other words or similar spellings ("Amt" + "Blatt" for
             # "Amtsblatt") must not hide the ones with the most important words (partial search)
-            if not complete and merged != terms and _count(conn, build_match(merged, "AND"), clauses):
+            if (
+                not complete
+                and merged != terms
+                and _count(conn, build_match(merged, "AND"), clauses)
+            ):
                 # "8372 9381" typed with a space: one number (and a phrase)
                 terms = merged
                 match = build_match(terms, "AND")
