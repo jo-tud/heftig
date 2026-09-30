@@ -1903,10 +1903,7 @@ def _meaning_view(a) -> dict[str, Any]:
         "blocked": s.embed_blocked_reason() if s.embed_provider != "none" else None,
         "status": semantic.status(a.conn, s),
         "error": get_meta(a.conn, semantic.ERROR_KEY) or "",
-        "fixed": bool(
-            settings_store.fixed(a.base_settings)
-            & {"embed_provider", "embed_model", "embed_base_url", "embed_api_key"}
-        ),
+        "fixed": bool(settings_store.fixed(a.base_settings) & MEANING_KEYS),
     }
 
 
@@ -1922,6 +1919,8 @@ async def settings_language(request: Request, p: Principal = Depends(require_wri
 
 
 MEANING_MODES = ("off", "openai", "local")
+MEANING_KEYS = {"embed_provider", "embed_model", "embed_base_url", "embed_api_key",
+                "allow_cloud_embed"}  # fmt: skip
 
 
 def meaning_changes(form, current) -> tuple[dict[str, Any], str | None]:
@@ -1946,17 +1945,20 @@ def meaning_changes(form, current) -> tuple[dict[str, Any], str | None]:
         "embed_model": model or ("text-embedding-3-small" if mode == "openai" else ""),
         "embed_base_url": base,
     }
+    from ..providers.registry import shared_openai_key
+
     same = current.embed_provider == provider and current.embed_base_url == base
     if key:
         changes["embed_api_key"] = key
-    elif mode == "openai" and not (same and current.secret("embed_api_key")):
-        # the key of the OpenAI classification, if there is one
-        if current.classify_provider == "openai" and current.secret("classify_api_key"):
-            changes["embed_api_key"] = current.secret("classify_api_key")
-        else:
-            return {}, _("Please enter the API key.")
     elif not same:
         changes["embed_api_key"] = None  # never another server's key
+    if (
+        mode == "openai"
+        and not key
+        and not (same and current.secret("embed_api_key"))
+        and not shared_openai_key(current)  # used by the provider, not copied
+    ):
+        return {}, _("Please enter the API key.")
     cloud = mode == "openai" or not is_local_url(base)
     if cloud and not _form_val(form, "meaning_consent"):
         return {}, _("Please confirm that document texts may be sent to this service.")

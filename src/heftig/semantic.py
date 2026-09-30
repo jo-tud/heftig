@@ -7,7 +7,7 @@ default; switched on in the settings with an OpenAI-compatible embedding model: 
 as Ollama with ``bge-m3`` or ``embeddinggemma`` (nothing leaves the machine).
 
 - The worker embeds every document in pieces (title, sender, type, tags and date, then the text
-  in chunks of about 1,200 characters, at most 12 per document) and stores the vectors in
+  in chunks of about 1,200 characters, at most 12) and stores the vectors in
   SQLite (``doc_embeddings``, derived data like the word index). A document is embedded again
   when its text or description changes.
 - The normal search never uses it. Only when the user asks for it (``meaning=1``, "Search by
@@ -38,6 +38,7 @@ MAX_CHUNKS = 12
 DOCS_PER_ROUND = 32
 NEAREST = 20  # documents by meaning merged into the results
 RRF_K = 60
+GENERATION_KEY = "embeddings_generation"  # meta: counts changes of doc_embeddings (cache key)
 MIN_Z = 2.0  # a document counts as near when it is this many standard deviations above average
 MIN_DOCS_FOR_CUTOFF = 10
 MEANING_WEIGHT = 0.5  # the word search counts double: measured in docs/search.md
@@ -140,6 +141,14 @@ def pending(conn: sqlite3.Connection, model: str, limit: int) -> list[tuple[str,
     ]
 
 
+def _changed(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        "INSERT INTO meta(key, value) VALUES(?, '1') ON CONFLICT(key) DO UPDATE SET "
+        "value = CAST(value AS INTEGER) + 1",
+        (GENERATION_KEY,),
+    )
+
+
 def embed_pending(archive, max_docs: int = DOCS_PER_ROUND, stop=None) -> dict[str, Any]:
     """Embed up to `max_docs` new or changed documents. The cost goes into the AI cost
     overview (task "embed"). Raises ProviderError/ProviderUnavailable when the model fails."""
@@ -151,8 +160,12 @@ def embed_pending(archive, max_docs: int = DOCS_PER_ROUND, stop=None) -> dict[st
         return {"embedded": 0, "unchanged": 0}
     model = embedder.model
     with write_tx(conn):  # documents that are gone
-        conn.execute("DELETE FROM doc_embeddings WHERE doc_id NOT IN (SELECT id FROM documents)")
+        gone = conn.execute(
+            "DELETE FROM doc_embeddings WHERE doc_id NOT IN (SELECT id FROM documents)"
+        ).rowcount
         conn.execute("DELETE FROM doc_embed_state WHERE doc_id NOT IN (SELECT id FROM documents)")
+        if gone:
+            _changed(conn)
     embedded = unchanged = 0
     for doc_id, revision in pending(conn, model, max_docs):
         if stop is not None and stop.is_set():
@@ -188,6 +201,7 @@ def embed_pending(archive, max_docs: int = DOCS_PER_ROUND, stop=None) -> dict[st
                 (doc_id, model, digest, revision),
             )
             _record(conn, embedder, "embed", doc_id, started, before)
+            _changed(conn)
         embedded += 1
     return {"embedded": embedded, "unchanged": unchanged}
 
@@ -251,10 +265,8 @@ _LOCK = threading.Lock()
 def _vectors(conn: sqlite3.Connection, model: str) -> _Store:
     """All stored vectors of `model`, in memory until they change."""
     db = conn.execute("PRAGMA database_list").fetchone()[2]
-    count, last = conn.execute(
-        "SELECT COUNT(*), MAX(rowid) FROM doc_embeddings WHERE model = ?", (model,)
-    ).fetchone()
-    key = (db, model, count, last)
+    row = conn.execute("SELECT value FROM meta WHERE key = ?", (GENERATION_KEY,)).fetchone()
+    key = (db, model, row[0] if row else "0")
     with _LOCK:
         if key in _VECTORS:
             return _VECTORS[key]

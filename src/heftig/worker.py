@@ -113,6 +113,8 @@ class Worker:
                     self._last_embed = time.monotonic() + 570
             except Exception:
                 log.exception("embedding documents failed")
+            finally:
+                self.archive.close_thread_connection()  # one thread per round
 
         self._embed = threading.Thread(target=run, name="embed", daemon=True)
         self._embed.start()
