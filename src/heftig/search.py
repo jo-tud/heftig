@@ -1280,19 +1280,51 @@ def _hydrate(
 
 
 class _Hits:
-    """_term_matches (all levels) remembered per word: documents repeat their words, and the
-    results of one page share most of them."""
+    """_term_matches (all levels) for many words: each term's words and prefixes are collected
+    once, so a word is checked with one set lookup and one startswith."""
 
     def __init__(self, terms: list[Term]):
         self.terms = terms
-        self._seen: dict[tuple[int, str], bool] = {}
+        self._compiled: dict[int, tuple[frozenset[str], tuple[str, ...]]] = {}
+
+    def _compile(self, t: Term, level: int = SIMILAR) -> tuple[set[str], set[str]]:
+        """The words `t` stands for exactly and the prefixes it stands for (_term_matches)."""
+        exact: set[str] = set()
+        prefixes: set[str] = set()
+
+        def literal(tok: str, forms: tuple[str, ...]) -> None:
+            if _prefixable(tok):
+                prefixes.update(forms)
+            else:
+                exact.add(tok)
+
+        if t.phrase:
+            for tok in t.tokens:
+                literal(tok, (tok,))
+        elif t.exact:
+            exact.add(t.tokens[0])
+        else:
+            literal(t.tokens[0], _literal_forms(t))
+        if level >= FORMS:
+            exact.update(t.stems)
+            exact.update(t.compounds)
+        if level >= RELATED:
+            for sub, sub_level in [(s, LITERAL) for s in t.synonyms] + [
+                (p, RELATED) for p in t.parts
+            ]:
+                e, pre = self._compile(sub, sub_level)
+                exact |= e
+                prefixes |= pre
+        if level >= SIMILAR:
+            exact.update(t.similar)
+        return exact, prefixes
 
     def term(self, t: Term, word: str) -> bool:
-        key = (id(t), word)
-        hit = self._seen.get(key)
-        if hit is None:
-            hit = self._seen[key] = _term_matches(t, word)
-        return hit
+        c = self._compiled.get(id(t))
+        if c is None:
+            exact, prefixes = self._compile(t)
+            c = self._compiled[id(t)] = (frozenset(exact), tuple(sorted(prefixes)))
+        return word in c[0] or (bool(c[1]) and word.startswith(c[1]))
 
     def any(self, word: str) -> bool:
         return any(self.term(t, word) for t in self.terms)

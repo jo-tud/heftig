@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import sqlite3
 import threading
+from bisect import bisect_right
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -87,6 +88,9 @@ class Vocab:
 
     _cache: dict[tuple, Any] = {}
     _lock = threading.Lock()
+    # the whole vocabulary in memory, one per archive (the latest index state only): finding a
+    # part inside the words is a string search instead of a scan of the FTS index
+    _words: dict[str, tuple[tuple, str, list[int], list[int]]] = {}
 
     def __init__(self, conn: sqlite3.Connection):
         self.conn = conn
@@ -141,26 +145,47 @@ class Vocab:
 
         return self.cached("docs", term, run)
 
+    def _all_words(self) -> tuple[str, list[int], list[int]]:
+        """All indexed words joined by newlines, where each starts, and their document counts."""
+        key = self.state[:2]  # the index, not the synonyms
+        root = str(self.root)
+        with self._lock:
+            held = self._words.get(root)
+            if held and held[0] == key:
+                return held[1:]
+        rows = self.conn.execute("SELECT term, doc FROM doc_vocab").fetchall()
+        starts, pos = [], 0
+        for term, _ in rows:
+            starts.append(pos)
+            pos += len(term) + 1
+        words = ("\n".join(t for t, _ in rows) + "\n", starts, [n for _, n in rows])
+        with self._lock:
+            self._words[root] = (key, *words)
+        return words
+
     def compound_candidates(self, part: str, inner: bool, slack: int) -> list[tuple[str, int]]:
         """Indexed words that end in `part` (plus up to `slack` letters: the rest of a longer
         form and an inflection) or, with `inner`, have it in the middle with at least three
-        letters before it and some after it (a full vocabulary scan, cached; the exact test is
-        done by the caller)."""
-        # instr() finds the first occurrence; a later one in the middle is rare enough to miss
-        sql = (
-            "SELECT term, doc FROM doc_vocab WHERE instr(term, :p) > 1 AND "
-            "(length(term) - instr(term, :p) - length(:p) + 1 <= :slack"
-            + (
-                " OR (instr(term, :p) > 3 AND length(term) - instr(term, :p) - length(:p) >= 3))"
-                if inner
-                else ")"
-            )
-        )
-        return self.cached(
-            "in",
-            (part, inner, slack),
-            lambda: self.conn.execute(sql, {"p": part, "slack": slack}).fetchall(),
-        )
+        letters before it and some after it (a full vocabulary search, cached; the exact test is
+        done by the caller). Only the first occurrence in a word counts; a later one in the
+        middle is rare enough to miss."""
+
+        def run() -> list[tuple[str, int]]:
+            text, starts, docs = self._all_words()
+            out = []
+            at = text.find(part)
+            while at >= 0:
+                i = bisect_right(starts, at) - 1
+                end = text.index("\n", at)
+                term = text[starts[i] : end]
+                first = at - starts[i]
+                after = len(term) - first - len(part)
+                if first >= 1 and (after <= slack or (inner and first >= 3 and after >= 4)):
+                    out.append((term, docs[i]))
+                at = text.find(part, end + 1)
+            return out
+
+        return self.cached("in", (part, inner, slack), run)
 
 
 # --- level 1: word forms and compounds ------------------------------------------------------
