@@ -496,6 +496,7 @@ load):
 | bekko-embedding v1 a25m | 0.857 | 0.745 | - | 0.641 | 1.5 | MIT |
 | granite-embedding-311m-multilingual-r2, int8 | 0.843 | 0.621 | - | 0.634 | 0.3 | Apache-2.0 |
 | gte-multilingual-base, int8 | 0.833 | 0.660 | 0.944 | 0.669 | 0.7 | Apache-2.0 |
+| multilingual-e5-small, int8 | 0.834 | 0.725 | - | 0.588 | 2.5 | MIT |
 
 - LegalQuAD: 200 questions on long German legal texts; GermanQuAD: 2,204 questions on
   Wikipedia passages ([deepset](https://www.deepset.ai/germanquad)); both as published in MTEB.
