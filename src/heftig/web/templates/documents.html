@@ -164,16 +164,6 @@
   <p class="notice info ai-note" role="status">{{ _("✦ AI search “%(query)s”", query=ai_query) }}{% if ai_note %}: {{ ai_note }}{% endif %}
     <span class="small">– {{ _("remove or change the filters below") }} · <a href="/?{{ {'q': ai_query} | urlencode }}">{{ _("search without AI") }}</a></span></p>
   {% endif %}
-  {% for e in result.errors %}<p class="notice warn" role="status">{{ e }}</p>{% endfor %}
-  {% if result.date_phrase %}
-  <p class="notice info" role="status">{% trans trimmed label=result.date_phrase.label, text=result.date_phrase.text, url=v.literal_href %}Date range recognized: <strong>{{ label }}</strong> (document date) –
-    <a href="{{ url }}">search for “{{ text }}” as text instead</a>{% endtrans %}</p>
-  {% endif %}
-  {% if result.corrections %}
-  <p class="notice info" role="status">{{ _("Searched with corrected terms:") }}
-    {% for a, b in result.corrections %}<del>{{ a }}</del> → <strong>{{ b }}</strong>{% if not loop.last %}, {% endif %}{% endfor %}</p>
-  {% endif %}
-  {% for n in result.notes %}<p class="notice info" role="status">{{ n }}</p>{% endfor %}
 
   {% if start_page %}
   <section class="start" aria-label="{{ _("Quick access") }}">
@@ -191,6 +181,12 @@
   {% endif %}
 
   <div class="resultinfo" data-recent-label="{{ v.label }}" data-recent-query="{{ v.query }}"{% if start_page %} data-start{% endif %}>
+    {# first in the row: it stays in place when the count beside it changes #}
+    {% if v.meaning.show %}
+    <p class="segmented small meaning-switch" role="group" aria-label="{{ _("Search by meaning") }}" title="{{ _("Also find documents that say it in other words") }}">
+      <a href="{{ v.meaning.with }}" class="{% if v.meaning.on %}on{% endif %}"{% if v.meaning.on %} aria-current="true"{% endif %}>{{ _("Words + meaning") }}</a><a href="{{ v.meaning.without }}" class="{% if not v.meaning.on %}on{% endif %}"{% if not v.meaning.on %} aria-current="true"{% endif %}>{{ _("Words only") }}</a>
+    </p>
+    {% endif %}
     <span>{% if params.q %}{% trans num=result.total, q=params.q %}<strong>{{ num }}</strong> document for “{{ q }}”{% pluralize %}<strong>{{ num }}</strong> documents for “{{ q }}”{% endtrans %}{% else %}{% trans num=result.total %}<strong>{{ num }}</strong> document{% pluralize %}<strong>{{ num }}</strong> documents{% endtrans %}{% endif %}
       <span class="muted">({{ '%.0f' % result.took_ms }} ms)</span></span>
     <form method="get" action="/" class="sort-form">
@@ -203,11 +199,6 @@
         </select></label>
       <noscript><button type="submit">OK</button></noscript>
     </form>
-    {% if v.meaning.show %}
-    <p class="segmented small meaning-switch" role="group" aria-label="{{ _("Search by meaning") }}" title="{{ _("Also find documents that say it in other words") }}">
-      <a href="{{ v.meaning.with }}" class="{% if v.meaning.on %}on{% endif %}"{% if v.meaning.on %} aria-current="true"{% endif %}>{{ _("Words + meaning") }}</a><a href="{{ v.meaning.without }}" class="{% if not v.meaning.on %}on{% endif %}"{% if not v.meaning.on %} aria-current="true"{% endif %}>{{ _("Words only") }}</a>
-    </p>
-    {% endif %}
     {% if not start_page and result.total %}<a href="/bulk-delete?{{ v.query }}" class="small bulk-link">{{ _("Delete results…") }}</a>{% endif %}
     {% if not start_page %}
       {% if saved_current %}<span class="muted small">★ {{ _("saved as “%(name)s”", name=saved_current.name) }}</span>
@@ -225,6 +216,17 @@
     {% endif %}
   </div>
 
+  {# below the row with the count and the switch, which stays in place #}
+  {% for e in result.errors %}<p class="notice warn" role="status">{{ e }}</p>{% endfor %}
+  {% if result.date_phrase %}
+  <p class="notice info" role="status">{% trans trimmed label=result.date_phrase.label, text=result.date_phrase.text, url=v.literal_href %}Date range recognized: <strong>{{ label }}</strong> (document date) –
+    <a href="{{ url }}">search for “{{ text }}” as text instead</a>{% endtrans %}</p>
+  {% endif %}
+  {% if result.corrections %}
+  <p class="notice info" role="status">{{ _("Searched with corrected terms:") }}
+    {% for a, b in result.corrections %}<del>{{ a }}</del> → <strong>{{ b }}</strong>{% if not loop.last %}, {% endif %}{% endfor %}</p>
+  {% endif %}
+  {% for n in result.notes %}<p class="notice info" role="status">{{ n }}</p>{% endfor %}
   <ol class="results" data-pv>
   {% for it in result.items %}
     {% set link = '/documents/' ~ it.id ~ ('?q=' ~ (params.q | urlencode) if params.q else '') %}
