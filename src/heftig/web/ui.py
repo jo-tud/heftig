@@ -1075,6 +1075,8 @@ def _autosave(a, doc_id: str, form, meta) -> JSONResponse:
                 {"ok": True, "revision": meta.revision, **_review_parts(a, doc_id, form)}
             )
         field = _form_val(form, "field")
+        if field == "*":
+            return _autosave_all(a, doc_id, form, meta)
         if field.startswith("lock:"):
             name = field[5:]
             if name not in LOCKABLE_FIELDS:
@@ -1095,6 +1097,26 @@ def _autosave(a, doc_id: str, form, meta) -> JSONResponse:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
     return JSONResponse({"ok": True, "revision": meta.revision, "undo": snap,
                          "locked": bool(meta.field_locks.get(field)),
+                         **_review_parts(a, doc_id, form)})  # fmt: skip
+
+
+def _autosave_all(a, doc_id: str, form, meta) -> JSONResponse:
+    """Several fields at once, when the page is left while a field is still being edited
+    (back button, closing the tab): only the fields the page names as changed, in one write -
+    there is no time left for one request per field. Without undo."""
+    names = [f for f in _form_val(form, "fields").split(",") if f]
+    changes, error = _form_changes(form, meta)
+    if error:
+        raise docs.EditError(error)
+    changes = {f: v for f, v in changes.items() if f in names}
+    locks = {
+        f[5:]: form.get(f"lock_{f[5:]}") == "on"
+        for f in names
+        if f.startswith("lock:") and f[5:] in LOCKABLE_FIELDS
+    }
+    if changes or locks:
+        meta = docs.update_fields(a, doc_id, changes, locks)
+    return JSONResponse({"ok": True, "revision": meta.revision, "undo": None,
                          **_review_parts(a, doc_id, form)})  # fmt: skip
 
 
@@ -1223,8 +1245,28 @@ def document_attachment(
     return api.attachment_response(request, doc_id, att_id, bool(inline))
 
 
-def _notes_sync(a, doc_id: str, form) -> RedirectResponse:
+def _note_autosave(a, doc_id: str, form) -> JSONResponse:
+    """A note saved as soon as the user leaves it: a new one is added (the page then keeps
+    editing that note), an existing one changed - emptied, it is deleted."""
+    note_id = _form_val(form, "note_id")
+    text = str(form.get("text") or "")
+    try:
+        if note_id:
+            meta = docs.edit_note(a, doc_id, note_id, text)
+        else:
+            meta = docs.add_note(a, doc_id, text)
+            note_id = meta.notes[-1].id
+    except docs.EditError as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
+    deleted = all(n.id != note_id for n in meta.notes)
+    return JSONResponse({"ok": True, "revision": meta.revision,
+                         "note_id": None if deleted else note_id, "deleted": deleted})  # fmt: skip
+
+
+def _notes_sync(a, doc_id: str, form) -> Response:
     action = str(form.get("action") or "")
+    if str(form.get("autosave") or "") == "1" and action in ("add", "save"):
+        return _note_autosave(a, doc_id, form)
     note_id = str(form.get("note_id") or "")
     text = str(form.get("text") or "")
     try:

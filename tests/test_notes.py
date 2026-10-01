@@ -170,3 +170,28 @@ def test_attachments_live_next_to_originals_and_are_shared(archive):
     docs.delete_document(archive, b)
     assert not path.exists()  # last reference gone
     assert maintenance.check(archive)["ok"]
+
+
+def test_note_autosave_adds_then_edits_the_same_note(web):
+    """The page saves a note when its field is left: the first save adds it, later ones change
+    that note (no second copy), an emptied note is deleted. The answer carries the revision,
+    which the other forms on the page need."""
+    app, c, h, doc_id = web
+    a = app.state.archive
+    form = {"csrf_token": h["X-CSRF-Token"], "autosave": "1"}
+    r = c.post(f"/documents/{doc_id}/notes", data={**form, "action": "add", "text": "Widerspruch"})
+    data = r.json()
+    m = docs.load_meta(a, doc_id)
+    assert data["ok"] and data["note_id"] == m.notes[0].id and data["revision"] == m.revision
+    r = c.post(f"/documents/{doc_id}/notes",
+               data={**form, "action": "save", "note_id": data["note_id"], "text": "Widerspruch am 3.10."})  # fmt: skip
+    assert r.json()["ok"] and not r.json()["deleted"]
+    assert [n.text for n in docs.load_meta(a, doc_id).notes] == ["Widerspruch am 3.10."]
+    r = c.post(f"/documents/{doc_id}/notes", data={**form, "action": "add", "text": "  "})
+    assert r.status_code == 400 and r.json()["error"]
+    r = c.post(f"/documents/{doc_id}/notes",
+               data={**form, "action": "save", "note_id": data["note_id"], "text": ""})  # fmt: skip
+    assert r.json()["deleted"] and r.json()["note_id"] is None
+    assert docs.load_meta(a, doc_id).notes == []
+    page = c.get(f"/documents/{doc_id}").text
+    assert 'class="note-add"' in page and "tagbox.js" in page and "data-tagbox" in page

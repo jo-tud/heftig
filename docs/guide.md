@@ -16,7 +16,10 @@ How the parts fit together in daily use. Setup and operation: [operations.md](op
 4. **Correct what's wrong** on the document page. A field is saved as soon as you leave it (or
    pick a value); *Saved · Undo* appears next to it, and *Undo* restores the previous value,
    its lock and the AI's suggestions. Nothing is saved while you type, and links and buttons
-   on the page wait for a save still running. Every field you edit is locked – reprocessing
+   on the page wait for a save still running; leaving the page otherwise (back button, closing
+   the tab) still saves the field you were in. Notes are saved the same way – a new note as soon
+   as you leave its field. Tags are shown as small chips: type a tag and press Enter or a comma
+   to add it, × removes one. Every field you edit is locked – reprocessing
    never overwrites it. Suggestions of the AI are accepted or dismissed there (*Dismiss* only
    removes the suggestion; the field keeps its value), or on *Suggestions in bulk* (linked
    from the inbox) for many documents at once.

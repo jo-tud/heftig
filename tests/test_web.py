@@ -634,6 +634,30 @@ def test_autosave_one_field_and_undo(client, app):
     assert "autosave.js" in client.get(f"/documents/{doc}").text
 
 
+def test_autosave_of_several_fields_when_the_page_is_left(client, app):
+    """Leaving the page while a field is still being edited (back button, closing the tab):
+    the page names the changed fields and they are saved in one request - only those."""
+    csrf = login(client)
+    doc = upload(client, csrf, text_pdf(["Rechnung Stadtwerke"]), "r.pdf").json()["results"][0][
+        "document_id"
+    ]
+    process_all(app.state.archive)
+    a = app.state.archive
+    m = docs.load_meta(a, doc)
+    form = {"csrf_token": csrf, "autosave": "1", "revision": str(m.revision), "field": "*",
+            "fields": "title,tags", "title": "Abschlag Strom", "tags": "Strom, Wohnung",
+            "correspondent": "Nicht genannt"}  # fmt: skip
+    r = client.post(f"/documents/{doc}/edit", data=form)
+    data = r.json()
+    m = docs.load_meta(a, doc)
+    assert r.status_code == 200 and data["ok"] and data["revision"] == m.revision
+    assert m.title == "Abschlag Strom" and m.tags == ["Strom", "Wohnung"]
+    assert m.correspondent != "Nicht genannt" and m.field_locks.get("title")
+    # the old revision is refused here too
+    r = client.post(f"/documents/{doc}/edit", data=form)
+    assert r.status_code == 409
+
+
 def test_autosave_updates_the_review_on_the_page(client, app):
     """Correcting the field a suggestion was about settles it - the page gets the review box,
     the counters and the status as they are now (the suggestion buttons count positions)."""

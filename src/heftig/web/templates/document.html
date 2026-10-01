@@ -132,8 +132,8 @@
         <input id="f-corr" name="correspondent" value="{{ m.correspondent or '' }}" list="dl-corr" autocomplete="off"></div>
       <div class="field"><label for="f-type">{{ _("Document type") }}</label>{{ lockbox('document_type') }}
         <input id="f-type" name="document_type" value="{{ m.document_type or '' }}" list="dl-type" autocomplete="off"></div>
-      <div class="field"><label for="f-tags">{{ _("Tags (comma-separated)") }}</label>{{ lockbox('tags') }}
-        <input id="f-tags" name="tags" value="{{ m.tags | join(', ') }}" list="dl-tags" autocomplete="off">
+      <div class="field"><label for="f-tags">{{ _("Tags") }}</label>{{ lockbox('tags') }}
+        <input id="f-tags" name="tags" value="{{ m.tags | join(', ') }}" list="dl-tags" autocomplete="off" placeholder="{{ _("separated by commas") }}" data-tagbox>
         {% set tags_added = m.tag_overrides.added | join(', ') %}{% set tags_removed = m.tag_overrides.removed | join(', ') %}
         {% if tags_added and tags_removed %}<p class="hint">{{ _("Manually added: %(added)s · removed: %(removed)s – kept when reprocessing.", added=tags_added, removed=tags_removed) }}</p>
         {% elif tags_added %}<p class="hint">{{ _("Manually added: %(added)s – kept when reprocessing.", added=tags_added) }}</p>
@@ -340,5 +340,6 @@
 
 </details>
 
+<script src="/static/tagbox.js?v={{ asset_v }}" defer></script>
 <script src="/static/autosave.js?v={{ asset_v }}" defer></script>
 {% endblock %}

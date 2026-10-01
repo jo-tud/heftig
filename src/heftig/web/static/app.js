@@ -19,6 +19,7 @@
 
   // "← Dokumente" returns to the result list the user came from (with its filters and scroll)
   document.querySelectorAll("a[data-back]").forEach((a) => a.addEventListener("click", (e) => {
+    if (e.defaultPrevented) return; // e.g. waiting for a save (autosave.js clicks it again)
     try {
       const ref = new URL(document.referrer);
       if (ref.origin === location.origin && ref.pathname === "/" && history.length > 1) {
@@ -35,7 +36,7 @@
 
   // Confirmation for destructive forms
   document.querySelectorAll("form[data-confirm]").forEach((f) => {
-    f.addEventListener("submit", (e) => { if (!window.confirm(f.dataset.confirm)) e.preventDefault(); });
+    f.addEventListener("submit", (e) => { if (!e.defaultPrevented && !window.confirm(f.dataset.confirm)) e.preventDefault(); });
   });
 
   // Upload with progress (falls back to the plain form without JS)
