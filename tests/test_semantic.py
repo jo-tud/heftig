@@ -314,11 +314,20 @@ def test_search_uses_meaning_by_itself_when_documents_are_embedded(tmp_path):
         ingest_bytes(a, text_pdf([text]), n)
     process_all(a)
     assert semantic.for_search(a.conn, a.settings) is None  # nothing embedded yet
-    assert "Depotauszug" not in c.get("/?q=Wertpapiere").text
+    page = c.get("/?q=Wertpapiere").text
+    assert "Depotauszug" not in page and "meaning-switch" not in page
     semantic.catch_up(a)
     page = c.get("/?q=Wertpapiere").text
     assert "Depotauszug" in page and "Bedeutung" in page
-    assert "Depotauszug" not in c.get("/?q=Wertpapiere&meaning=0").text
+    # the switch: words + meaning (on) or words only
+    assert 'aria-current="true">Wörter + Bedeutung' in page
+    assert 'href="/?q=Wertpapiere&amp;meaning=0"' in page
+    page = c.get("/?q=Wertpapiere&meaning=0").text
+    assert "Depotauszug" not in page
+    assert 'href="/?q=Wertpapiere" class="">Wörter + Bedeutung' in page
+    assert 'aria-current="true">Nur Wörter' in page
+    assert 'name="meaning" value="0"' in page  # a new search keeps "words only"
+    assert "meaning-switch" not in c.get("/").text  # nothing to switch without search words
     r = c.get("/api/documents", params={"q": "Wertpapiere"}).json()
     assert r["meaning"] and r["items"][0]["title"] == "Depotauszug 2024"
     app.state.archive.close()

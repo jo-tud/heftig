@@ -196,7 +196,8 @@ correspondent, document type, tags, source, status, text status, MIME type, page
 filing information, the BM25 rank, a highlighted snippet (HTML-escaped, matches in `<mark>`) and
 the **reasons**: the fields that matched (`Number/ID`, `Title`, `Sender`, `Document type`, `Tag`,
 `Custom field`, `File name`, `Date`, `Summary`, `Text`, `Note/attachment`, `Meaning` for a
-document found by the search by meaning; in the interface language).
+document the search by meaning counted as near - also when its words found it too; in the
+interface language).
 
 ## Typo correction
 
@@ -569,8 +570,17 @@ merged with the word search's ranking by weighted Reciprocal Rank Fusion (Cormac
   the answer's words; with the keyword settings the flat k = 60 let every document found by
   words pass the best one found by meaning.
 
-A document found only by meaning has the reason "Meaning". `meaning=0` in the URL (API:
-`meaning=false`) searches by words only. Suggestions while typing use the words only.
+Every document the search by meaning counted as near (and that passes the filters) has the
+reason "Meaning" - also one the words found too, so the reason shows where the meaning took
+part, not that the words missed it. A document found only by meaning has no other reason.
+
+**Words only.** After a search with words, the search page shows a switch next to the sort:
+*Words + meaning* | *Words only* - to compare the results with and without the meaning. It
+appears only when the search by meaning could take part (switched on, the model there,
+documents embedded, the query has search words). *Words only* sets `meaning=0` in the URL (API:
+`meaning=false`); a new search in the search box keeps the choice, like the other filters, and
+a saved search remembers it. Without the meaning, the chosen sort applies again (with it, the
+results are always by relevance). Suggestions while typing use the words only.
 
 **Measured** (benchmark with the built-in model; `uv run python scripts/search_bench.py
 --meaning`):

@@ -163,7 +163,8 @@ paid text recognition) and puts the parts in the trash as one batch – *Undo* r
 - With the *search by meaning* switched on (setup assistant or *Settings → Search by meaning*),
   every search also finds documents that say it in other words – `securities` finds the ETF
   statement, `electrician` the bill from “Elektro Schulz”. The model runs on your computer;
-  nothing is sent anywhere. `meaning=0` in the address searches by words only.
+  nothing is sent anywhere. To compare, switch between *Words + meaning* and *Words only* next
+  to the sort above the results.
 - Case, umlauts and spacing in numbers don't matter: `Müllerstraße` = `muellerstrasse`,
   `83729381` also finds `8372 9381`. Numbers match exactly and rank higher in fields such as a
   contract number.

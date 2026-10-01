@@ -369,10 +369,11 @@ def _params_from(qp) -> SearchParams:
 
 def meaning_embedder(a, params: SearchParams):
     """The embedding model for this search, when the search by meaning is on, the model is
-    there and documents are embedded (it runs on this computer)."""
+    there and documents are embedded (it runs on this computer). Also with ``meaning=0``:
+    search() then leaves it out, and the search page offers to switch it back on."""
     from .. import semantic
 
-    if not (params.meaning and params.q):
+    if not params.q:
         return None
     return semantic.for_search(a.conn, a.settings)
 

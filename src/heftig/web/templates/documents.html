@@ -203,6 +203,11 @@
         </select></label>
       <noscript><button type="submit">OK</button></noscript>
     </form>
+    {% if v.meaning.show %}
+    <p class="segmented small meaning-switch" role="group" aria-label="{{ _("Search by meaning") }}" title="{{ _("Also find documents that say it in other words") }}">
+      <a href="{{ v.meaning.with }}" class="{% if v.meaning.on %}on{% endif %}"{% if v.meaning.on %} aria-current="true"{% endif %}>{{ _("Words + meaning") }}</a><a href="{{ v.meaning.without }}" class="{% if not v.meaning.on %}on{% endif %}"{% if not v.meaning.on %} aria-current="true"{% endif %}>{{ _("Words only") }}</a>
+    </p>
+    {% endif %}
     {% if not start_page and result.total %}<a href="/bulk-delete?{{ v.query }}" class="small bulk-link">{{ _("Delete results…") }}</a>{% endif %}
     {% if not start_page %}
       {% if saved_current %}<span class="muted small">★ {{ _("saved as “%(name)s”", name=saved_current.name) }}</span>

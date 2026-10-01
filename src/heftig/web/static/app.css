@@ -183,6 +183,7 @@ form.inline, form.alias { display: inline; }
 .resultinfo > span strong { color: var(--ink); }
 .sort-form label { display: inline-flex; align-items: center; gap: .4rem; margin: 0; font-size: .875rem; color: var(--muted); }
 .sort-form select { width: auto; padding: .25rem .4rem; }
+.meaning-switch { margin: 0; }
 .save-search > summary { font-size: .875rem; color: var(--accent); margin: 0; }
 .save-search form { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .4rem; }
 .save-search input { flex: 1 1 14rem; width: auto; }

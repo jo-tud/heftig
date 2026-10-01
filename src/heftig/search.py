@@ -150,6 +150,7 @@ class SearchResult:
     q_rest: str = ""  # the query without the date phrase
     facets: dict[str, Any] | None = None
     meaning: bool = False  # searched by meaning too
+    meaning_available: bool = False  # could search by meaning (the switch on the search page)
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -743,7 +744,8 @@ def search(
     sort = p.sort if p.sort in SORTS else ("relevance" if terms else "received")
     if sort == "relevance" and not terms:
         sort = "received"
-    meaning = bool(p.meaning and embedder is not None and terms)
+    meaning_available = bool(embedder is not None and terms)
+    meaning = bool(p.meaning and meaning_available)
     by_meaning: set[str] = set()
     if meaning:
         sort = "relevance"
@@ -841,6 +843,7 @@ def search(
         date_phrase=date_phrase,
         q_rest=q,
         meaning=meaning,
+        meaning_available=meaning_available,
     )
     if with_facets:
         result.facets = _facets(conn, match, clauses, p, within=with_facets == "within")

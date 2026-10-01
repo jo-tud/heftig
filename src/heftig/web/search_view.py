@@ -247,6 +247,13 @@ def build(
             f.get("months", {}),
             today,
         ),
+        # words + meaning or words only, for this search (shown when it can search by meaning)
+        "meaning": {
+            "show": result.meaning_available,
+            "on": params.meaning,
+            "with": with_values(items, meaning=None),
+            "without": with_values(items, meaning="0"),
+        },
         "undated": f.get("undated", 0),
         "label": describe(params, items, session_names, email_names),
         "query": urlencode(items),
