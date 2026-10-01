@@ -16,11 +16,9 @@ import shutil
 import threading
 from pathlib import Path
 
-import pypdfium2 as pdfium
-
 from . import documents as docs
 from .archive import Archive
-from .media import PDFIUM_LOCK, render_width, rotate_box, to_png_bytes
+from .media import PAGED, PDFIUM_LOCK, open_pdf, render_width, rotate_box, to_png_bytes
 from .models import DocumentMetadata
 from .storage import atomic_write_json, read_json
 
@@ -33,10 +31,10 @@ Word = list  # [text, x0, y0, x1, y1]
 _OCR_LOCK = threading.Lock()  # one Tesseract run at a time (CPU), others then hit the cache
 
 
-def pdf_words(path: Path, index: int) -> list[Word] | None:
+def pdf_words(path: Path, index: int, mime: str = "application/pdf") -> list[Word] | None:
     """Words of the embedded text layer, or None if the page has (almost) no text layer."""
     with PDFIUM_LOCK:
-        pdf = pdfium.PdfDocument(str(path))
+        pdf = open_pdf(path, mime)
         try:
             page = pdf[index]
             try:
@@ -126,8 +124,8 @@ def page_words(archive: Archive, meta: DocumentMetadata, page: int) -> tuple[lis
     if hit is not None:
         return hit
     words = None
-    if meta.mime_type == "application/pdf":
-        words = pdf_words(archive.paths.resolve(meta.original_relpath), page - 1)
+    if meta.mime_type in PAGED:
+        words = pdf_words(archive.paths.resolve(meta.original_relpath), page - 1, meta.mime_type)
         if words and turn:
             words = [[w[0], *rotate_box(w[1:], turn)] for w in words]
     source = "pdf"

@@ -186,6 +186,7 @@ class Worker:
                 prune_raw_responses(self.archive)
                 sessions.end_idle(self.archive)  # a forgotten scan session must not grab mail
                 trash.purge_expired(self.archive)
+                maintenance.prune_mail_renderings(self.archive)
                 maintenance.snapshot_if_due(self.archive)
                 if get_meta(self.archive.conn, duplicates.RULES_KEY) != duplicates.RULES_VERSION:
                     n = duplicates.recheck_open(self.archive)

@@ -8,6 +8,7 @@ FTS5, vanilla JavaScript, no build step. Read `docs/architecture.md` before larg
 | Where | What |
 |---|---|
 | `src/heftig/ingest.py` | every document enters here (hash, type check, original stored, job queued) |
+| `src/heftig/mail.py`, `mailpdf.py` | e-mails (`.eml`) as documents: reading them, their pages (rendered, plus the attachments' pages; `media.compose_mail`) |
 | `src/heftig/processing.py` | the job: text extraction (PDF text, OCR), classification, review reasons |
 | `src/heftig/classify.py` | validates what a classifier returns before anything is applied |
 | `src/heftig/providers/` | OCR and AI adapters (Tesseract, rules, Anthropic, OpenAI-compatible), prompts |

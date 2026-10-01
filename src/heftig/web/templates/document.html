@@ -223,6 +223,19 @@
   </section>
 {% endif %}
 
+{% if mail_parts %}
+<section class="card" aria-labelledby="mail-h">
+  <h2 id="mail-h">{{ _("Attachments of the e-mail") }}</h2>
+  <ul class="plain attachments">
+    {% for att in mail_parts %}
+    <li><a href="/documents/{{ m.id }}/mail-attachments/{{ att.index }}">📎 {{ att.filename }}</a>
+      <span class="small muted">{{ [1, (att.size / 1024) | round | int] | max }} KB</span></li>
+    {% endfor %}
+  </ul>
+  <p class="hint">{{ _("PDFs and images among them follow the e-mail as pages. The e-mail itself is kept unchanged as the original (.eml) – any e-mail program opens it.") }}</p>
+</section>
+{% endif %}
+
 <section class="card notes" aria-labelledby="notes-h">
   <h2 id="notes-h">{{ _("Notes & attachments") }}</h2>
   {% for n in m.notes %}

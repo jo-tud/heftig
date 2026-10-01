@@ -70,6 +70,11 @@ class ArchivePaths:
         return self.root / "email"
 
     @property
+    def cache(self) -> Path:
+        """Derived files that are recreated when missing (renderings of e-mails)."""
+        return self.root / "cache"
+
+    @property
     def backup(self) -> Path:
         return self.root / "backup"
 

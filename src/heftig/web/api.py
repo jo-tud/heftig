@@ -7,7 +7,7 @@ import mimetypes
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
-from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Response
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
@@ -340,7 +340,7 @@ def original_response(request: Request, doc_id: str, inline: bool) -> FileRespon
         "Cache-Control": "private, no-store",
         "X-Heftig-SHA256": meta.sha256,
     }
-    if inline and meta.mime_type.startswith("image/"):
+    if inline and meta.mime_type != "application/pdf":
         headers["Content-Security-Policy"] = "default-src 'none'; sandbox"
     ext = mimetypes.guess_extension(meta.mime_type) or ""
     filename = (
@@ -355,6 +355,44 @@ def original_response(request: Request, doc_id: str, inline: bool) -> FileRespon
         content_disposition_type="inline" if inline else "attachment",
         headers=headers,
     )
+
+
+def mail_attachment_response(request: Request, doc_id: str, index: int) -> Response:
+    """One attachment of an archived e-mail, taken from the original - always as a download."""
+    from urllib.parse import quote
+
+    from .. import mail
+
+    a = get_archive(request)
+    meta = _load(request, doc_id)
+    path = a.paths.resolve(meta.original_relpath)
+    if meta.mime_type != mail.MIME:
+        raise ApiError(404, "not_found", _("Attachment not found."))
+    if not path.exists():
+        raise ApiError(410, "original_missing", _("Original file is missing – run `heftig check`."))
+    try:
+        part, data = mail.attachment(path.read_bytes(), index)
+    except IndexError as e:
+        raise ApiError(404, "not_found", _("Attachment not found.")) from e
+    ascii_name = part.filename.encode("ascii", "replace").decode().replace('"', "'")
+    return Response(
+        data,
+        media_type="application/octet-stream",
+        headers={
+            "Content-Disposition": f'attachment; filename="{ascii_name}"; '
+            f"filename*=UTF-8''{quote(part.filename)}",
+            "X-Content-Type-Options": "nosniff",
+            "Cache-Control": "private, no-store",
+            "Content-Security-Policy": "default-src 'none'; sandbox",
+        },
+    )
+
+
+@router.get("/documents/{doc_id}/mail-attachments/{index}", tags=["documents"])
+def api_mail_attachment(
+    request: Request, doc_id: str, index: int, p: Principal = Depends(require_user)
+):
+    return mail_attachment_response(request, doc_id, index)
 
 
 @router.get("/documents/{doc_id}/original", tags=["documents"])

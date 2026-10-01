@@ -29,6 +29,8 @@ archive/
   consume/                           watched input folder (default location; often mounted elsewhere)
   quarantine/                        rejected consume files + <name>.reason.json (hidden ones in ausgeblendet/)
   email/                             archived .eml sources (only with HEFTIG_IMAP_ARCHIVE_EML=true)
+  cache/mail/<sha256>-<lang>-v<N>.pdf  pages of archived e-mails (derived, recreated when missing;
+                                     not in backups or exports)
   backup/index-snapshot.sqlite       consistent database copy (`heftig db-snapshot`, automatic every 6 h)
   backup/vor-update-v<N>.sqlite      database copy taken before a migration (last three kept)
   exports/                           exports started from the web UI / API
@@ -36,7 +38,9 @@ archive/
   tmp/                               staging area for uploads (same filesystem, cleaned by repair)
 ```
 
-- `<ext>` is derived from the detected content type: `pdf`, `jpg`, `png` or `tif`. `ab` is the
+- `<ext>` is derived from the detected content type: `pdf`, `jpg`, `png`, `tif` or `eml` (an
+  e-mail, `message/rfc822`: recognised by its header section, shown as pages rendered from it
+  followed by the pages of its PDF and image attachments). `ab` is the
   first two hex digits of the SHA-256. The path is deterministic: the same file always gets the
   same path, and a second copy is never stored.
 - `<uuid>` is a random UUID assigned at first ingestion. It never changes, also not across
@@ -113,16 +117,16 @@ Fields marked * are additions to the minimal field list of the original specific
 | `sha256` | string (64 hex) | SHA-256 of the original; verified on ingest, `heftig check` and import. |
 | `original_filename` | string | Filename as received, for display only (directories and control characters removed). Never used as a path. |
 | `original_relpath` | string | Path of the original relative to the archive root, `originals/<aa>/<sha256>.<ext>`. |
-| `mime_type` | string | Detected type: `application/pdf`, `image/jpeg`, `image/png`, `image/tiff`. |
+| `mime_type` | string | Detected type: `application/pdf`, `image/jpeg`, `image/png`, `image/tiff`, `message/rfc822` (an e-mail). |
 | `size_bytes`* | int | Size of the original. |
 | `page_count`* | int or null | Pages (PDF) or frames (TIFF); set on ingest, confirmed by extraction. |
 | `source` | enum | First arrival: `scanner` (consume folder), `folder` (`heftig ingest`), `web`, `api`, `email`, `import` (e.g. adopted by `heftig repair`). |
-| `source_details` | object | Sparse provenance of the first arrival. Consume: `path` (relative to the consume folder). Web/API: `client`, `kind` (`digital`/`paper`). E-mail: `import_ref` (shared by all attachments of one message), `message_id`, `from` (address only), `subject`, `message_date` (the mail's Date header, provenance only), `mailbox`, `uid`, `uidvalidity`, `attachment`, optionally `eml`. Combined documents: `action: "combine"` and `combined_from` (`[{id, title, pages}]` of the parts in page order; the parts are in the trash as batch `combine-<id>`). Never credentials. |
+| `source_details` | object | Sparse provenance of the first arrival. Consume: `path` (relative to the consume folder). Web/API: `client`, `kind` (`digital`/`paper`). E-mail: `import_ref` (shared by all attachments of one message), `message_id`, `from` (address only), `subject`, `message_date` (the mail's Date header, provenance only), `mailbox`, `uid`, `uidvalidity`, `attachment`, optionally `eml`; `mail_keyword` when the e-mail itself was archived because of the keyword in its subject (left out of the title). Combined documents: `action: "combine"` and `combined_from` (`[{id, title, pages}]` of the parts in page order; the parts are in the trash as batch `combine-<id>`). Never credentials. |
 | `received_at` | timestamp | First successful arrival. Set by the server, never changed (not by reprocessing, duplicates or import). |
 | `ingest_sequence` | int | Unique, strictly increasing arrival counter; numbers of deleted documents are not reused. |
 | `paper`* | bool | The document exists on paper and can be filed. True for `scanner`, for uploads marked as paper, and once filed. |
 | `document_date` | date or null | Date printed on the document. |
-| `document_date_status`* | enum | `unknown`, `ai` (found in the text, confident), `ai_uncertain` (found, low confidence; flagged for review), `user`, `none_found` (classifier found no date), `as_of` (no letter date: the date the document is made up to, e.g. "per 30.09.2021", found by a local rule), `import` (reserved). |
+| `document_date_status`* | enum | `unknown`, `ai` (found in the text, confident), `ai_uncertain` (found, low confidence; flagged for review), `user`, `none_found` (classifier found no date), `as_of` (no letter date: the date the document is made up to, e.g. "per 30.09.2021", found by a local rule), `mail` (an e-mail: when it was sent; the classifier does not replace it), `import` (reserved). |
 | `document_date_reason`* | string or null | Human-readable reason, e.g. the quoted evidence or why a proposal was not applied. |
 | `filed_at` | timestamp or null | When the paper was filed. Null means: physical location not confirmed. |
 | `filing_sequence` | int or null | Unique, increasing filing counter. Within a section, higher = further up in the stack. |

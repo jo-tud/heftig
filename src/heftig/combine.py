@@ -22,7 +22,6 @@ import logging
 from typing import Any
 
 import pypdfium2 as pdfium
-from PIL import Image, ImageOps, ImageSequence
 
 from . import documents as docs
 from . import trash
@@ -30,14 +29,12 @@ from .archive import Archive
 from .db import now_iso, write_tx
 from .i18n import N_, _, language, translate_text
 from .ingest import ingest_stream
-from .media import PDFIUM_LOCK, make_preview
+from .media import PAGED, PDFIUM_LOCK, image_pdf_pages, make_preview, open_pdf
 from .models import DocumentMetadata, HistoryEntry, PageText, TextPages
 
 log = logging.getLogger("heftig.combine")
 
 BATCH_PREFIX = "combine-"
-A4_WIDTH_PT = 595.28
-JPEG_QUALITY = 92
 
 
 class CombineError(ValueError):
@@ -51,53 +48,20 @@ def batch_for(doc_id: str) -> str:
 # --- building the PDF --------------------------------------------------------------------
 
 
-def _image_pages(path, mime: str) -> list[tuple[bytes, float, float]]:
-    """(JPEG bytes, width pt, height pt) per image frame. JPEGs without rotation stay as
-    they are; everything else is encoded once as a high-quality JPEG."""
-    out = []
-    with Image.open(path) as im:
-        frames = ImageSequence.Iterator(im) if mime == "image/tiff" else [im]
-        for frame in frames:
-            orientation = frame.getexif().get(0x0112, 1) if mime == "image/jpeg" else 1
-            dpi = frame.info.get("dpi")
-            if mime == "image/jpeg" and orientation in (None, 1) and frame.mode in ("RGB", "L"):
-                data = path.read_bytes()
-                w, h = frame.size
-            else:
-                img = (
-                    ImageOps.exif_transpose(frame.copy()) if mime == "image/jpeg" else frame.copy()
-                )
-                img = img.convert("L" if img.mode in ("1", "L", "LA", "I;16") else "RGB")
-                buf = io.BytesIO()
-                img.save(buf, format="JPEG", quality=JPEG_QUALITY)
-                data = buf.getvalue()
-                w, h = img.size
-            try:
-                dx = float(dpi[0]) if dpi else 0.0
-            except (TypeError, ValueError, IndexError):
-                dx = 0.0
-            if 50 <= dx <= 1200:
-                wpt, hpt = w / dx * 72, h / dx * 72
-            else:  # unknown resolution: as wide as an A4 page
-                wpt, hpt = A4_WIDTH_PT, A4_WIDTH_PT * h / w
-            out.append((data, wpt, hpt))
-    return out
-
-
 def build_pdf(archive: Archive, metas: list[DocumentMetadata]) -> bytes:
     with PDFIUM_LOCK:
         pdf = pdfium.PdfDocument.new()
         try:
             for m in metas:
                 path = archive.paths.resolve(m.original_relpath)
-                if m.mime_type == "application/pdf":
-                    src = pdfium.PdfDocument(str(path))
+                if m.mime_type in PAGED:
+                    src = open_pdf(path, m.mime_type)
                     try:
                         pdf.import_pages(src)
                     finally:
                         src.close()
                     continue
-                for data, wpt, hpt in _image_pages(path, m.mime_type):
+                for data, wpt, hpt in image_pdf_pages(path, m.mime_type):
                     page = pdf.new_page(wpt, hpt)
                     img = pdfium.PdfImage.new(pdf)
                     img.load_jpeg(io.BytesIO(data), inline=False, autoclose=True)

@@ -187,6 +187,9 @@ class Settings(BaseSettings):
     imap_skip_inline_images_below_kb: int = 30
     imap_skip_filename_patterns: str = "logo*,image0*,signature*"
     imap_archive_eml: bool = False
+    # this word in the subject: the e-mail itself is archived (a forwarded one: the forwarded
+    # message), as one document with its attachments - instead of only its attachments
+    imap_mail_keyword: str = "#mail"
     # who may send documents: comma list of addresses and/or "@domain" - empty = everyone (the
     # address is then effectively public input). Mail from others is refused and recorded.
     imap_allowed_senders: str = ""

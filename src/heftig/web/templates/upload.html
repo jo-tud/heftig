@@ -20,8 +20,8 @@
   <label id="dropzone" class="dropzone" for="files">
     <span class="big">{{ _("Drag files here") }}</span>
     <span>{{ _("or tap/click to choose – also the camera on a phone") }}</span>
-    <span class="muted small">{{ _("PDF, JPEG, PNG, TIFF · max. %(mb)s MB per file", mb=request.app.state.archive.settings.max_upload_mb) }}</span>
-    <input id="files" name="files" type="file" multiple accept="application/pdf,image/jpeg,image/png,image/tiff">
+    <span class="muted small">{{ _("PDF, JPEG, PNG, TIFF, e-mails (.eml) · max. %(mb)s MB per file", mb=request.app.state.archive.settings.max_upload_mb) }}</span>
+    <input id="files" name="files" type="file" multiple accept="application/pdf,image/jpeg,image/png,image/tiff,message/rfc822,.eml">
   </label>
   <noscript><button type="submit" class="primary">{{ _("Upload") }}</button></noscript>
   <ul id="upload-list" class="upload-list" aria-live="polite"></ul>

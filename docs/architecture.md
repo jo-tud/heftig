@@ -83,8 +83,9 @@ that a crash at any point leaves either nothing, or something `heftig repair` ca
 1. **Stream to a private temp file** in `archive/tmp/` (same filesystem as the archive), computing
    SHA-256 on the fly and aborting as soon as `HEFTIG_MAX_UPLOAD_MB` is exceeded. The file is
    fsynced.
-2. **Validate by content.** Magic bytes decide the type (PDF, JPEG, PNG, TIFF); the file is then
-   actually opened with pdfium or Pillow. Encrypted, broken, empty, oversized
+2. **Validate by content.** Magic bytes decide the type (PDF, JPEG, PNG, TIFF), or a header
+   section the type e-mail (`.eml`); the file is then actually opened with pdfium or Pillow (an
+   e-mail: parsed and its pages composed, see `mail.py`). Encrypted, broken, empty, oversized
    (`HEFTIG_MAX_PAGES`, `HEFTIG_MAX_IMAGE_MEGAPIXELS`) or unknown files are rejected with a
    message (stored in English, shown in the interface language). A rejection is recorded as an
    ingest event; the source is never deleted by the ingest function itself.

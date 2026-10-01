@@ -74,7 +74,7 @@ from .search_view import SOURCE_LABELS, STATUS_LABELS
 # forms - token management, settings, the paid AI search - need a browser login. Only page
 # images and files may be fetched with a token (the Claude connection shows pages).
 _TOKEN_OK = re.compile(
-    r"/documents/[^/]+/(pages/\d+\.webp|preview\.webp|original|attachments/[^/]+)"
+    r"/documents/[^/]+/(pages/\d+\.webp|preview\.webp|original|(mail-)?attachments/[^/]+)"
 )
 
 
@@ -109,7 +109,7 @@ DATE_STATUS = i18n.Labels({
     "unknown": N_("unknown"), "ai": N_("detected automatically"),
     "ai_uncertain": N_("detected automatically – uncertain"), "user": N_("manual"),
     "import": N_("imported"), "none_found": N_("no date found"),
-    "as_of": N_("as-of date (no letter date)"),
+    "as_of": N_("as-of date (no letter date)"), "mail": N_("sent date of the e-mail"),
 })  # fmt: skip
 STAGE_LABELS = i18n.Labels({
     "extract": N_("Text recognition"), "classify": N_("Classification"), "queued": N_("waiting"),
@@ -754,6 +754,21 @@ def _doc_url(doc_id: str, form=None, **params: str) -> str:
     return f"/documents/{doc_id}" + ("?" + urlencode(q) if q else "")
 
 
+def _mail_parts(a, m: dict) -> list:
+    """The attachments of an archived e-mail (for downloading them one by one)."""
+    from .. import mail
+
+    if m.get("mime_type") != mail.MIME:
+        return []
+    try:
+        return mail.parse(a.paths.resolve(m["original_relpath"]).read_bytes()).attachments
+    except (OSError, ValueError, LookupError) as e:
+        logging.getLogger("heftig.web").warning(
+            "e-mail %s: attachments not read: %s", m.get("id"), e
+        )
+        return []
+
+
 @router.get("/documents/{doc_id}")
 def document_page(request: Request, doc_id: str, p: Principal = Depends(require_user)):
     a = get_archive(request)
@@ -815,6 +830,7 @@ def document_page(request: Request, doc_id: str, p: Principal = Depends(require_
         providers=detail["providers"],
         duplicates=open_pairs(a.conn, doc_id),
         page_sizes=_page_sizes(a, detail["metadata"]),
+        mail_parts=_mail_parts(a, detail["metadata"]),
         saved=request.query_params.get("saved"),
         message=request.query_params.get("msg"),
         q=q if hit_terms else "",
@@ -836,6 +852,13 @@ def document_original(
     request: Request, doc_id: str, inline: int = 0, p: Principal = Depends(require_user)
 ):
     return api.original_response(request, doc_id, bool(inline))
+
+
+@router.get("/documents/{doc_id}/mail-attachments/{index}")
+def document_mail_attachment(
+    request: Request, doc_id: str, index: int, p: Principal = Depends(require_user)
+):
+    return api.mail_attachment_response(request, doc_id, index)
 
 
 PAGE_WIDTHS = (480, 960, 1440, 2048)

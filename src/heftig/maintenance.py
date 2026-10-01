@@ -1038,6 +1038,26 @@ def status(archive: Archive) -> dict[str, Any]:
 BLANK_CHECK_KEY = "blank_pages_checked"
 
 
+def prune_mail_renderings(archive: Archive) -> int:
+    """Drop renderings of e-mails (cache/mail/) no longer needed: made for another language or
+    an older version, or the e-mail is no longer in the archive. Recreated when needed."""
+    from .media import MAIL, MAIL_VIEW_VERSION
+
+    folder = archive.paths.cache / "mail"
+    if not folder.is_dir():
+        return 0
+    wanted = {
+        f"{r[0]}-{archive.settings.language}-v{MAIL_VIEW_VERSION}.pdf"
+        for r in archive.conn.execute("SELECT sha256 FROM documents WHERE mime_type=?", (MAIL,))
+    }
+    removed = 0
+    for f in folder.glob("*.pdf"):
+        if f.name not in wanted:
+            f.unlink(missing_ok=True)
+            removed += 1
+    return removed
+
+
 def detect_blank_pages(archive: Archive) -> dict[str, int]:
     """Mark the blank pages (empty backs of duplex scans) of documents extracted before every
     page was checked for them. Only pages without a text layer and with little text are

@@ -28,7 +28,7 @@ from . import documents as docs
 from .archive import Archive
 from .db import now_iso, write_tx
 from .i18n import N_, translate_text
-from .media import UnsupportedFileError, inspect_file
+from .media import MAIL, UnsupportedFileError, inspect_file
 from .models import DocumentMetadata, HistoryEntry, IngestEvent
 from .storage import TooLargeError, display_filename, fsync_dir, sha256_file, stream_to_tmp
 
@@ -150,6 +150,8 @@ def ingest_stream(
                 archive, source=source, filename=name, message=str(e), details=details, sha=sha,
                 import_ref=import_ref,
             )  # fmt: skip
+        if info.mime_type == MAIL:
+            paper = False  # an e-mail is never a sheet of paper
         return _commit(
             archive, tmp, sha, size, info, name, source, details, paper, import_ref, stages,
             on_create,

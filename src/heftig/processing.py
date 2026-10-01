@@ -23,7 +23,9 @@ from .archive import Archive
 from .db import get_meta, iso, now_iso, set_meta, utcnow, write_tx
 from .i18n import N_, _
 from .media import (
+    MAIL,
     ink_ratio,
+    mail_texts,
     make_preview,
     ocr_image_bytes,
     pdf_embedded_text,
@@ -223,15 +225,27 @@ def extract(archive: Archive, doc_id: str, progress: Progress, final_attempt: bo
     path = archive.paths.resolve(meta.original_relpath)
     page_count = meta.page_count or 1
     embedded: list[str] = [""] * page_count
+    mail, mail_pages = None, 0
     if meta.mime_type == "application/pdf":
         embedded = pdf_embedded_text(path)
+        page_count = len(embedded)
+    elif meta.mime_type == MAIL:
+        # the e-mail's own pages: its text, exactly (the PDF only has what Helvetica can show);
+        # the attachments' pages like any PDF or scan
+        mail, own = mail_texts(path.read_bytes())
+        embedded = pdf_embedded_text(path, MAIL)
+        mail_pages = len(own)
+        embedded[:mail_pages] = own
         page_count = len(embedded)
 
     pages: list[PageText] = []
     need_ocr: list[int] = []
     for i in range(page_count):
         t = embedded[i] if i < len(embedded) else ""
-        if len(t.strip()) >= s.min_text_chars_per_page:
+        if i < mail_pages:
+            pages.append(PageText(page=i + 1, method="embedded", provider="email", text=t,
+                                  chars=len(t.strip())))  # fmt: skip
+        elif len(t.strip()) >= s.min_text_chars_per_page:
             pages.append(PageText(page=i + 1, method="embedded", text=t, chars=len(t.strip())))
         else:
             pages.append(PageText(page=i + 1, method="none", text=t, chars=len(t.strip())))
@@ -444,6 +458,8 @@ def extract(archive: Archive, doc_id: str, progress: Progress, final_attempt: bo
             docs.write_preview(archive, doc_id, preview)
         meta.page_count = len(pages)
         meta.text_status = text_status  # type: ignore[assignment]
+        if mail is not None:
+            _apply_mail_fields(meta, mail)
         if used_fallback:
             if "extract" not in meta.ai_pending:
                 meta.ai_pending.append("extract")
@@ -480,6 +496,31 @@ def extract(archive: Archive, doc_id: str, progress: Progress, final_attempt: bo
     elif primary_ok:
         _mark_ai(archive, reachable=True, task="ocr")
     progress("extract", 1.0)
+
+
+def _apply_mail_fields(meta: DocumentMetadata, mail) -> None:
+    """E-mails: the title from the subject and the date from when it was sent, unless set
+    otherwise - for a forwarded mail the forwarded message's (the AI may still improve the
+    title; the date stays, see classify.apply)."""
+    from .mail import remove_keyword
+    from .titles import normalize_title
+
+    keyword = str(meta.source_details.get("mail_keyword") or "")
+    title = normalize_title(remove_keyword(mail.title_subject, keyword))
+    if title and not meta.locked("title") and meta.field_sources.get("title") == "rule":
+        meta.title = title[:200]
+    sent = mail.document_date
+    if (
+        sent
+        and not meta.locked("document_date")
+        and meta.field_sources.get("document_date") in (None, "rule")
+    ):
+        meta.document_date = sent.date().isoformat()
+        meta.document_date_status = "mail"
+        meta.document_date_reason = (
+            N_("of the forwarded message") if mail.forwarded and mail.forwarded.date else None
+        )
+        meta.field_sources["document_date"] = "rule"
 
 
 # --- classification ----------------------------------------------------------------------

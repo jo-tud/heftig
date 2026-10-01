@@ -147,6 +147,30 @@ in scan order and similar documents are suggested), or Z in the comparison. Heft
 with all pages in the chosen order, without re-encoding, keeps the recognised text (no second
 paid text recognition) and puts the parts in the trash as one batch – *Undo* restores them.
 
+## E-mails
+
+An e-mail can be a document of its own – a confirmation, an agreement by mail, a correspondence
+with the landlord. It is archived as one document: first its own pages (subject, sender,
+recipients, date, attachments, then the text), followed by the pages of the PDFs and images
+attached to it. Everything is searchable and sorted like any other document; the title is the
+subject, the date when it was sent (for a forwarded mail: the forwarded message's), and the AI
+does not replace that date. Three ways in:
+
+- **Drag it out of the mail program** – Thunderbird, Evolution, KMail, Apple Mail and Outlook on
+  the web save a mail as an `.eml` file – into the folder for digital files or the scanner folder
+  (it is never marked as paper), or upload it with *Add*.
+- **Forward it to the archive mailbox** with the keyword (`#mail`, *Settings → E-mail import*) in
+  the subject – inline or as attachment. Without the keyword only the attachments are imported,
+  as before.
+- `heftig ingest mail.eml` on the command line.
+
+The `.eml` file is the original, kept byte for byte; *Download original* opens it in any mail
+program. The document page lists the mail's attachments for download, also those that are not
+shown as pages (Word files, ZIP archives …). HTML mails are shown as text – never as a web page,
+so nothing in them runs or loads from the internet. Characters the page font cannot show (e.g.
+Chinese) appear as "?" on the page, but are in the text and found by the search. Outlook's own
+`.msg` files are not supported – save the mail as `.eml` instead.
+
 ## Finding things
 
 ![Search with filters, counts and highlighted hits](screenshots/search.png)

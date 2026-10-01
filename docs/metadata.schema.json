@@ -472,7 +472,8 @@
         "user",
         "import",
         "none_found",
-        "as_of"
+        "as_of",
+        "mail"
       ],
       "title": "Document Date Status",
       "type": "string"

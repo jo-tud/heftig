@@ -34,7 +34,7 @@ EDITABLE = {
     "semantic_search",
     # e-mail
     "imap_host", "imap_port", "imap_user", "imap_password", "imap_mailbox", "imap_move_to",
-    "imap_delete_after_import", "imap_allowed_senders",
+    "imap_delete_after_import", "imap_allowed_senders", "imap_mail_keyword",
     # paper, scanner, trash
     "auto_file_sources", "consume_after", "filing_granularity", "trash_retention_days",
 }  # fmt: skip

@@ -51,6 +51,9 @@ class Archive:
             return False
         self.settings = settings_store.effective(self.base_settings, self.conn)
         self._settings_revision = rev
+        from .media import configure_mail
+
+        configure_mail(self.settings.language, self.paths.cache)
         return True
 
     def _snapshot_before_update(self) -> None:

@@ -7,6 +7,7 @@ then confirmed by actually opening the file with the PDF/image library.
 from __future__ import annotations
 
 import io
+import logging
 import threading
 from dataclasses import dataclass
 from pathlib import Path
@@ -16,6 +17,7 @@ from PIL import Image, ImageSequence
 
 from .i18n import N_
 
+log = logging.getLogger("heftig.media")
 # pdfium is not thread-safe; serialise all calls into it.
 PDFIUM_LOCK = threading.RLock()
 
@@ -24,7 +26,11 @@ SUPPORTED = {
     "image/jpeg": "jpg",
     "image/png": "png",
     "image/tiff": "tif",
+    "message/rfc822": "eml",
 }
+MAIL = "message/rfc822"
+# shown as PDF pages: PDFs, and e-mails through their rendering (mailpdf.py)
+PAGED = ("application/pdf", MAIL)
 
 
 class UnsupportedFileError(ValueError):
@@ -50,6 +56,164 @@ def sniff_mime(head: bytes) -> str | None:
     return None
 
 
+A4_WIDTH_PT = 595.28
+JPEG_QUALITY = 92
+
+
+def image_pdf_pages(src: Path | bytes, mime: str) -> list[tuple[bytes, float, float]]:
+    """(JPEG bytes, width pt, height pt) per image frame, for PDF pages. JPEGs without rotation
+    stay as they are; everything else is encoded once as a high-quality JPEG."""
+    from PIL import ImageOps
+
+    out = []
+    with Image.open(io.BytesIO(src) if isinstance(src, bytes) else src) as im:
+        frames = ImageSequence.Iterator(im) if mime == "image/tiff" else [im]
+        for frame in frames:
+            orientation = frame.getexif().get(0x0112, 1) if mime == "image/jpeg" else 1
+            dpi = frame.info.get("dpi")
+            if mime == "image/jpeg" and orientation in (None, 1) and frame.mode in ("RGB", "L"):
+                data = src if isinstance(src, bytes) else src.read_bytes()
+                w, h = frame.size
+            else:
+                img = (
+                    ImageOps.exif_transpose(frame.copy()) if mime == "image/jpeg" else frame.copy()
+                )
+                img = img.convert("L" if img.mode in ("1", "L", "LA", "I;16") else "RGB")
+                buf = io.BytesIO()
+                img.save(buf, format="JPEG", quality=JPEG_QUALITY)
+                data = buf.getvalue()
+                w, h = img.size
+            try:
+                dx = float(dpi[0]) if dpi else 0.0
+            except (TypeError, ValueError, IndexError):
+                dx = 0.0
+            if 50 <= dx <= 1200:
+                wpt, hpt = w / dx * 72, h / dx * 72
+            else:  # unknown resolution: as wide as an A4 page
+                wpt, hpt = A4_WIDTH_PT, A4_WIDTH_PT * h / w
+            out.append((data, wpt, hpt))
+    return out
+
+
+# --- e-mails ---------------------------------------------------------------------------------
+# An e-mail is shown as one document: its own pages (header block and text, mailpdf.py), then
+# the pages of the PDFs and images attached to it. That PDF is derived from the .eml original
+# (deterministic, kept in cache/mail/, recreated when missing), so page texts, word positions
+# and thumbnails always match.
+
+MAIL_VIEW_VERSION = 1  # raise when the pages of e-mails change: cached renderings are redone
+SMALL_INLINE_IMAGE = 30 * 1024  # inline images below this size are logos, not pages
+_MAIL: dict[str, object] = {}
+
+
+def configure_mail(lang: str, cache_dir: Path | None) -> None:
+    """The language of the header block ("From", "Date" ...) - the archive's, the same for the
+    web and the worker - and where renderings are kept (set by Archive)."""
+    _MAIL["lang"], _MAIL["cache"] = lang, cache_dir
+
+
+def mail_labels():
+    from . import i18n
+    from .mailpdf import Labels
+
+    with i18n.language(str(_MAIL.get("lang") or i18n.DEFAULT)):
+        return Labels(
+            sender=i18n.pgettext("e-mail header", "From"),
+            to=i18n.pgettext("e-mail header", "To"),
+            cc=i18n.pgettext("e-mail header", "Cc"),
+            date=i18n.pgettext("e-mail header", "Date"),
+            attachments=i18n.pgettext("e-mail header", "Attachments"),
+            no_subject=i18n._("(no subject)"),
+            date_format="%d.%m.%Y, %H:%M" if i18n.current() == "de" else "%d %b %Y, %H:%M",
+        )  # fmt: skip
+
+
+def mail_texts(raw: bytes):
+    """The parsed e-mail and the text of each of its own pages (attachment pages follow)."""
+    from .mail import parse
+    from .mailpdf import render
+
+    mail = parse(raw)
+    return mail, render(mail, mail_labels())[1]
+
+
+def shown_attachments(raw: bytes) -> list[tuple[int, str, bytes]]:
+    """(index, type, content) of the attachments shown as pages: PDFs and images, not small
+    inline images (logos, signatures)."""
+    from . import mail
+
+    out = []
+    for n, part in enumerate(mail.attachment_parts(mail.message(raw))):
+        data = mail.payload(part)
+        kind = sniff_mime(data[:2048])
+        if kind is None:
+            continue
+        inline = part.get_content_disposition() != "attachment" and part.get("Content-ID")
+        if kind.startswith("image/") and inline and len(data) < SMALL_INLINE_IMAGE:
+            continue
+        out.append((n, kind, data))
+    return out
+
+
+def compose_mail(raw: bytes) -> bytes:
+    """The PDF of an e-mail with the pages of its PDF and image attachments. Attachments that
+    cannot be opened (encrypted, broken) are left out - they can still be downloaded."""
+    from .mail import parse
+    from .mailpdf import render
+
+    own, _ = render(parse(raw), mail_labels())
+    with PDFIUM_LOCK:
+        pdf = pdfium.PdfDocument(own)
+        try:
+            for _n, kind, data in shown_attachments(raw):
+                try:
+                    if kind == "application/pdf":
+                        src = pdfium.PdfDocument(data)
+                        try:
+                            pdf.import_pages(src)
+                        finally:
+                            src.close()
+                    else:
+                        for jpeg, wpt, hpt in image_pdf_pages(data, kind):
+                            page = pdf.new_page(wpt, hpt)
+                            img = pdfium.PdfImage.new(pdf)
+                            img.load_jpeg(io.BytesIO(jpeg), inline=False, autoclose=True)
+                            img.set_matrix(pdfium.PdfMatrix().scale(wpt, hpt))
+                            page.insert_obj(img)
+                            page.gen_content()
+                            page.close()
+                except Exception:  # noqa: BLE001 - one bad attachment must not hide the mail
+                    log.warning("e-mail attachment %s not shown as pages", _n, exc_info=True)
+            buf = io.BytesIO()
+            pdf.save(buf)
+            return buf.getvalue()
+        finally:
+            pdf.close()
+
+
+def mail_pdf(path: Path) -> Path | bytes:
+    """The rendering of an archived e-mail: a cached file for originals, else made in memory."""
+    cache = _MAIL.get("cache")
+    stem = path.stem
+    if not isinstance(cache, Path) or len(stem) != 64 or path.suffix != ".eml":
+        return compose_mail(path.read_bytes())
+    target = cache / "mail" / f"{stem}-{_MAIL.get('lang')}-v{MAIL_VIEW_VERSION}.pdf"
+    if not target.exists():
+        from .storage import atomic_write_bytes
+
+        target.parent.mkdir(parents=True, exist_ok=True)
+        atomic_write_bytes(target, compose_mail(path.read_bytes()))
+    return target
+
+
+def open_pdf(path: Path, mime: str = "application/pdf") -> pdfium.PdfDocument:
+    """A PDF, or the pages of an e-mail. Call with PDFIUM_LOCK held."""
+    if mime != MAIL:
+        return pdfium.PdfDocument(str(path))
+    src = mail_pdf(path)
+    return pdfium.PdfDocument(str(src) if isinstance(src, Path) else src)
+
+
 def _set_pixel_limit(max_megapixels: int) -> None:
     Image.MAX_IMAGE_PIXELS = max_megapixels * 1_000_000
 
@@ -60,10 +224,26 @@ def inspect_file(path: Path, max_pages: int, max_megapixels: int) -> MediaInfo:
         head = f.read(2048)
     mime = sniff_mime(head)
     if mime is None:
-        raise UnsupportedFileError(
-            N_("File type not supported. Allowed are PDF, JPEG, PNG and TIFF.")
-        )
-    if mime == "application/pdf":
+        from .mail import looks_like_mail
+
+        if not looks_like_mail(path):
+            raise UnsupportedFileError(
+                N_("File type not supported. Allowed are PDF, JPEG, PNG, TIFF and e-mails (.eml).")
+            )
+        mime = MAIL
+    if mime == MAIL:
+        try:
+            with PDFIUM_LOCK:
+                pdf = pdfium.PdfDocument(compose_mail(path.read_bytes()))
+                try:
+                    pages = len(pdf)
+                finally:
+                    pdf.close()
+        except Exception as e:  # noqa: BLE001 - the e-mail library raises many types
+            raise UnsupportedFileError(
+                N_("E-mail is damaged or unreadable (%(error)s).") % {"error": type(e).__name__}
+            ) from e
+    elif mime == "application/pdf":
         try:
             with PDFIUM_LOCK:
                 pdf = pdfium.PdfDocument(str(path))
@@ -110,11 +290,11 @@ def inspect_file(path: Path, max_pages: int, max_megapixels: int) -> MediaInfo:
     return MediaInfo(mime_type=mime, ext=SUPPORTED[mime], page_count=pages)
 
 
-def pdf_embedded_text(path: Path) -> list[str]:
+def pdf_embedded_text(path: Path, mime: str = "application/pdf") -> list[str]:
     """Embedded text layer per page (empty string for image-only pages)."""
     out: list[str] = []
     with PDFIUM_LOCK:
-        pdf = pdfium.PdfDocument(str(path))
+        pdf = open_pdf(path, mime)
         try:
             for i in range(len(pdf)):
                 page = pdf[i]
@@ -166,9 +346,9 @@ def _render_page(
     path: Path, mime: str, page_index: int, dpi: int, max_megapixels: int
 ) -> Image.Image:
     _set_pixel_limit(max_megapixels)
-    if mime == "application/pdf":
+    if mime in PAGED:
         with PDFIUM_LOCK:
-            pdf = pdfium.PdfDocument(str(path))
+            pdf = open_pdf(path, mime)
             try:
                 page = pdf[page_index]
                 try:
@@ -352,9 +532,9 @@ def make_preview(
 
 def page_sizes(path: Path, mime: str) -> list[tuple[float, float]]:
     """Width/height of every page (PDF points or image pixels) - for the page viewer layout."""
-    if mime == "application/pdf":
+    if mime in PAGED:
         with PDFIUM_LOCK:
-            pdf = pdfium.PdfDocument(str(path))
+            pdf = open_pdf(path, mime)
             try:
                 out = []
                 for i in range(len(pdf)):
@@ -387,9 +567,9 @@ def render_width(
 def _render_width(
     path: Path, mime: str, page_index: int, width: int, max_megapixels: int
 ) -> Image.Image:
-    if mime == "application/pdf":
+    if mime in PAGED:
         with PDFIUM_LOCK:
-            pdf = pdfium.PdfDocument(str(path))
+            pdf = open_pdf(path, mime)
             try:
                 page = pdf[page_index]
                 try:

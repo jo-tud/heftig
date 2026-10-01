@@ -303,7 +303,8 @@ HEFTIG_IMAP_ALLOWED_SENDERS=ich@example.org,partnerin@example.org,@meine-bank.ex
   own document with source `email`. All documents from one message share an `import_ref`.
   Attachments inside forwarded messages (`message/rfc822`) are found as well, and a message whose
   whole body is a PDF works too.
-- The mail text itself is **not** turned into a document. Provenance is stored in
+- The mail text itself is **not** turned into a document – unless the subject contains the
+  keyword (below). Provenance is stored in
   `source_details`: sender address, subject, the message's `Date` header, Message-ID, mailbox,
   UID. `received_at` is the time of import, not the mail date. With
   `HEFTIG_IMAP_ARCHIVE_EML=true` the raw message is additionally kept as
@@ -323,6 +324,27 @@ HEFTIG_IMAP_ALLOWED_SENDERS=ich@example.org,partnerin@example.org,@meine-bank.ex
   any supported file is reported as well. Nothing is dropped silently.
 - Attachments larger than `HEFTIG_IMAP_MAX_ATTACHMENT_MB` (50 MB) are rejected with a message;
   the general `HEFTIG_MAX_UPLOAD_MB` limit also applies.
+
+### Archiving the e-mail itself (keyword)
+
+Put the keyword – `#mail` unless changed on *Settings → E-mail import* or with
+`HEFTIG_IMAP_MAIL_KEYWORD` (empty switches it off) – anywhere in the subject, and the e-mail
+itself becomes a document (text and attachments in one, see
+[guide.md](guide.md#e-mails)):
+
+- **Forwarded as attachment** (Thunderbird: *Forward As → Attachment*): each attached e-mail
+  becomes a document; your forwarding note is not part of it.
+- **Forwarded inline** (the default in most programs): the received message is archived as it
+  is; title and date come from the forwarded header block ("-------- Forwarded Message --------",
+  "Weitergeleitete Nachricht", Outlook's "Von: … Gesendet: …"), the keyword is left out of the
+  title. The attachments re-attached by the mail program are part of the document.
+- The allowed senders and the DMARC check apply as for attachments; the keyword is matched as a
+  word of its own, in any case (`#mail` does not match `#mailing`).
+- An e-mail without any document attachment and without the keyword is reported in the inbox
+  with a hint to the keyword.
+
+The same works without a mailbox: drag the mail out of the mail program as `.eml` file into the
+folder for digital files (or the scanner folder), or upload it.
 
 ### Marking, idempotency and errors
 

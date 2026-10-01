@@ -26,7 +26,7 @@ from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 from . import documents as docs
 from .archive import Archive
-from .media import render_width
+from .media import PAGED, render_width
 from .models import DocumentMetadata
 from .storage import atomic_write_json, read_json
 from .textnorm import fold
@@ -284,12 +284,12 @@ def _render(archive: Archive, meta: DocumentMetadata, page: int) -> Image.Image:
 
 def _text_layer(archive: Archive, meta: DocumentMetadata, page: int) -> list | None:
     """Words of the page's text layer (born-digital PDF), None for scans and photos."""
-    if meta.mime_type != "application/pdf":
+    if meta.mime_type not in PAGED:
         return None
     from .media import rotate_box
     from .wordboxes import pdf_words
 
-    words = pdf_words(archive.paths.resolve(meta.original_relpath), page - 1)
+    words = pdf_words(archive.paths.resolve(meta.original_relpath), page - 1, meta.mime_type)
     turn = docs.rotation(meta, page)
     if words and turn:
         words = [[w[0], *rotate_box(w[1:], turn)] for w in words]

@@ -8,7 +8,9 @@
   skipped or unsupported is recorded as an ingest event (visible in the inbox), never dropped
   silently
 - a message is marked as seen / moved only after all its parts were durably handled
-- the mail body itself is not turned into a document; optionally the raw .eml is kept as
+- the mail body itself is not turned into a document - unless its subject contains the
+  keyword (``imap_mail_keyword``): then the e-mail itself is archived (``mail.py``), for a
+  message forwarded as attachment the attached e-mail; optionally the raw .eml is kept as
   provenance under ``archive/email/``
 """
 
@@ -27,6 +29,7 @@ from email.message import EmailMessage
 from email.utils import parseaddr
 from typing import Any, Protocol
 
+from . import mail
 from .archive import Archive
 from .db import get_meta, now_iso, set_meta, write_tx
 from .i18n import N_
@@ -211,6 +214,8 @@ def process_message(
     if s.imap_archive_eml:
         atomic_write_bytes(archive.paths.email / f"{import_ref}.eml", raw)
         base["eml"] = f"email/{import_ref}.eml"
+    if mail.has_keyword(base["subject"] or "", s.imap_mail_keyword):
+        return _archive_mails(archive, msg, raw, account, message_key, import_ref, base)
 
     results: list[dict[str, Any]] = []
     candidates = 0
@@ -281,12 +286,61 @@ def process_message(
             )
         results.append(res.as_dict())
     if candidates == 0 and not results:
+        msg_text = N_("Email contains no supported file (PDF, JPEG, PNG, TIFF)")
+        if s.imap_mail_keyword.strip():
+            msg_text = N_(
+                "Email contains no supported file (PDF, JPEG, PNG, TIFF) – to archive the e-mail "
+                "itself, put %(keyword)s in the subject"
+            ) % {"keyword": s.imap_mail_keyword.strip()}
         record_rejection(
             archive, source="email", filename=base.get("subject") or N_("(no subject)"),
-            message=N_("Email contains no supported file (PDF, JPEG, PNG, TIFF)"),
-            details=base, import_ref=import_ref,
+            message=msg_text, details=base, import_ref=import_ref,
         )  # fmt: skip
         results.append({"status": "rejected", "message": N_("no supported file")})
+    return results
+
+
+def _archive_mails(
+    archive: Archive,
+    msg: EmailMessage,
+    raw: bytes,
+    account: str,
+    message_key: str,
+    import_ref: str,
+    base: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """The keyword is in the subject: archive the e-mail itself as a document - the e-mails
+    attached to it (forwarded as attachment), or else this message (forwarded inline: the
+    forwarded header block gives title and date, the attachments are part of it)."""
+    keyword = archive.settings.imap_mail_keyword.strip()
+    attached = [p for p in mail.attachment_parts(msg) if p.get_content_type() == "message/rfc822"]
+    if attached:
+        items = [(mail.payload(p), mail.part_filename(p, n + 1)) for n, p in enumerate(attached)]
+    else:
+        subject = mail.clean_subject(mail.remove_keyword(base.get("subject") or "", keyword))
+        items = [(raw, f"{display_filename(subject)[:120] or 'e-mail'}.eml")]
+    conn = archive.conn
+    results: list[dict[str, Any]] = []
+    for data, name in items:
+        sha = hashlib.sha256(data).hexdigest()
+        done = conn.execute(
+            "SELECT result FROM imap_items WHERE account=? AND message_key=? AND part_sha256=?",
+            (account, message_key, sha),
+        ).fetchone()
+        if done:
+            results.append({"filename": name, "status": "already_imported", "result": done[0]})
+            continue
+        res = ingest_stream(
+            archive, io.BytesIO(data), name, "email", {**base, "mail_keyword": keyword},
+            paper=False, import_ref=import_ref,
+        )  # fmt: skip
+        with write_tx(conn):
+            conn.execute(
+                "INSERT OR IGNORE INTO imap_items(account, message_key, part_sha256, doc_id, "
+                "result, created_at) VALUES(?,?,?,?,?,?)",
+                (account, message_key, sha, res.doc_id, res.status, now_iso()),
+            )
+        results.append(res.as_dict())
     return results
 
 

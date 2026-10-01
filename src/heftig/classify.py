@@ -242,9 +242,14 @@ def apply(
         )
         res.suggested.append(fld)
 
-    # title
+    # title (an e-mail's subject beats what the local rules make up; an AI may improve it)
     title = normalize_title(_str(data, "title", MAX_TITLE))
-    if title and not meta.locked("title"):
+    subject_title = (
+        meta.mime_type == "message/rfc822"
+        and meta.field_sources.get("title") == "rule"
+        and provider.split(" ")[0] in ("rules", "mock")
+    )
+    if title and not meta.locked("title") and not subject_title:
         meta.title = title
         meta.field_sources["title"] = "ai"
         res.applied.append("title")
@@ -256,8 +261,8 @@ def apply(
         meta.keep_original_reason = _str(data, "keep_original_reason", 200)
         meta.keep_original_source = "ai"
 
-    # document date
-    if not meta.locked("document_date"):
+    # document date (an e-mail's is when it was sent)
+    if not meta.locked("document_date") and meta.document_date_status != "mail":
         raw_date = data.get("document_date")
         evidence = data.get("document_date_evidence")
         conf = _conf(data, "document_date_confidence")

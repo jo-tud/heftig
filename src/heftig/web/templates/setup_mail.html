@@ -5,6 +5,7 @@
 <section class="setup">
 {{ head(wizard, steps, step, _("Documents by e-mail"), message, error) }}
 <p>{{ _("Heftig can collect the attachments (PDFs, photos) of e-mails from a mailbox: forward an invoice, or let your scanner send its scans there. Best is an address used only for this, e.g. a new free mailbox or an alias.") }}</p>
+<p>{{ _("To archive an e-mail itself – its text together with its attachments – forward it with the keyword in the subject.") }}</p>
 {{ locked_note(locked) }}
 <form method="post" class="setup-form" id="mail-form">
   <input type="hidden" name="csrf_token" value="{{ csrf }}">
@@ -26,6 +27,11 @@
     <label>{{ _("Allowed senders, one per line (an address, or @domain for all of a domain)") }}
       <textarea name="imap_allowed_senders" rows="3" spellcheck="false" placeholder="me@example.org&#10;@my-scanner.example">{{ form.imap_allowed_senders }}</textarea></label>
     <p class="hint">{{ _("Recommended: your own addresses and your scanner's. E-mails from others are not imported. Empty: everyone who knows the address.") }}</p>
+  </fieldset>
+  <fieldset {% if locked %}disabled{% endif %}>
+    <legend>{{ _("Archive e-mails themselves") }}</legend>
+    <label>{{ _("Keyword in the subject") }} <input name="imap_mail_keyword" value="{{ form.imap_mail_keyword }}" spellcheck="false" placeholder="#mail"></label>
+    <p class="hint">{{ _("An e-mail whose subject contains this word is archived as a document of its own: the forwarded e-mail with its text and attachments (forwarded as attachment or inline). Without it, only the attachments are imported. Empty: off.") }}</p>
   </fieldset>
   <fieldset {% if locked %}disabled{% endif %}>
     <legend>{{ _("After import") }}</legend>
