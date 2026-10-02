@@ -39,6 +39,9 @@
     busy: false,
     editing: null, // {page, canvas, corners, rotation, scale}
     removed: null, // {page, index, timer}: the last removed page, while it can be brought back
+    opening: 0, // counts requests to open the editor; a slower, older one must not win
+    pending: new Set(), // page work still running (storing a capture, applying a crop)
+    uploading: false, // the PDF is being uploaded: the pages are fixed until it has finished
   };
 
   // ------------------------------------------------------------------ OpenCV loading
@@ -172,6 +175,14 @@
   }
 
   // ------------------------------------------------------------------ pages
+  /** Page work that "Done" waits for, so the PDF has every page and every crop the user saw. */
+  function track(promise) {
+    state.pending.add(promise);
+    const done = () => state.pending.delete(promise);
+    promise.then(done, done);
+    return promise;
+  }
+
   async function addPage(sourceCanvas, corners, rotation) {
     rotation = rotation || 0;
     const out = warp(sourceCanvas, corners, rotation);
@@ -195,11 +206,21 @@
     renderPages();
   }
 
-  function renderPages() {
+  const stripEntry = new WeakMap(); // <li> in the strip -> {page, index}
+
+  /**
+   * Rebuild the page strip. Rebuilding drops the keyboard focus, so it goes back to the thumbnail
+   * of `focus.page` (or of the page that had it in the strip); when that page is gone, to its
+   * neighbour. The focus is only moved when it was in the strip or the caller asks for it.
+   */
+  function renderPages(focus) {
     const list = $("pages");
+    const active = document.activeElement;
+    if (!focus && active && list.contains(active)) focus = stripEntry.get(active.closest("li"));
     list.innerHTML = "";
     state.pages.forEach((p, i) => {
       const li = document.createElement("li");
+      stripEntry.set(li, { page: p, index: i });
       const b = document.createElement("button");
       b.type = "button";
       b.className = "page-thumb";
@@ -225,7 +246,12 @@
       list.appendChild(li);
     });
     $("count").textContent = tn("%(num)d page", "%(num)d pages", state.pages.length);
-    $("finish").disabled = state.pages.length === 0;
+    $("finish").disabled = state.pages.length === 0 || state.uploading;
+    if (focus) {
+      let i = state.pages.indexOf(focus.page);
+      if (i < 0) i = focus.index >= 0 ? Math.min(focus.index, state.pages.length - 1) : state.pages.length - 1;
+      if (i >= 0) list.children[i].querySelector(".page-thumb").focus();
+    }
   }
 
   // ------------------------------------------------------------------ removing pages (with undo)
@@ -241,9 +267,11 @@
 
   /** Remove a page; it can be brought back for a few seconds. The sheet is not captured again. */
   function removePage(page) {
+    if (state.uploading) return;
+    // also when the page is already gone (removed while the editor was still opening it)
+    if (state.editing && state.editing.page === page) closeEditor();
     const i = state.pages.indexOf(page);
     if (i < 0) return;
-    if (state.editing && state.editing.page === page) closeEditor();
     forgetRemoved();
     state.pages.splice(i, 1);
     state.removed = { page, index: i, timer: setTimeout(forgetRemoved, UNDO_MS) };
@@ -254,12 +282,13 @@
 
   function undoRemove() {
     const r = state.removed;
-    if (!r) return;
+    if (!r || state.uploading) return;
+    const hadFocus = document.activeElement === $("undo");
     clearTimeout(r.timer);
     state.removed = null;
     $("undo").hidden = true;
     state.pages.splice(Math.min(r.index, state.pages.length), 0, r.page);
-    renderPages();
+    renderPages(hadFocus ? { page: r.page } : null);
     setHint(t("Page %(num)s is back.", { num: state.pages.indexOf(r.page) + 1 }));
   }
 
@@ -336,9 +365,10 @@
       state.armed = true; // sheet removed -> ready for the next one
       state.stillSince = 0;
       if (!state.lostSince) state.lostSince = now;
-      if (now - state.lostSince > 2500 && !state.pages.length) setHint(HINT_LOST);
+      // (not while "Page N removed." stands next to its Undo button)
+      if (now - state.lostSince > 2500 && !state.pages.length && !state.removed) setHint(HINT_LOST);
     } else {
-      if (state.lostSince && !state.pages.length) setHint(HINT_START);
+      if (state.lostSince && !state.pages.length && !state.removed) setHint(HINT_START);
       state.lostSince = 0;
       if (move > NEW_SHEET) state.armed = true; // a different sheet
       if (move > STILL || !state.stillSince) state.stillSince = now;
@@ -364,7 +394,7 @@
         corners = detect(full, { short: 512 });
       }
       if (!corners) corners = fullCorners(full.width, full.height);
-      await addPage(full, corners);
+      await track(addPage(full, corners));
       setHint(t("Page captured. Put down the next sheet or tap “Done”."));
     } finally {
       state.busy = false;
@@ -437,14 +467,20 @@
   // ------------------------------------------------------------------ corner editor
   /** A page in the strip was tapped: open it in the editor, keeping the edits of the page open so far. */
   async function openPage(page) {
+    if (state.uploading) return;
     const e = state.editing;
     if (e && e.page === page) return;
+    const seq = ++state.opening;
     if (e) await commitEditor(e);
-    if (state.pages.includes(page)) openEditor(page);
+    if (seq === state.opening && state.pages.includes(page)) openEditor(page, null, seq);
   }
 
-  async function openEditor(page, preloaded) {
+  async function openEditor(page, preloaded, seq) {
+    if (!seq) seq = ++state.opening;
     const canvas = preloaded || (await blobToCanvas(page.src));
+    // the last tap wins; a page removed or being uploaded meanwhile is not opened any more
+    if (seq !== state.opening) return;
+    if (!page.isNew && (state.uploading || !state.pages.includes(page))) return;
     state.editing = { page, canvas, corners: JSON.parse(JSON.stringify(page.corners)), rotation: page.rotation || 0 };
     $("edit-delete").hidden = !!page.isNew;
     setRotateLabel();
@@ -532,10 +568,14 @@
   }
 
   function closeEditor() {
+    const page = state.editing && state.editing.page;
+    // hiding the editor drops the focus; it goes back to the page's thumbnail
+    const focus = $("editor").contains(document.activeElement) ? { page, index: state.pages.indexOf(page) } : null;
+    state.opening++; // a page still being opened stays closed
     $("editor").hidden = true;
     document.body.classList.remove("editing");
     state.editing = null;
-    renderPages();
+    renderPages(focus);
   }
 
   /** Take over the corners and rotation of editor state `e` (a new photo becomes a page). */
@@ -545,10 +585,10 @@
     e.page.rotation = e.rotation;
     if (e.page.isNew) {
       delete e.page.isNew;
-      await addPage(e.canvas, e.corners, e.rotation);
+      await track(addPage(e.canvas, e.corners, e.rotation));
       setHint(t("Page added. Photograph another page or tap “Done”."));
     } else if (changed && state.pages.includes(e.page)) {
-      await updatePage(e.page);
+      await track(updatePage(e.page));
     }
   }
 
@@ -608,15 +648,33 @@
     return new Blob(chunks, { type: "application/pdf" });
   }
 
+  /** While uploading, the page strip is locked (body.uploading; removePage and openPage refuse). */
+  function setUploading(on) {
+    state.uploading = on;
+    document.body.classList.toggle("uploading", on);
+    renderPages();
+  }
+
   async function finish() {
-    if (!state.pages.length) return;
-    $("finish").disabled = true;
+    if (!state.pages.length || state.uploading) return;
+    setUploading(true);
     setHint(t("Creating and uploading the PDF …"));
-    const pages = [];
-    for (const p of state.pages) {
-      pages.push({ w: p.w, h: p.h, bytes: new Uint8Array(await p.blob.arrayBuffer()) });
+    // exactly these pages go into the PDF; pages captured during the upload stay for the next one
+    let uploaded;
+    let pdf;
+    try {
+      await Promise.allSettled(state.pending); // a capture or crop still being stored belongs in it
+      uploaded = [...state.pages];
+      const pages = [];
+      for (const p of uploaded) {
+        pages.push({ w: p.w, h: p.h, bytes: new Uint8Array(await p.blob.arrayBuffer()) });
+      }
+      pdf = buildPdf(pages);
+    } catch (e) {
+      setUploading(false);
+      setHint(t("Upload failed: %(message)s", { message: (e && e.message) || e }));
+      return;
     }
-    const pdf = buildPdf(pages);
     const stamp = new Date().toISOString().slice(0, 19).replace(/[-:T]/g, "");
     const fd = new FormData();
     fd.append("files", pdf, `handy_${stamp}.pdf`);
@@ -632,10 +690,11 @@
       try { data = JSON.parse(xhr.responseText); } catch (e) { /* ignore */ }
       const r = data && data.results && data.results[0];
       if (r && (r.status === "created" || r.status === "duplicate")) {
-        state.pages.forEach((p) => URL.revokeObjectURL(p.url));
-        state.pages = [];
+        if (state.editing && uploaded.includes(state.editing.page)) closeEditor();
+        uploaded.forEach((p) => URL.revokeObjectURL(p.url));
+        state.pages = state.pages.filter((p) => !uploaded.includes(p));
         forgetRemoved(); // must not come back into the next document
-        renderPages();
+        setUploading(false);
         const a = $("result-link");
         a.href = "/documents/" + r.document_id;
         $("result-text").textContent = r.status === "created"
@@ -644,12 +703,12 @@
         $("result").hidden = false;
         setHint(t("Ready for the next document."));
       } else {
-        $("finish").disabled = false;
+        setUploading(false);
         setHint(t("Upload failed: %(message)s", { message: (r && r.message) || (data && data.error && data.error.message) || xhr.status }));
       }
     };
     xhr.onerror = () => {
-      $("finish").disabled = false;
+      setUploading(false);
       setHint(t("Network error while uploading – please tap again."));
     };
     xhr.send(fd);
