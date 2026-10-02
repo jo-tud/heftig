@@ -28,7 +28,8 @@ built this way.
 
 ## Try it
 
-On Linux, with Podman or Docker (the installer offers to install Podman if neither is there):
+On Linux, with Podman or Docker (the installer offers to install Podman if neither is there),
+or on macOS with Docker Desktop, OrbStack or Colima running:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/jo-tud/heftig/main/install.sh | sh
