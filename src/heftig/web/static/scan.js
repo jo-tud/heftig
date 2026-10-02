@@ -9,6 +9,8 @@
  * Fallback (plain HTTP, where browsers block live camera access): the phone's camera app opens,
  * the photo is then cropped and perspective-corrected the same way.
  * All pages of one document are combined into a single PDF in the browser and uploaded.
+ * The crop editor takes the place of the camera view; the page strip stays below it, so another
+ * page can be opened directly (the edits so far are kept). The ⓧ on a page removes it, with undo.
  */
 (function () {
   const $ = (id) => document.getElementById(id);
@@ -21,6 +23,7 @@
   const STILL = 0.015; // outline counts as still while it moves less than 1.5 % per detection
   const STILL_MS = 1000; // auto-capture after this long without movement
   const NEW_SHEET = 0.12; // this much movement means a different sheet
+  const UNDO_MS = 8000; // a removed page can be brought back this long
   const CORNERS = ["topLeftCorner", "topRightCorner", "bottomRightCorner", "bottomLeftCorner"];
 
   const state = {
@@ -34,7 +37,8 @@
     stillSince: 0,
     lostSince: 0,
     busy: false,
-    editing: null,
+    editing: null, // {page, canvas, corners, rotation, scale}
+    removed: null, // {page, index, timer}: the last removed page, while it can be brought back
   };
 
   // ------------------------------------------------------------------ OpenCV loading
@@ -168,11 +172,12 @@
   }
 
   // ------------------------------------------------------------------ pages
-  async function addPage(sourceCanvas, corners) {
-    const out = warp(sourceCanvas, corners, 0);
+  async function addPage(sourceCanvas, corners, rotation) {
+    rotation = rotation || 0;
+    const out = warp(sourceCanvas, corners, rotation);
     const blob = await toBlob(out);
     const src = await toBlob(sourceCanvas, 0.85);
-    state.pages.push({ blob, w: out.width, h: out.height, url: URL.createObjectURL(blob), src, corners, rotation: 0 });
+    state.pages.push({ blob, w: out.width, h: out.height, url: URL.createObjectURL(blob), src, corners, rotation });
     renderPages();
     const list = $("pages");
     list.scrollLeft = list.scrollWidth; // the newest page stays in view
@@ -199,18 +204,63 @@
       b.type = "button";
       b.className = "page-thumb";
       b.setAttribute("aria-label", t("Edit page %(num)s", { num: i + 1 }));
+      if (state.editing && state.editing.page === p) {
+        b.classList.add("current");
+        b.setAttribute("aria-current", "true");
+      }
       const img = document.createElement("img");
       img.src = p.url;
       img.alt = "";
       const n = document.createElement("span");
       n.textContent = i + 1;
       b.append(img, n);
-      b.addEventListener("click", () => openEditor(i));
-      li.appendChild(b);
+      b.addEventListener("click", () => openPage(p));
+      const x = document.createElement("button");
+      x.type = "button";
+      x.className = "page-remove";
+      x.textContent = "×";
+      x.setAttribute("aria-label", t("Remove page %(num)s", { num: i + 1 }));
+      x.addEventListener("click", () => removePage(p));
+      li.append(b, x);
       list.appendChild(li);
     });
     $("count").textContent = tn("%(num)d page", "%(num)d pages", state.pages.length);
     $("finish").disabled = state.pages.length === 0;
+  }
+
+  // ------------------------------------------------------------------ removing pages (with undo)
+  /** The last removed page can no longer be brought back. */
+  function forgetRemoved() {
+    const r = state.removed;
+    if (!r) return;
+    clearTimeout(r.timer);
+    URL.revokeObjectURL(r.page.url);
+    state.removed = null;
+    $("undo").hidden = true;
+  }
+
+  /** Remove a page; it can be brought back for a few seconds. The sheet is not captured again. */
+  function removePage(page) {
+    const i = state.pages.indexOf(page);
+    if (i < 0) return;
+    if (state.editing && state.editing.page === page) closeEditor();
+    forgetRemoved();
+    state.pages.splice(i, 1);
+    state.removed = { page, index: i, timer: setTimeout(forgetRemoved, UNDO_MS) };
+    renderPages();
+    setHint(t("Page %(num)s removed.", { num: i + 1 }));
+    $("undo").hidden = false;
+  }
+
+  function undoRemove() {
+    const r = state.removed;
+    if (!r) return;
+    clearTimeout(r.timer);
+    state.removed = null;
+    $("undo").hidden = true;
+    state.pages.splice(Math.min(r.index, state.pages.length), 0, r.page);
+    renderPages();
+    setHint(t("Page %(num)s is back.", { num: state.pages.indexOf(r.page) + 1 }));
   }
 
   function flash() {
@@ -380,18 +430,30 @@
     const src = await toBlob(canvas, 0.85);
     // straight into the editor so the user can confirm the outline
     const page = { src, corners, rotation: 0, isNew: true };
-    openEditor(null, page, canvas);
-    setHint(t("Check the corners and move them if needed."));
+    if (state.editing) await commitEditor(state.editing);
+    openEditor(page, canvas);
   }
 
   // ------------------------------------------------------------------ corner editor
-  async function openEditor(index, newPage, preloaded) {
-    const page = newPage || state.pages[index];
+  /** A page in the strip was tapped: open it in the editor, keeping the edits of the page open so far. */
+  async function openPage(page) {
+    const e = state.editing;
+    if (e && e.page === page) return;
+    if (e) await commitEditor(e);
+    if (state.pages.includes(page)) openEditor(page);
+  }
+
+  async function openEditor(page, preloaded) {
     const canvas = preloaded || (await blobToCanvas(page.src));
-    state.editing = { index, page, canvas, corners: JSON.parse(JSON.stringify(page.corners)) };
-    $("edit-delete").hidden = index === null;
-    $("edit-rotate").textContent = page.rotation ? t("Rotate (%(deg)s°)", { deg: page.rotation }) : t("Rotate");
-    $("editor").hidden = false; // must be visible before measuring the stage
+    state.editing = { page, canvas, corners: JSON.parse(JSON.stringify(page.corners)), rotation: page.rotation || 0 };
+    $("edit-delete").hidden = !!page.isNew;
+    setRotateLabel();
+    // in place of the camera view, above the page strip; both must be in their final place
+    // before the stage is measured
+    document.body.classList.add("editing");
+    $("editor").hidden = false;
+    renderPages();
+    setHint(t("Check the corners and move them if needed."));
     const view = $("edit-canvas");
     const box = $("edit-stage").getBoundingClientRect();
     const pad = 32;
@@ -464,23 +526,36 @@
     view.addEventListener("pointercancel", end);
   }
 
+  function setRotateLabel() {
+    const deg = state.editing.rotation;
+    $("edit-rotate").textContent = deg ? t("Rotate (%(deg)s°)", { deg }) : t("Rotate");
+  }
+
   function closeEditor() {
     $("editor").hidden = true;
+    document.body.classList.remove("editing");
     state.editing = null;
+    renderPages();
+  }
+
+  /** Take over the corners and rotation of editor state `e` (a new photo becomes a page). */
+  async function commitEditor(e) {
+    const changed = JSON.stringify(e.corners) !== JSON.stringify(e.page.corners) || e.rotation !== (e.page.rotation || 0);
+    e.page.corners = e.corners;
+    e.page.rotation = e.rotation;
+    if (e.page.isNew) {
+      delete e.page.isNew;
+      await addPage(e.canvas, e.corners, e.rotation);
+      setHint(t("Page added. Photograph another page or tap “Done”."));
+    } else if (changed && state.pages.includes(e.page)) {
+      await updatePage(e.page);
+    }
   }
 
   async function applyEditor() {
     const e = state.editing;
-    e.page.corners = e.corners;
-    if (e.page.isNew) {
-      delete e.page.isNew;
-      closeEditor();
-      await addPage(e.canvas, e.corners);
-      setHint(t("Page added. Photograph another page or tap “Done”."));
-      return;
-    }
     closeEditor();
-    await updatePage(e.page);
+    await commitEditor(e);
   }
 
   // ------------------------------------------------------------------ PDF + upload
@@ -559,6 +634,7 @@
       if (r && (r.status === "created" || r.status === "duplicate")) {
         state.pages.forEach((p) => URL.revokeObjectURL(p.url));
         state.pages = [];
+        forgetRemoved(); // must not come back into the next document
         renderPages();
         const a = $("result-link");
         a.href = "/documents/" + r.document_id;
@@ -590,17 +666,11 @@
       drawEditor();
     });
     $("edit-rotate").addEventListener("click", () => {
-      const e = state.editing;
-      e.page.rotation = ((e.page.rotation || 0) + 90) % 360;
-      $("edit-rotate").textContent = t("Rotate (%(deg)s°)", { deg: e.page.rotation });
+      state.editing.rotation = (state.editing.rotation + 90) % 360;
+      setRotateLabel();
     });
-    $("edit-delete").addEventListener("click", () => {
-      const i = state.editing.index;
-      URL.revokeObjectURL(state.pages[i].url);
-      state.pages.splice(i, 1);
-      closeEditor();
-      renderPages();
-    });
+    $("edit-delete").addEventListener("click", () => removePage(state.editing.page));
+    $("undo").addEventListener("click", undoRemove);
     $("finish").addEventListener("click", finish);
     $("result-close").addEventListener("click", () => { $("result").hidden = true; });
     $("file").addEventListener("change", (ev) => {

@@ -227,5 +227,7 @@ protects against someone looking over your shoulder – the data is still sent t
 *Add → Scan* is a document camera for phones: it finds the edges of the sheet, straightens it,
 collects several pages and uploads them as one PDF. Over HTTPS the preview runs in the page and
 takes the photo by itself once the sheet lies still; over plain HTTP the phone's camera app opens
-instead and the corners can be adjusted by hand. Add the page to the home screen to open Heftig
+instead and the corners can be adjusted by hand. Tapping a captured page opens it for cropping
+and rotating above the row of pages (tap the next page to go on); the ⓧ on its corner removes it,
+with *Undo* for a few seconds. Add the page to the home screen to open Heftig
 directly on the camera. HTTPS without effort: [operations.md](operations.md#https).
