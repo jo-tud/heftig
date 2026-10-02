@@ -44,6 +44,8 @@
     {% set sender_link %}<a href="/?email_from={{ mail_from | urlencode }}" title="{{ _("All documents from this address") }}">{{ who or mail_from }}</a>{% if who %} <span class="muted">&lt;{{ mail_from }}&gt;</span>{% endif %}{% endset %}
     <span>{% if m.source_details.get('subject') %}{% trans sender=sender_link, subject=m.source_details.subject %}E-mail from {{ sender }} · “{{ subject }}”{% endtrans %}{% else %}{% trans sender=sender_link %}E-mail from {{ sender }}{% endtrans %}{% endif %}{% if not who %} · <a href="/settings/senders">{{ _("give a name") }}</a>{% endif %}</span>
     {% else %}<span>{{ SOURCE_LABELS.get(m.source, m.source) }}</span>{% endif %}
+    {% if split_parts | length > 1 %}<span class="split-nav">{{ _("Part %(num)s of %(total)s:", num=(split_parts | map(attribute='id') | list).index(m.id) + 1, total=split_parts | length) }}
+      {% for r in split_parts %}{% if r.id == m.id %}<b aria-current="page">{{ loop.index }}</b>{% else %}<a href="/documents/{{ r.id }}" title="{{ r.title or r.original_filename }}">{{ loop.index }}</a>{% endif %}{% if not loop.last %} · {% endif %}{% endfor %}</span>{% endif %}
     {% if m.text_status != 'ok' %}<span>{{ _("Text: %(status)s", status=TEXT_STATUS.get(m.text_status, m.text_status)) }}</span>{% endif %}
   </p>
 </header>
@@ -55,7 +57,7 @@
 {% if m.ai_pending %}{% set ns_ai = namespace(tasks=[]) %}{% for x in m.ai_pending %}{% set ns_ai.tasks = ns_ai.tasks + [{'extract': _("Text recognition"), 'classify': pgettext("processing step", "Classification")}.get(x, x)] %}{% endfor %}<p class="notice info" role="status">{{ _("Processed offline for now (%(tasks)s) – the AI processing will be caught up automatically. Your corrections are kept.", tasks=ns_ai.tasks | join(', ')) }}</p>{% endif %}
 {% if saved %}<p class="notice ok" role="status">{{ _("Saved. Changed fields are now locked and won't be overwritten when reprocessing.") }}</p>{% endif %}
 {% if message %}<p class="notice info" role="status">{{ message }}</p>{% endif %}
-{% if undo and undo.startswith('batch:split-') and split_parts %}<p class="notice ok" role="status">{{ _("This is part 1. Also created:") }} {% for r in split_parts %}<a href="/documents/{{ r.id }}">{{ r.title or r.original_filename }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif %}
+{% if m.status in ('queued', 'processing') %}<p class="notice info" id="doc-busy" role="status" data-doc="{{ m.id }}">{{ _("Being processed – title, date and sender may still change. The page updates itself.") }}</p>{% endif %}
 
 <div id="review-box">{{ review_card(m, csrf, rv, review, budget_pages) }}</div>
 
@@ -336,7 +338,7 @@
     {% if m.source_details.combined_from %}<dt>{{ _("Combined from") }}</dt><dd>{% set ns = namespace(p=1) %}
       {% for c in m.source_details.combined_from %}{% if c.pages > 1 %}{{ _("p. %(first)s–%(last)s: “%(title)s”", first=ns.p, last=ns.p + c.pages - 1, title=c.title) }}{% else %}{{ _("p. %(first)s: “%(title)s”", first=ns.p, title=c.title) }}{% endif %}{% set ns.p = ns.p + c.pages %}{% if not loop.last %}<br>{% endif %}{% endfor %}</dd>{% endif %}
     {% set sf = m.source_details.split_from %}{% if sf %}<dt>{{ _("Split from") }}</dt><dd>{% if sf.pages | length > 1 %}{{ _("“%(title)s”, pages %(pages)s", title=sf.title, pages=sf.pages | join(', ')) }}{% else %}{{ _("“%(title)s”, page %(pages)s", title=sf.title, pages=sf.pages | join(', ')) }}{% endif %}
-      {% if split_parts %}<br>{{ _("Other parts:") }} {% for r in split_parts %}<a href="/documents/{{ r.id }}">{{ r.title or r.original_filename }}</a>{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}</dd>{% endif %}
+      {% set others = split_parts | rejectattr('id', 'equalto', m.id) | list %}{% if others %}<br>{{ _("Other parts:") }} {% for r in others %}<a href="/documents/{{ r.id }}">{{ r.title or r.original_filename }}</a>{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}</dd>{% endif %}
     <dt>ID</dt><dd><code>{{ m.id }}</code></dd>
     <dt>SHA-256</dt><dd><code class="hash">{{ m.sha256 }}</code> {{ _("– original, byte for byte as received") }}</dd>
   </dl>

@@ -7,10 +7,11 @@ page. Like combining, nothing is changed in place - originals are never modified
 - each part is a new archived PDF; PDF (and e-mail) pages are copied as they are (text layer
   included), image frames become PDF pages with their JPEG data;
 - the recognised text is carried over page by page - no second (paid) text recognition;
-  only the classification runs again, on each part's own text;
-- the first part keeps the original's data (title and locked fields, tags, notes,
-  attachments, the filing position); the other parts start fresh and keep only where they
-  came from (source, arrival, paper, scan session, where the paper is);
+- every part is a new document: classified from scratch on its own text (title, date,
+  sender, type, tags, summary, fields - nothing of the original's, no locks); it keeps only
+  where it came from (source, arrival, paper, scan session, where the paper is);
+- the user's own additions - notes, attachments - and the filing position go to the first
+  part; the paper of the others lies with it;
 - pages the user turned keep their turn (as ``page_rotation``, like any turned page);
 - the original moves to the Papierkorb as batch ``split-<original id>``. Undoing restores it
   and moves the parts to the Papierkorb.
@@ -170,13 +171,9 @@ def _carry_over(
         "action": "split",
         "split_from": {"id": orig.id, "title": title, "pages": pages, "part": num, "parts": total},
     }
-    if num == 1:  # the original's data stays with the first part
-        for f in ("title", "document_date", "document_date_status", "document_date_reason",
-                  "correspondent", "document_type", "tags", "summary", "custom_fields",
-                  "field_locks", "field_sources", "tag_overrides",
-                  "keep_original", "keep_original_reason", "keep_original_source",
-                  "notes", "attachments", "not_duplicate_of"):  # fmt: skip
-            setattr(meta, f, getattr(orig, f))
+    if num == 1:  # what the user added stays with the first part; the rest is classified anew
+        meta.notes = list(orig.notes)
+        meta.attachments = list(orig.attachments)
         if not orig.filed_at:  # a filing position is taken over once the original has gone
             meta.paper_location = orig.paper_location
             meta.paper_discarded_at = orig.paper_discarded_at

@@ -37,7 +37,9 @@ def four_pages(archive, **kw):
 def test_parts_pages_text_and_user_data(archive):
     orig = four_pages(archive, source="scanner")
     process_all(archive)
-    docs.update_fields(archive, orig, {"title": "Mietvertrag Wohnung"}, {})
+    docs.update_fields(
+        archive, orig, {"title": "Mietvertrag Wohnung", "document_date": "2020-01-31"}, {}
+    )
     docs.add_note(archive, orig, "Original im Ordner Wohnen")
     docs.add_attachment(archive, orig, io.BytesIO(b"Quittung"), "q.txt")
     filed = docs.mark_filed(archive, orig)
@@ -51,13 +53,16 @@ def test_parts_pages_text_and_user_data(archive):
     tp = docs.load_text_pages(archive, second.id)
     assert [p.page for p in tp.pages] == [1] and "Stromrechnung" in tp.pages[0].text
     assert second.page_rotation == {1: 90} and first.page_rotation == {}
-    # the first part keeps the original's data and its place in the binder
-    assert first.title == "Mietvertrag Wohnung" and first.field_locks.get("title")
+    # every part is a new document: nothing classified or locked is taken over
+    for part in (first, second):
+        assert part.title != "Mietvertrag Wohnung" and part.document_date is None
+        assert not any(part.field_locks.values())
+    # the first part keeps what the user added and the place in the binder
     assert [n.text for n in first.notes] == ["Original im Ordner Wohnen"]
     assert len(first.attachments) == 1
     assert first.filing_sequence == filed.filing_sequence and first.paper_location is None
     # the others start fresh, but know where they came from and where their paper is
-    assert not second.notes and not second.attachments and not second.field_locks.get("title")
+    assert not second.notes and not second.attachments
     assert second.source == "scanner" and second.paper and second.filing_sequence is None
     assert "Mietvertrag Wohnung" in second.paper_location
     assert second.source_details["split_from"] == {
@@ -71,7 +76,7 @@ def test_parts_pages_text_and_user_data(archive):
     kinds = [r[0] for r in archive.conn.execute(
         "SELECT task FROM processing_runs ORDER BY id")][runs_before:]  # fmt: skip
     assert "extract" not in kinds
-    assert docs.load_meta(archive, first.id).title == "Mietvertrag Wohnung"
+    assert docs.load_meta(archive, first.id).document_date != "2020-01-31"
     # the original is in the Papierkorb; search finds the parts
     group = trash.listing(archive)[0]
     assert group["batch"] == split.batch_for(orig) and [i["id"] for i in group["items"]] == [orig]
@@ -173,8 +178,11 @@ def test_split_page_and_undo(web):
     first, second = split.parts_of(arch, orig)
     assert loc.startswith(f"/documents/{first['id']}")
     page = c.get(loc).text
-    assert "Als neue Dokumente gespeichert" in page and "Außerdem angelegt" in page
-    assert f"/documents/{second['id']}" in page
+    assert "In 2 Dokumente aufgeteilt" in page and "Teil 1 von 2:" in page
+    assert f'<a href="/documents/{second["id"]}" title=' in page  # part navigation
+    assert "Wird gerade verarbeitet" in page  # each part is classified anew
+    process_all(arch)
+    assert "Wird gerade verarbeitet" not in c.get(loc).text
     r = c.post("/trash/action", data={"csrf_token": csrf, "action": "restore",
                "target": loc.split("undo=")[1].replace("%3A", ":")}, follow_redirects=False)  # fmt: skip
     assert r.headers["location"].startswith(f"/documents/{orig}")

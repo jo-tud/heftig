@@ -156,9 +156,10 @@ a phone hold a page briefly, then drag; ↻ turns a page, ✕ removes it (↩ pu
 the blank pages* drops the empty backs of a duplex scan in one go. Tap a page to see it large and
 flip through (← →, R turns, *New document starts here*). Keyboard: arrow keys choose a page, Alt +
 arrow keys move it, R turns, Del removes, S starts a new document after it. Each part becomes a
-new PDF (pages copied without re-encoding, the recognised text kept): the first part keeps title,
-locked fields, tags, notes, attachments and the place in the binder; the other parts are
-classified anew and note that their paper lies with the first. The original goes to the trash –
+new document, a new PDF (pages copied without re-encoding, the recognised text kept), classified
+from scratch – title, date, sender, type, tags, summary and fields come from its own pages, none
+from the original. Notes, attachments and the place in the binder go to the first part; the
+other parts note that their paper lies with it. The original goes to the trash –
 *Undo* brings it back and moves the parts to the trash.
 
 ## E-mails

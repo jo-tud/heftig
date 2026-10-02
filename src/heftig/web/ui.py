@@ -212,7 +212,13 @@ def render(request: Request, name: str, *, http_status: int = 200, **ctx: Any) -
         if undo.startswith("batch:" + combine.BATCH_PREFIX):
             ctx["undo_label"] = _("Combined – the individual documents are in the trash.")
         elif undo.startswith("batch:" + split.BATCH_PREFIX):
-            ctx["undo_label"] = _("Saved as new documents – the original is in the trash.")
+            a = request.app.state.archive
+            n = len(split.parts_of(a, undo[6 + len(split.BATCH_PREFIX) :]))
+            ctx["undo_label"] = (
+                _("Split into %(num)s documents – the original is in the trash.", num=n)
+                if n > 1
+                else _("Saved as a new document – the original is in the trash.")
+            )
         elif undo.startswith("doc:"):
             row = request.app.state.archive.conn.execute(
                 "SELECT title FROM trash WHERE id=?", (undo[4:],)
@@ -654,11 +660,11 @@ def _page_sizes(a, m: dict) -> list[tuple[float, float]]:
 
 
 def _split_parts(a, m: dict) -> list[dict[str, Any]]:
-    """The other documents split from the same original (for "Split from")."""
+    """The documents split from the same original as this one (this one included)."""
     src = (m.get("source_details") or {}).get("split_from")
     if not isinstance(src, dict) or not src.get("id"):
         return []
-    return [r for r in split.parts_of(a, str(src["id"])) if r["id"] != m["id"]]
+    return split.parts_of(a, str(src["id"]))
 
 
 # --- AI search: a request in plain words becomes filters -------------------------------------
