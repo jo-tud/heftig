@@ -29,16 +29,22 @@ body.photo .photo-hint { display: grid; }
 .undo[hidden] { display: none; }
 .scan-bottom { padding: .25rem .75rem calc(.75rem + env(safe-area-inset-bottom)); }
 /* room above and to the right for the ⓧ, which sticks out of the page's corner (the strip clips) */
-.pages { list-style: none; display: flex; gap: .75rem; overflow-x: auto; margin: 0 0 .5rem; padding: 8px 12px 0 0; min-height: 0;
+.pages { list-style: none; display: flex; gap: 1rem; overflow-x: auto; margin: 0 0 .5rem; padding: 12px 16px 0 0; min-height: 0;
   max-width: 100%; overscroll-behavior-x: contain; scrollbar-width: thin; }
 .pages li { flex: none; position: relative; }
 .page-thumb { position: relative; padding: 0; border: 2px solid #39d98a; border-radius: 6px; background: #222; width: 54px; height: 72px; overflow: hidden; }
 .page-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .page-thumb.current { border-color: #fff; box-shadow: 0 0 0 2px #fff; }
-/* small visible circle, larger hit area (32 px, up to the next page) */
-.page-remove { position: absolute; top: -8px; right: -12px; z-index: 1; width: 32px; height: 32px; padding: 0; border: 0; cursor: pointer;
+/* small visible circle, larger hit area (28 px, up to the next page); it covers only a 12 × 16 px
+   corner of the thumbnail, so a tap near that corner still opens the page */
+.page-remove { position: absolute; top: -12px; right: -16px; z-index: 1; width: 28px; height: 28px; padding: 0; border: 0; cursor: pointer;
   color: #eef2ef; font-size: 15px; line-height: 1; display: grid; place-items: center;
   background: radial-gradient(circle, #2b2f2d 0 10px, #eef2ef 10.5px 12px, transparent 12.5px); }
+/* while the PDF is being uploaded its pages are fixed: no opening, cropping, removing or undo
+   (the strip itself still scrolls) */
+body.uploading .pages button { pointer-events: none; }
+body.uploading .page-remove { visibility: hidden; }
+body.uploading .undo { display: none; }
 .page-thumb span { position: absolute; right: 2px; bottom: 2px; background: #111512cc; font-size: .75rem; padding: 0 .3rem; border-radius: 4px; }
 .controls { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
 .controls .kind { justify-self: start; }
