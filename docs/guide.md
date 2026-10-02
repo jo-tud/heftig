@@ -28,9 +28,9 @@ How the parts fit together in daily use. Setup and operation: [operations.md](op
    or let Heftig do it for every scan (*Settings → Scanner and phone → I file every scanned letter
    right away*).
 
-Nothing is ever lost by a click: deleted documents go to the trash for 30 days, combining and
-bulk deletion can be undone, and documents that were combined into another one are kept for good
-(*Settings → Source documents*).
+Nothing is ever lost by a click: deleted documents go to the trash for 30 days, combining,
+splitting and bulk deletion can be undone, and documents that were combined into another one are
+kept for good (*Settings → Source documents*).
 
 ## Paper without archive numbers
 
@@ -130,7 +130,7 @@ thumbnails, comparison, search marks, and the next text recognition. If the page
 read from the image before it was turned, a line above the pages offers *Recognise the text
 again* (pages read before stay cached, so only the turned ones are read anew).
 
-## Duplicates and combining
+## Duplicates, combining and splitting
 
 The identical file never becomes a second document. The same letter in two forms – an e-mailed
 PDF and a phone photo – is recognised after processing (similar text, same date and sender, same
@@ -152,6 +152,19 @@ their original file, text and notes, and never deleted automatically. *Settings 
 documents* lists them by the document they went into – open or download an original there,
 *Undo combining* brings the parts back (the combined document goes to the trash), *Delete* moves
 one to the trash on purpose. The combined document links to them under *Combined from*.
+
+**Splitting and arranging pages.** One scan that holds two letters, pages in the wrong order, an
+empty back page: *More … → Split or arrange pages …* on the document page shows the pages as
+tiles. ✂ between two pages starts a new document there (*Join with the part above* undoes a cut);
+drag pages to move them – also from one part to another, or onto *Drop here: a new document* – on
+a phone hold a page briefly, then drag; ↻ turns a page, ✕ removes it (↩ puts it back), *Remove
+the blank pages* drops the empty backs of a duplex scan in one go. Tap a page to see it large and
+flip through (← →, R turns, *New document starts here*). Keyboard: arrow keys choose a page, Alt +
+arrow keys move it, R turns, Del removes, S starts a new document after it. Each part becomes a
+new PDF (pages copied without re-encoding, the recognised text kept): the first part keeps title,
+locked fields, tags, notes, attachments and the place in the binder; the other parts are
+classified anew and note that their paper lies with the first. The original goes to the trash –
+*Undo* brings it back and moves the parts to the trash.
 
 ## E-mails
 

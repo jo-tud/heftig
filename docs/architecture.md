@@ -46,7 +46,7 @@ The main modules:
 | `documents.py`, `storage.py`, `db.py`, `index.py`, `migrations/` | Sidecars, atomic writes, the SQLite database and its FTS index |
 | `search.py`, `expand.py`, `synonyms.py`, `datephrases.py`, `aisearch.py`, `wordboxes.py` | Search and ranking, what a search word stands for (forms, compounds, similar spellings), words that mean the same, date phrases, the optional AI search, hit boxes on page images |
 | `semantic.py`, `local_embed.py`, `searcheval.py` | The optional search by meaning (pieces, vectors, fusion with the word search) and its built-in ONNX model; measuring search quality |
-| `duplicates.py`, `pagediff.py`, `combine.py`, `trash.py` | Possible duplicates and the page comparison, combining documents, the trash and the source documents |
+| `duplicates.py`, `pagediff.py`, `combine.py`, `split.py`, `trash.py` | Possible duplicates and the page comparison, combining documents, splitting a document / arranging its pages, the trash and the source documents |
 | `binders.py`, `sessions.py` | Paper filing in named binders (`binders.json`), batches for scanning old binders |
 | `titles.py`, `taxonomy.py`, `suggestions.py`, `saved_searches.py`, `senders.py` | Title normalisation and harmonisation, categories, AI suggestions, saved searches, names for e-mail sender addresses (`senders.json`) |
 | `settings_store.py`, `web/setup.py`, `connections.py` | Settings saved in the web interface, the setup/settings pages for AI, search, mail and scanner, and the connection tests behind their "Test" buttons (IMAP presets, model lists) |
