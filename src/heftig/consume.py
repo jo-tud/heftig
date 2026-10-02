@@ -117,7 +117,11 @@ class ConsumeWatcher:
         s = self.archive.settings
         self.last_poll_at = now_iso()
         root = self.root
-        if not root.is_dir():
+        try:
+            reachable = root.is_dir()
+        except OSError:  # e.g. "Host is down" when a network share drops away
+            reachable = False
+        if not reachable:
             self.last_error = N_("Input folder %(path)s cannot be reached") % {"path": root}
             return []
         # keep reporting sources that are archived but cannot be removed
