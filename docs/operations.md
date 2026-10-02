@@ -476,7 +476,8 @@ A built-in integration (e.g. a ClamAV check before ingestion) is a possible late
 
 Heftig itself speaks plain HTTP and is meant to sit behind a TLS-terminating reverse proxy or a
 VPN when it is used from other devices. HTTPS is also required for the live camera on `/scan`
-(browsers only grant camera access to secure contexts). Common options:
+(browsers only grant camera access to secure contexts) and for installing Heftig as an app
+([guide.md](guide.md#install-as-an-app)). Common options:
 
 - **Reverse proxy with a local certificate authority**, e.g. Caddy with `tls internal`: no
   third-party service, but the proxy's root certificate has to be installed once on every phone.

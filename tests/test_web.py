@@ -331,6 +331,51 @@ def test_scan_page_and_manifest(client):
     assert v.status_code == 200 and "immutable" in v.headers["cache-control"]
 
 
+def test_installable_app(client):
+    m = client.get("/manifest.webmanifest").json()  # no login: browsers fetch it without cookies
+    assert m["id"] == "/scan" and m["display"] == "standalone" and m["description"]
+    for icon in m["icons"]:
+        assert client.get(icon["src"]).status_code == 200
+    assert {i["sizes"] for i in m["icons"] if i.get("purpose") == "maskable"} == {
+        "192x192",
+        "512x512",
+    }
+    # every page registers the service worker, the scan page (where the app starts) too
+    login(client)
+    for path in ("/", "/scan", "/login"):
+        assert "/static/pwa.js?v=" in client.get(path).text
+
+
+def test_service_worker_and_offline_page(app, tmp_path):
+    client = TestClient(app)
+    # the offline page is public and carries nothing about the user: the browser keeps it
+    login(client)
+    page = client.get("/offline")
+    assert page.status_code == 200 and "Heftig ist gerade nicht erreichbar" in page.text
+    assert 'id="retry"' in page.text and "csrf" not in page.text and "/logout" not in page.text
+    assert "script-src 'self'" in page.headers["content-security-policy"]
+    anon = TestClient(app)
+    assert anon.get("/offline", follow_redirects=False).text == page.text
+
+    sw = anon.get("/sw.js")
+    assert sw.status_code == 200 and sw.headers["content-type"].startswith("text/javascript")
+    config = json.loads(sw.text.split("const CONFIG = ", 1)[1].split(";\n", 1)[0])
+    assert config["version"] != "dev"
+    # the offline page needs exactly the files the service worker keeps
+    for asset in config["assets"]:
+        assert asset in page.text and anon.get(asset).status_code == 200
+    assert anon.get("/sw.js").text == sw.text  # stable while nothing changes
+
+    # another language: another offline page, so browsers fetch the new service worker
+    other = create_app(make_settings(tmp_path / "en", language="en"))
+    try:
+        en = TestClient(other).get("/sw.js").text
+        assert "cannot be reached" in TestClient(other).get("/offline").text
+        assert en != sw.text
+    finally:
+        other.state.archive.close()
+
+
 def test_privacy_mode_markup(client):
     csrf = login(client)
     doc_id = upload(client, csrf).json()["results"][0]["document_id"]
