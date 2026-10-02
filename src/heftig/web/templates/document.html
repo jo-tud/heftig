@@ -28,6 +28,7 @@
       <div class="menu-list" role="menu">
         <a role="menuitem" href="/documents/{{ m.id }}/original" download>{{ _("Download original") }}</a>
         <a role="menuitem" href="/combine?ids={{ m.id }}" title="{{ _("e.g. separately scanned pages of a letter, or the signed version") }}">{{ _("Combine with another document …") }}</a>
+        {% if (m.page_count or 1) > 1 %}<a role="menuitem" href="/documents/{{ m.id }}/split" title="{{ _("e.g. two letters in one scan: cut between the pages, move, turn or remove pages") }}">{{ _("Split or arrange pages …") }}</a>{% endif %}
         {% if not m.paper and not pos %}<form method="post" action="/documents/{{ m.id }}/action">{{ csrf_field(csrf) }}{{ rv }}
           <button role="menuitem" name="action" value="file" class="linklike">{{ _("Mark as filed") }}</button></form>{% endif %}
         <form method="post" action="/documents/{{ m.id }}/action">{{ csrf_field(csrf) }}{{ rv }}<input type="hidden" name="back" value="{{ back }}">
@@ -54,6 +55,7 @@
 {% if m.ai_pending %}{% set ns_ai = namespace(tasks=[]) %}{% for x in m.ai_pending %}{% set ns_ai.tasks = ns_ai.tasks + [{'extract': _("Text recognition"), 'classify': pgettext("processing step", "Classification")}.get(x, x)] %}{% endfor %}<p class="notice info" role="status">{{ _("Processed offline for now (%(tasks)s) – the AI processing will be caught up automatically. Your corrections are kept.", tasks=ns_ai.tasks | join(', ')) }}</p>{% endif %}
 {% if saved %}<p class="notice ok" role="status">{{ _("Saved. Changed fields are now locked and won't be overwritten when reprocessing.") }}</p>{% endif %}
 {% if message %}<p class="notice info" role="status">{{ message }}</p>{% endif %}
+{% if undo and undo.startswith('batch:split-') and split_parts %}<p class="notice ok" role="status">{{ _("This is part 1. Also created:") }} {% for r in split_parts %}<a href="/documents/{{ r.id }}">{{ r.title or r.original_filename }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif %}
 
 <div id="review-box">{{ review_card(m, csrf, rv, review, budget_pages) }}</div>
 
@@ -330,10 +332,12 @@
     <dt>{{ _("File name") }}</dt><dd>{{ m.original_filename }}</dd>
     <dt>{{ _("Type / size") }}</dt><dd>{{ m.mime_type }} · {{ '%.1f' % (m.size_bytes / 1024) }} KB</dd>
     {% set detail_labels = {'from': _("E-mail from"), 'subject': _("Subject"), 'message_date': _("Sent"), 'message_id': _("Message ID"), 'attachment': _("Attachment"), 'import_ref': _("Import reference"), 'eml': _("Saved e-mail"), 'path': _("Path in the folder")} %}
-    {% for k, v in m.source_details.items() if v is not none and k not in ('combined_from', 'action') %}<dt>{{ detail_labels.get(k, k) }}</dt><dd>{% if k == 'from' and sender_names.get(v | lower) %}{{ sender_names.get(v | lower) }} &lt;{{ v }}&gt;{% else %}{{ v }}{% endif %}</dd>{% endfor %}
+    {% for k, v in m.source_details.items() if v is not none and k not in ('combined_from', 'split_from', 'action') %}<dt>{{ detail_labels.get(k, k) }}</dt><dd>{% if k == 'from' and sender_names.get(v | lower) %}{{ sender_names.get(v | lower) }} &lt;{{ v }}&gt;{% else %}{{ v }}{% endif %}</dd>{% endfor %}
     {% if m.source_details.combined_from %}<dt>{{ _("Combined from") }}</dt><dd>{% set ns = namespace(p=1) %}
       {% for c in m.source_details.combined_from %}{% if c.pages > 1 %}{{ _("p. %(first)s–%(last)s: “%(title)s”", first=ns.p, last=ns.p + c.pages - 1, title=c.title) }}{% else %}{{ _("p. %(first)s: “%(title)s”", first=ns.p, title=c.title) }}{% endif %}{% set ns.p = ns.p + c.pages %}{% if not loop.last %}<br>{% endif %}{% endfor %}
       <br><a href="/sources#combine-{{ m.id }}">{{ _("The individual documents (source documents)") }}</a></dd>{% endif %}
+    {% set sf = m.source_details.split_from %}{% if sf %}<dt>{{ _("Split from") }}</dt><dd>{% if sf.pages | length > 1 %}{{ _("“%(title)s”, pages %(pages)s", title=sf.title, pages=sf.pages | join(', ')) }}{% else %}{{ _("“%(title)s”, page %(pages)s", title=sf.title, pages=sf.pages | join(', ')) }}{% endif %}
+      {% if split_parts %}<br>{{ _("Other parts:") }} {% for r in split_parts %}<a href="/documents/{{ r.id }}">{{ r.title or r.original_filename }}</a>{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}</dd>{% endif %}
     <dt>ID</dt><dd><code>{{ m.id }}</code></dd>
     <dt>SHA-256</dt><dd><code class="hash">{{ m.sha256 }}</code> {{ _("– original, byte for byte as received") }}</dd>
   </dl>

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field %}
+{% block title %}{{ _("Split or arrange pages") }}{% endblock %}
+{% block content %}
+<script src="/static/split.js?v={{ asset_v }}" defer></script>
+<nav class="crumbs"><a href="/documents/{{ m.id }}">← {{ m.title or m.original_filename }}</a></nav>
+<h1>{{ _("Split or arrange pages") }}</h1>
+{% if message %}<p class="notice warn" role="status">{{ message }}</p>{% endif %}
+{% if problem %}<p class="notice warn" role="status">{{ problem }}</p>{% endif %}
+<noscript><p class="notice warn">{{ _("This page needs JavaScript.") }}</p></noscript>
+<p class="hint split-help">{{ _("Tap ✂ between two pages to start a new document there. Drag pages to move them – on a touch screen, hold a page briefly, then drag. Tap a page to see it large.") }}
+  <span class="split-keys">{{ _("Keyboard: arrow keys choose a page, Alt + arrow keys move it, R turns it, Del removes it, S starts a new document after it.") }}</span></p>
+
+<form method="post" action="/documents/{{ m.id }}/split" id="split-form" data-problem="{{ '1' if problem else '' }}">
+  {{ csrf_field(csrf) }}<input type="hidden" name="layout" id="split-layout" value="">
+  {% set blanks = pages | selectattr('blank') | list %}
+  <p class="buttons split-tools">
+    {% if blanks %}<button type="button" id="split-blank">{{ ngettext("Remove %(num)d blank page", "Remove %(num)d blank pages", blanks | length) }}</button>{% endif %}
+    <button type="button" id="split-reset" class="secondary" disabled>{{ _("Start over") }}</button>
+  </p>
+  <div class="pv-media split-wrap">
+    <div class="split-board" id="split-board" data-doc="{{ m.id }}" data-pages="{{ pages | length }}">
+      <section class="split-part">
+        <header class="split-head"><h2></h2><span class="sp-count muted small"></span><button type="button" class="linklike small" data-act="join" hidden></button></header>
+        <ol class="split-pages">
+          {% for pg in pages %}
+          <li class="split-page{% if pg.blank %} is-blank{% endif %}" data-page="{{ pg.n }}" data-turn="{{ pg.turn }}" data-turn0="{{ pg.turn }}" tabindex="0">
+            <div class="sp-thumb"><img src="/documents/{{ m.id }}/pages/{{ pg.n }}.webp?w=480{% if pg.turn %}&amp;r={{ pg.turn }}{% endif %}" alt="" draggable="false" loading="{{ 'eager' if loop.index <= 12 else 'lazy' }}" decoding="async">
+              <span class="sp-gone">{{ _("removed") }}</span></div>
+            <div class="sp-bar"><span class="sp-num">{{ pg.n }}</span>{% if pg.blank %}<span class="sp-flag">{{ _("blank") }}</span>{% endif %}
+              <button type="button" data-act="turn" title="{{ _("Turn page %(num)s to the right", num=pg.n) }}" aria-label="{{ _("Turn page %(num)s to the right", num=pg.n) }}">↻</button><button type="button" data-act="remove"></button></div>
+            <button type="button" class="sp-cut" data-act="cut">✂</button>
+          </li>
+          {% endfor %}
+        </ol>
+      </section>
+      <div class="split-new" aria-hidden="true">{{ _("Drop here: a new document") }}</div>
+    </div>
+    <button type="button" class="pv-reveal">{{ _("Private – tap to show") }}</button>
+    <button type="button" class="pv-hide" title="{{ _("Blur again") }}">{{ _("Hide") }}</button>
+  </div>
+  <div class="split-bar">
+    <span id="split-summary" aria-live="polite"></span>
+    <button class="primary" id="split-apply" disabled>{{ _("Save") }}</button>
+  </div>
+  <p class="hint">{{ _("Each part becomes a new document; removed pages are left out. The first part keeps title, fields, notes, attachments and the place in the binder; the others are classified anew. The recognized text is kept. The original goes to the <a href=\"/trash\">trash</a> – this can be undone.") }}</p>
+</form>
+<p class="sr-only" id="split-live" aria-live="polite"></p>
+
+<dialog class="split-view" id="split-view" aria-labelledby="sv-title">
+  <div class="sv-head"><h2 id="sv-title"></h2><button type="button" data-sv="close" aria-label="{{ _("Close") }}">✕</button></div>
+  <div class="sv-img"><img id="sv-img" alt=""></div>
+  <p class="buttons sv-tools">
+    <button type="button" data-sv="prev" aria-label="{{ _("Previous page") }}" title="{{ _("Previous page") }}">‹</button>
+    <button type="button" data-sv="turn">↻ {{ _("Turn") }}</button>
+    <button type="button" data-sv="remove"></button>
+    <button type="button" data-sv="start"></button>
+    <button type="button" data-sv="next" aria-label="{{ _("Next page") }}" title="{{ _("Next page") }}">›</button>
+  </p>
+</dialog>
+{% endblock %}

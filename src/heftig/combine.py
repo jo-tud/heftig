@@ -49,6 +49,17 @@ def batch_for(doc_id: str) -> str:
 # --- building the PDF --------------------------------------------------------------------
 
 
+def add_image_page(pdf: pdfium.PdfDocument, jpeg: bytes, wpt: float, hpt: float) -> None:
+    """A page showing the JPEG at this size (points). Call with PDFIUM_LOCK held."""
+    page = pdf.new_page(wpt, hpt)
+    img = pdfium.PdfImage.new(pdf)
+    img.load_jpeg(io.BytesIO(jpeg), inline=False, autoclose=True)
+    img.set_matrix(pdfium.PdfMatrix().scale(wpt, hpt))
+    page.insert_obj(img)
+    page.gen_content()
+    page.close()
+
+
 def build_pdf(archive: Archive, metas: list[DocumentMetadata]) -> bytes:
     with PDFIUM_LOCK:
         pdf = pdfium.PdfDocument.new()
@@ -63,13 +74,7 @@ def build_pdf(archive: Archive, metas: list[DocumentMetadata]) -> bytes:
                         src.close()
                     continue
                 for data, wpt, hpt in image_pdf_pages(path, m.mime_type):
-                    page = pdf.new_page(wpt, hpt)
-                    img = pdfium.PdfImage.new(pdf)
-                    img.load_jpeg(io.BytesIO(data), inline=False, autoclose=True)
-                    img.set_matrix(pdfium.PdfMatrix().scale(wpt, hpt))
-                    page.insert_obj(img)
-                    page.gen_content()
-                    page.close()
+                    add_image_page(pdf, data, wpt, hpt)
             buf = io.BytesIO()
             pdf.save(buf)
             return buf.getvalue()
@@ -181,7 +186,8 @@ def _placed(parts: list[DocumentMetadata]) -> DocumentMetadata | None:
     return next((m for m in parts if m.filed_at or m.paper_location or m.paper_discarded_at), None)
 
 
-def _take_filing(archive: Archive, doc_id: str, placed: DocumentMetadata) -> None:
+def take_filing(archive: Archive, doc_id: str, placed: DocumentMetadata) -> None:
+    """The document takes over where the paper of ``placed`` lies (its filing position)."""
     with write_tx(archive.conn):
         meta = docs.load_meta(archive, doc_id)
         meta.filed_at, meta.filing_sequence, meta.filing_section, meta.filing_binder = (
@@ -251,7 +257,7 @@ def combine(archive: Archive, ids: list[str], by: str = "web") -> DocumentMetada
             pass  # deleted meanwhile (by hand, or as an identical copy): nothing to move
     placed = _placed(parts)
     if placed is not None and placed.filed_at:
-        _take_filing(archive, new.id, placed)
+        take_filing(archive, new.id, placed)
     return docs.load_meta(archive, new.id)
 
 

@@ -73,7 +73,8 @@ Menu names differ between HP models and firmware versions; the steps are usually
 
 Each file becomes one document. If your printer writes one file per page, the pages appear as
 separate documents; *Combine with another document …* on the document page joins them, but
-fixing the scanner setting saves that work.
+fixing the scanner setting saves that work. The other way round – several letters fed through
+the feeder as one file – *Split or arrange pages …* cuts the scan into separate documents.
 Some older HP devices only speak SMB1; prefer a firmware update over enabling SMB1 on your NAS.
 
 ### Settings for digitising old folders
