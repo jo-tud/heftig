@@ -229,5 +229,20 @@ collects several pages and uploads them as one PDF. Over HTTPS the preview runs 
 takes the photo by itself once the sheet lies still; over plain HTTP the phone's camera app opens
 instead and the corners can be adjusted by hand. Tapping a captured page opens it for cropping
 and rotating above the row of pages (tap the next page to go on); the ⓧ on its corner removes it,
-with *Undo* for a few seconds. Add the page to the home screen to open Heftig
-directly on the camera. HTTPS without effort: [operations.md](operations.md#https).
+with *Undo* for a few seconds. Installed as an app (below), Heftig opens directly on the camera.
+HTTPS without effort: [operations.md](operations.md#https).
+
+## Install as an app
+
+Over HTTPS, Heftig can be installed like an app: it gets its own icon and window and opens on
+*Scan*; long-press the icon (phone) or right-click it (desktop) for *Search*.
+
+- **Android, Chrome:** menu ⋮ → *Install app* (or *Add to home screen*).
+- **iPhone/iPad, Safari:** share button → *Add to Home Screen*.
+- **Desktop, Chrome/Edge:** the install icon at the right of the address bar, or menu → *Install
+  Heftig*. Safari on a Mac: *File → Add to Dock*.
+
+Over plain HTTP (e.g. `http://192.168.1.20:8000`) browsers only offer a shortcut that opens in a
+normal browser tab. When the server cannot be reached (away from home, server switched off),
+the app shows a short "not reachable" page and loads again by itself once Heftig is back; nothing
+from the archive is stored on the device for this.

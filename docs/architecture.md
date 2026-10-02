@@ -323,3 +323,18 @@ small PDF writer in `scan.js` puts one JPEG per page into a PDF that is uploaded
 live in `static/vendor/` with licenses and checksums (`README.txt`). Only this page gets
 `camera=(self)`, `'wasm-unsafe-eval'`/`'unsafe-eval'` (OpenCV.js/Emscripten) and `connect-src data:`
 (OpenCV.js loads its embedded WebAssembly from a data: URL); all other pages keep the strict policy.
+
+
+## Installable app
+
+`/manifest.webmanifest` (in `web/ui.py`) makes the web interface installable; its `id` is fixed
+to `/scan`, the identity Chromium derived from `start_url` before there was an `id`, so existing
+installations stay one app. `static/pwa.js` registers the service worker on every page. The
+worker (`static/sw.js`) is served at `/sw.js` so that its scope is the whole site; the route fills
+in its version (a hash of the rendered offline page) and the files that page needs. It stores
+exactly `/offline` (templates/offline.html: no user data) with its versioned stylesheet, script
+and icon, and answers top-level page loads from the network, falling back to the offline page on
+a network error or a 502/503/504 from a reverse proxy. Everything else (API, `/health`, `/ready`,
+uploads, downloads, frames) passes by untouched; nothing from the archive is cached. A new
+language or a changed offline page changes the worker's script, so browsers install the new one
+and drop the old cache.

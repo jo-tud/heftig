@@ -10,10 +10,12 @@
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/static/icon-192.png">
   <meta name="theme-color" content="#2f5d50">
+  <meta name="apple-mobile-web-app-title" content="Heftig">
   <script src="/static/i18n.js?v={{ asset_v }}"></script>
   <script src="/static/privacy-init.js?v={{ asset_v }}"></script>
   <script src="/static/app.js?v={{ asset_v }}" defer></script>
   <script src="/static/privacy.js?v={{ asset_v }}" defer></script>
+  <script src="/static/pwa.js?v={{ asset_v }}" defer></script>
 </head>
 <body data-csrf="{{ csrf }}">
 {% set _jsm = js_messages() %}{% if _jsm %}<script type="application/json" id="i18n-messages">{{ _jsm | tojson }}</script>{% endif %}

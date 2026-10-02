@@ -1,0 +1,25 @@
+<!doctype html>
+{#- Shown by the service worker (sw.js) when Heftig cannot be reached. It is stored in the
+    browser, so it must not contain anything about the user or the archive; it only loads the
+    files the service worker keeps alongside it. #}
+<html lang="{{ lang() }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>{{ _("Not reachable") }} · Heftig</title>
+  <link rel="stylesheet" href="/static/app.css?v={{ asset_v }}">
+  <link rel="icon" href="/static/icon.svg?v={{ asset_v }}" type="image/svg+xml">
+  <script src="/static/pwa.js?v={{ asset_v }}" defer></script>
+</head>
+<body class="offline">
+<main id="main">
+<section class="card narrow">
+  <h1><span class="logo" aria-hidden="true">▤</span> Heftig</h1>
+  <p>{{ _("Heftig cannot be reached right now. Check the connection to the server, or whether the server is running.") }}</p>
+  <p>{{ _("The page loads by itself once Heftig is back.") }}</p>
+  <div class="buttons"><button type="button" id="retry" class="primary">{{ _("Try again") }}</button></div>
+</section>
+</main>
+</body>
+</html>

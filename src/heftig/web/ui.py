@@ -1772,8 +1772,12 @@ async def session_action(request: Request, p: Principal = Depends(require_write)
 @router.get("/manifest.webmanifest", include_in_schema=False)
 def manifest():
     data = {
+        # the app's identity: what Chromium derived from start_url before "id" was set, so
+        # existing installations stay the same app
+        "id": "/scan",
         "name": _("Heftig – document archive"),
         "short_name": "Heftig",
+        "description": _("Your paper and digital documents, scanned, searchable and filed."),
         "lang": i18n.current(),
         "start_url": "/scan",
         "scope": "/",
@@ -1784,6 +1788,19 @@ def manifest():
             {"src": "/static/icon-192.png", "sizes": "192x192", "type": "image/png"},
             {"src": "/static/icon-512.png", "sizes": "512x512", "type": "image/png"},
             {"src": "/static/icon.svg", "sizes": "any", "type": "image/svg+xml"},
+            # with room around the artwork, for launchers that cut icons into circles etc.
+            {
+                "src": "/static/icon-maskable-192.png",
+                "sizes": "192x192",
+                "type": "image/png",
+                "purpose": "maskable",
+            },
+            {
+                "src": "/static/icon-maskable-512.png",
+                "sizes": "512x512",
+                "type": "image/png",
+                "purpose": "maskable",
+            },
         ],
         "shortcuts": [
             {"name": i18n.pgettext("app shortcut", "Scan"), "url": "/scan"},
@@ -1791,6 +1808,34 @@ def manifest():
         ],
     }
     return Response(json.dumps(data, ensure_ascii=False), media_type="application/manifest+json")
+
+
+def _offline_html(request: Request) -> str:
+    return request.app.state.templates.get_template("offline.html").render()
+
+
+@router.get("/offline", include_in_schema=False)
+def offline_page(request: Request):
+    """What the service worker shows when Heftig cannot be reached (no user data: it is kept
+    in the browser)."""
+    return HTMLResponse(_offline_html(request))
+
+
+@router.get("/sw.js", include_in_schema=False)
+def service_worker(request: Request):
+    """The service worker, at the root so that it covers the whole site. Its version follows
+    the offline page (language, text, stylesheet), so browsers fetch a new copy when it changes."""
+    import hashlib
+
+    v = request.app.state.templates.env.globals["asset_v"]
+    config = {
+        "version": hashlib.sha256(_offline_html(request).encode()).hexdigest()[:12],
+        "assets": [f"/static/{f}?v={v}" for f in ("app.css", "pwa.js", "icon.svg")],
+    }
+    src = (Path(__file__).parent / "static" / "sw.js").read_text(encoding="utf-8")
+    src = re.sub(r"^const CONFIG = .*$", f"const CONFIG = {json.dumps(config)};", src, count=1,
+                 flags=re.M)  # fmt: skip
+    return Response(src, media_type="text/javascript")
 
 
 @router.get("/upload")
