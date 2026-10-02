@@ -41,14 +41,14 @@ The main modules:
 
 | Module | Purpose |
 |---|---|
-| `ingest.py`, `consume.py`, `imap_import.py` | Intake: one ingest function, the watched folders, the mailbox |
+| `ingest.py`, `consume.py`, `imap_import.py`, `mail.py`, `mailpdf.py` | Intake: one ingest function, the watched folders, the mailbox; e-mails (`.eml`) as documents and the PDF writer for their pages |
 | `processing.py`, `classify.py`, `providers/` | Text extraction, classification, validation of AI output, provider adapters and prompts |
 | `documents.py`, `storage.py`, `db.py`, `index.py`, `migrations/` | Sidecars, atomic writes, the SQLite database and its FTS index |
 | `search.py`, `expand.py`, `synonyms.py`, `datephrases.py`, `aisearch.py`, `wordboxes.py` | Search and ranking, what a search word stands for (forms, compounds, similar spellings), words that mean the same, date phrases, the optional AI search, hit boxes on page images |
 | `semantic.py`, `local_embed.py`, `searcheval.py` | The optional search by meaning (pieces, vectors, fusion with the word search) and its built-in ONNX model; measuring search quality |
 | `duplicates.py`, `pagediff.py`, `combine.py`, `trash.py` | Possible duplicates and the page comparison, combining documents, the trash |
 | `binders.py`, `sessions.py` | Paper filing in named binders (`binders.json`), batches for scanning old binders |
-| `titles.py`, `taxonomy.py`, `suggestions.py`, `saved_searches.py` | Title normalisation and harmonisation, categories, AI suggestions, saved searches |
+| `titles.py`, `taxonomy.py`, `suggestions.py`, `saved_searches.py`, `senders.py` | Title normalisation and harmonisation, categories, AI suggestions, saved searches, names for e-mail sender addresses (`senders.json`) |
 | `settings_store.py`, `web/setup.py`, `connections.py` | Settings saved in the web interface, the setup/settings pages for AI, search, mail and scanner, and the connection tests behind their "Test" buttons (IMAP presets, model lists) |
 | `i18n.py`, `locale/` | Interface languages: English source texts, gettext catalogues (`locale/de/messages.po`), translation of stored texts when shown |
 | `auth.py`, `web/` | Users, sessions, API tokens; the FastAPI app, HTML pages and REST API |
@@ -68,11 +68,12 @@ poll the consume folder (and the optional folder for digital files) every
 `HEFTIG_CONSUME_POLL_SECONDS`, poll IMAP every `HEFTIG_IMAP_POLL_SECONDS` (only if a mail server
 is configured), every `HEFTIG_AI_RETRY_MINUTES` check whether an unreachable AI provider is back
 ([providers.md](providers.md#when-the-ai-provider-is-unreachable)), once an hour requeue jobs with
-expired leases, prune old raw AI responses, end forgotten scan batches, purge expired trash and
-write the automatic database snapshot, every 30 s (with the search by meaning switched on) start
-a thread that embeds new and changed documents (after a failure every ten minutes), then claim
-due jobs until `HEFTIG_WORKER_CONCURRENCY` jobs
-are running.
+expired leases, prune old raw AI responses, end forgotten scan batches, purge expired trash,
+remove renderings of e-mails no longer needed (`cache/mail/`) and write the automatic database
+snapshot, every 30 s (with the search by meaning switched on) start a thread that embeds new
+and changed documents (after a failure every ten minutes), then claim due jobs until
+`HEFTIG_WORKER_CONCURRENCY` jobs are running. A watched folder that cannot be reached (a network
+share that is down) is only reported (settings page, inbox); the rest of the loop goes on.
 
 ## Ingestion pipeline
 
@@ -229,8 +230,9 @@ by default; see [operations.md](operations.md#ports-and-network-access) for LAN 
   `HEFTIG_LOGIN_WINDOW_SECONDS` = 300 s), stored in the database so it survives restarts. Unknown
   users cost the same scrypt time as known ones.
 - Every page and API endpoint except `/health`, `/ready`, `/login`, `/setup` (setup code, only
-  while no user exists), static files and the OpenAPI schema requires authentication, including
-  original downloads.
+  while no user exists), static files, the OpenAPI schema and the files of the installable app
+  (`/manifest.webmanifest`, `/sw.js`, `/offline`; no user data) requires authentication,
+  including original downloads.
 
 **CSRF.** Every state-changing request authenticated by a session cookie must carry the
 session's CSRF token (`X-CSRF-Token` header or `csrf_token` form field), and a present
@@ -243,9 +245,11 @@ send them automatically). `SameSite=Strict` is a second layer.
 'self'`, no inline scripts or styles, `object-src 'none'`, `frame-ancestors 'self'`,
 `form-action 'self'`), plus `X-Content-Type-Options: nosniff`, `Referrer-Policy: same-origin`,
 `X-Frame-Options: SAMEORIGIN`, a restrictive `Permissions-Policy` and `Cache-Control: no-store`.
-Originals are served with their verified MIME type, as attachment by default; inline images get
-`Content-Security-Policy: default-src 'none'; sandbox`. OCR text, AI output and filenames are
-HTML-escaped by the template engine; search snippets are escaped before `<mark>` is added.
+Originals are served with their verified MIME type, as attachment by default; inline views of
+anything but a PDF (images, e-mails) get `Content-Security-Policy: default-src 'none'; sandbox`.
+The attachments of an archived e-mail are always served as downloads (`application/octet-stream`).
+OCR text, AI output and filenames are HTML-escaped by the template engine; search snippets are
+escaped before `<mark>` is added.
 
 **Resource limits.**
 

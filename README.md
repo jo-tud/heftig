@@ -19,8 +19,8 @@ reads, sorts, finds and remembers where the paper is – and leaves out what a h
 need: roles, workflows, sharing, plugins. Where a decision was possible, it was made, so there is
 little to configure.
 
-**Easy to change.** About 18,000 lines of plain Python, server-rendered HTML and a little
-JavaScript, no build step, no front-end framework, and about 370 tests that run in a minute and
+**Easy to change.** About 22,000 lines of plain Python, server-rendered HTML and a little
+JavaScript, no build step, no front-end framework, and about 470 tests that run in a minute and
 a half without network access. That makes it a good fit for coding agents such as Claude Code or
 Codex: describe what you want different, let the agent change it and run the tests.
 [AGENTS.md](AGENTS.md) gives it the map and the rules that are easy to break. Heftig itself was
@@ -29,15 +29,16 @@ built this way.
 ## Try it
 
 On Linux, with Podman or Docker (the installer offers to install Podman if neither is there),
-or on macOS with Docker Desktop, OrbStack or Colima running:
+or on macOS with Docker Desktop, OrbStack, Colima or Podman running:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/jo-tud/heftig/main/install.sh | sh
 ```
 
-It downloads the container image, creates `~/heftig`, starts Heftig (also after a reboot) and
-prints the address of the setup page. There you create your (local) account and, if you like, connect an
-AI, a mailbox and your scanner – no configuration files. Running the installer again updates
+It downloads the container image, creates `~/heftig`, starts Heftig (also after a reboot; on
+macOS only if Docker Desktop, OrbStack, Colima or the Podman machine starts at login) and prints
+the address of the setup page. There you create your (local) account and, if you like, connect
+an AI, a mailbox and your scanner – no configuration files. Running the installer again updates
 Heftig. To remove it: `podman rm -f heftig` (or `docker rm -f heftig`) and delete `~/heftig`.
 
 <img src="docs/screenshots/setup-ai.png" alt="The setup page: choosing the AI" width="70%">
@@ -73,7 +74,8 @@ Other ways to run it (Docker Compose, without containers, behind a reverse proxy
 
 - **Getting documents in:** upload in the browser, the phone's document camera, a scanner folder
   (network share), a mailbox for forwarded mail and scan-to-email, a REST API. Everything lands in
-  one inbox. Pages scanned separately can be combined into one document.
+  one inbox. Pages scanned separately can be combined into one document; an e-mail can be
+  archived itself, as one document with its attachments.
 - **Reading and sorting:** embedded PDF text first, OCR for scans (Tesseract on your computer, or
   an AI model). Title, date, sender, document type, tags, amounts and contract numbers are
   suggested; dates and numbers are only accepted if they really appear in the text. Anything you
@@ -129,7 +131,7 @@ know:
 
 | | |
 |---|---|
-| [docs/guide.md](docs/guide.md) | Using Heftig: inbox, filing paper, scan sessions, duplicates, search tips |
+| [docs/guide.md](docs/guide.md) | Using Heftig: inbox, filing paper, scan sessions, duplicates, e-mails, search tips, installing as an app |
 | [docs/operations.md](docs/operations.md) | Installation variants, HTTPS and phones, backup and restore, updates, logs |
 | [docs/scanner-imap.md](docs/scanner-imap.md) | Scanners (network folder, scan-to-email), SMB shares, mail import |
 | [docs/providers.md](docs/providers.md) | AI and OCR providers, local models, privacy |

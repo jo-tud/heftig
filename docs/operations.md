@@ -14,16 +14,19 @@ for a native installation; in containers prefix them with `podman exec heftig` (
 curl -fsSL https://raw.githubusercontent.com/jo-tud/heftig/main/install.sh | sh
 ```
 
-The script (read it first if you like: [install.sh](../install.sh)) needs Linux, `curl` and
-Podman or Docker; it offers to install Podman with the system's package manager if neither is
-there. It then
+The script (read it first if you like: [install.sh](../install.sh)) needs Linux or macOS, `curl`
+and Podman or Docker; on Linux it offers to install Podman with the system's package manager if
+neither is there. On macOS start Docker Desktop, OrbStack, Colima or the Podman machine
+(`podman machine start`) first. It then
 
 1. creates `~/heftig/archive` (everything Heftig keeps) and `~/heftig/scanner` (the scanner
    folder: files put there are imported and removed);
 2. downloads the image `ghcr.io/jo-tud/heftig` (x86-64 and ARM, e.g. a Raspberry Pi 4/5);
 3. starts one container named `heftig` running web server and worker (`heftig run`), published
    on `127.0.0.1:8765`, with the restart policy `always` – so it comes back after a reboot
-   (rootless Podman: the installer enables the standard `podman-restart.service` for your user);
+   (rootless Podman: the installer enables the standard `podman-restart.service` for your user;
+   macOS: only if Docker Desktop, OrbStack, Colima or the Podman machine starts at login, which
+   Colima and the Podman machine don't by default);
 4. prints the address of the setup page, including a one-time setup code.
 
 Options are environment variables for the script, e.g.
@@ -55,8 +58,10 @@ creates the account, then walks through the AI (`/settings/ai`), the search by m
 (`/settings/search`), the mailbox (`/settings/mail`) and the scanner (`/settings/scanner`). The
 same pages are under *Settings* later (*Change AI*, *Search by meaning*, *E-mail import*,
 *Scanner and phone*); the binders of the paper filing are on *Settings → Binders*, the archive's
-own words that mean the same on *Settings → Search: words that mean the same*. (`heftig init` still creates the account on the command line, e.g. for
-scripted installations.)
+own words that mean the same on *Settings → Search: words that mean the same*, names for the
+addresses documents are e-mailed from on *Settings → E-mail senders*. (`heftig init` still
+creates the account on the command line, e.g. for scripted installations;
+`heftig set-password <name>` sets a new password, e.g. a forgotten one.)
 
 What is saved on these pages is stored in the archive's database (`meta` table) and applies to
 web server and worker without a restart. API keys and the mail password are never shown again;
@@ -203,10 +208,11 @@ container secrets; `compose.yaml` has a commented example); the direct value win
 | Web | `HOST` (`127.0.0.1`), `PORT` (`8765`), `COOKIE_SECURE` (`auto`/`true`/`false`), `TRUST_PROXY_HEADERS` (`false`), `SESSION_HOURS` (`336`), `LOGIN_MAX_ATTEMPTS` (`5`), `LOGIN_WINDOW_SECONDS` (`300`) |
 | Limits | `MAX_UPLOAD_MB` (`100`), `MAX_PAGES` (`500`), `MAX_IMAGE_MEGAPIXELS` (`150`), `OCR_DPI` (`300`), `OCR_PAGE_TIMEOUT_SECONDS` (`180`), `MIN_TEXT_CHARS_PER_PAGE` (`40`) |
 | Worker | `WORKER_CONCURRENCY` (`2`, 1-16), `JOB_MAX_ATTEMPTS` (`5`), `JOB_BACKOFF_SECONDS` (`30`), `JOB_LEASE_SECONDS` (`900`), `RAW_RESPONSE_RETENTION_DAYS` (`30`), `RAW_RESPONSE_MAX_KB` (`64`), `DB_SNAPSHOT_HOURS` (`6`, 0 = off), `TRASH_RETENTION_DAYS` (`30`), `AUTO_RESOLVE_IDENTICAL` (`true`: the second of two truly identical documents goes to the trash) |
-| Consume folder | `CONSUME_POLL_SECONDS` (`10`), `CONSUME_STABLE_POLLS` (`2`), `CONSUME_MIN_AGE_SECONDS` (`5`), `CONSUME_INCOMPLETE_WAIT_SECONDS` (`900`), `CONSUME_AFTER` (`delete`/`move`), `CONSUME_MAX_FAILURES` (`3`) |
+| Consume folder | `CONSUME_POLL_SECONDS` (`10`), `CONSUME_STABLE_POLLS` (`2`), `CONSUME_MIN_AGE_SECONDS` (`5`), `CONSUME_INCOMPLETE_WAIT_SECONDS` (`900`), `CONSUME_AFTER` (`delete`/`move`)†, `CONSUME_MAX_FAILURES` (`3`) |
 | Paper filing | `AUTO_FILE_SOURCES` (empty; e.g. `scanner`)†, `FILING_GRANULARITY` (`month`/`year`) |
 | OCR | `OCR_PROVIDER` (`tesseract`)†, `OCR_LANGUAGES` (`deu+eng`), `OCR_MODEL`†, `OCR_BASE_URL`†, `OCR_API_KEY`†, `OCR_API_KEY_FILE`, `OCR_SUPPORTS_IMAGES` (`true`), `ANTHROPIC_OCR_EFFORT` (`low`), `ALLOW_CLOUD_OCR` (`false`)†, `OCR_FIRST_PAGE_MODEL` (empty), `OCR_MAX_SIDE` (`2000`), `OCR_PAGE_CONCURRENCY` (`3`), `OCR_BLANK_MAX_INK` (`0.001`), `OCR_AI_MAX_PAGES` (`30`, 0 = no limit) |
 | Classification | `CLASSIFY_PROVIDER` (`rules`)†, `CLASSIFY_MODEL`†, `CLASSIFY_BASE_URL`†, `CLASSIFY_API_KEY`†, `CLASSIFY_API_KEY_FILE`, `CLASSIFY_JSON_MODE` (`schema`), `CLASSIFY_MAX_CHARS` (`24000`), `CLASSIFY_MIN_CONFIDENCE` (`0.6`), `ALLOW_CLOUD_CLASSIFY` (`false`)†, `AI_SEARCH_MODEL` (`claude-haiku-4-5-20251001`), `PROVIDER_TIMEOUT_SECONDS` (`120`) |
+| Search by meaning | `SEMANTIC_SEARCH` (`false`)†, `SEMANTIC_THREADS` (`0` = half the CPU cores); see [search.md](search.md#search-by-meaning) |
 | AI availability | `AI_FALLBACK` (`true`), `AI_RETRY_MINUTES` (`60`), `AI_CATCH_UP_BATCH` (`25`), `RATE_LIMIT_PAUSE_SECONDS` (`90`); see [providers.md](providers.md#when-the-ai-provider-is-unreachable) |
 | IMAP | `IMAP_HOST`†, `IMAP_PORT` (`993`)†, `IMAP_USER`†, `IMAP_PASSWORD`†, `IMAP_PASSWORD_FILE`, `IMAP_MAILBOX` (`INBOX`)†, `IMAP_MOVE_TO`†, `IMAP_DELETE_AFTER_IMPORT` (`false`)†, `IMAP_TRASH_MAILBOX` (auto-detected), `IMAP_ALLOWED_SENDERS` (empty = everyone)†, `IMAP_POLL_SECONDS` (`300`), `IMAP_MAX_ATTACHMENT_MB` (`50`), `IMAP_MAX_ATTACHMENTS` (`20`), `IMAP_SKIP_INLINE_IMAGES_BELOW_KB` (`30`), `IMAP_SKIP_FILENAME_PATTERNS` (`logo*,image0*,signature*`), `IMAP_ARCHIVE_EML` (`false`), `IMAP_MAIL_KEYWORD` (`#mail`)† |
 | Misc | `LOG_LEVEL` (`INFO`), `MOCK_FAIL` (tests only) |

@@ -19,11 +19,11 @@ How the parts fit together in daily use. Setup and operation: [operations.md](op
    on the page wait for a save still running; leaving the page otherwise (back button, closing
    the tab, reloading) still saves the field you were in – a reload that is quicker than the save
    waits for it. Notes are saved the same way, and after a pause in typing; a new note moves into
-   the list as soon as you leave its field (Ctrl+Enter also finishes it). Tags are shown as small chips: type a tag and press Enter or a comma
-   to add it, × removes one. Every field you edit is locked – reprocessing
-   never overwrites it. Suggestions of the AI are accepted or dismissed there (*Dismiss* only
-   removes the suggestion; the field keeps its value), or on *Suggestions in bulk* (linked
-   from the inbox) for many documents at once.
+   the list as soon as you leave its field (Ctrl+Enter also finishes it). Tags are shown as small
+   chips: type a tag and press Enter or a comma to add it, × removes one. Every field you edit is
+   locked – reprocessing never overwrites it. Suggestions of the AI are accepted or dismissed
+   there (*Dismiss* only removes the suggestion; the field keeps its value), or on *Suggestions
+   in bulk* (linked from the inbox) for many documents at once.
 5. **File the paper** and click *Filed just now* on its page (or *Filed now* in the inbox list) –
    or let Heftig do it for every scan (*Settings → Scanner and phone → I file every scanned letter
    right away*).
@@ -188,8 +188,8 @@ Chinese) appear as "?" on the page, but are in the text and found by the search.
 - With the *search by meaning* switched on (setup assistant or *Settings → Search by meaning*),
   every search also finds documents that say it in other words – `securities` finds the ETF
   statement, `electrician` the bill from “Elektro Schulz”. The model runs on your computer;
-  nothing is sent anywhere. To compare, switch between *Words + meaning* and *Words only* next
-  to the sort above the results.
+  nothing is sent anywhere. To compare, switch between *Words + meaning* and *Words only* at the
+  start of the line with the number of results.
 - Case, umlauts and spacing in numbers don't matter: `Müllerstraße` = `muellerstrasse`,
   `83729381` also finds `8372 9381`. Numbers match exactly and rank higher in fields such as a
   contract number.
