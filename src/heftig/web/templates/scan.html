@@ -9,10 +9,12 @@
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/static/icon-192.png">
+  <meta name="apple-mobile-web-app-title" content="Heftig">
   <link rel="stylesheet" href="/static/scan.css?v={{ asset_v }}">
   <script src="/static/i18n.js?v={{ asset_v }}"></script>
   <script src="/static/docdetect.js?v={{ asset_v }}" defer></script>
   <script src="/static/scan.js?v={{ asset_v }}" defer></script>
+  <script src="/static/pwa.js?v={{ asset_v }}" defer></script>
 </head>
 <body class="scan" data-csrf="{{ csrf }}" data-opencv="/static/vendor/opencv-4.7.0.js">
 {% set _jsm = js_messages() %}{% if _jsm %}<script type="application/json" id="i18n-messages">{{ _jsm | tojson }}</script>{% endif %}
