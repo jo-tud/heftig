@@ -218,9 +218,12 @@ def render(request: Request, name: str, *, http_status: int = 200, **ctx: Any) -
             a = request.app.state.archive
             n = len(split.parts_of(a, undo[6 + len(split.BATCH_PREFIX) :]))
             ctx["undo_label"] = (
-                _("Split into %(num)s documents – the original is kept in the trash.", num=n)
+                _(
+                    "Split into %(num)s documents – the original is kept under Source documents.",
+                    num=n,
+                )
                 if n > 1
-                else _("Saved as a new document – the original is kept in the trash.")
+                else _("Saved as a new document – the original is kept under Source documents.")
             )
         elif undo.startswith("doc:"):
             row = request.app.state.archive.conn.execute(
@@ -478,8 +481,7 @@ def trash_page(request: Request, p: Principal = Depends(require_user)):
             it["paper"] = _trashed_paper(a, it["id"])
     return render(
         request, "trash.html", nav="settings", groups=groups,
-        total=sum(len(g["items"]) for g in groups if not g["kept"]),
-        days=a.settings.trash_retention_days,
+        total=sum(len(g["items"]) for g in groups), days=a.settings.trash_retention_days,
         message=request.query_params.get("msg"),
     )  # fmt: skip
 
@@ -496,10 +498,6 @@ def _trash_sync(a, form, query_action: str) -> RedirectResponse:
                 raise trash.TrashError("; ".join(sorted(set(r["failed"]))) or _("Nothing to do."))
             return redirect(f"/documents/{r['ids'][0]}?" + urlencode(
                 {"msg": _("Combining undone – the individual documents are back.")}))  # fmt: skip
-        if action == "restore_original" and target.startswith("batch:" + split.BATCH_PREFIX):
-            meta = trash.restore(a, target[6 + len(split.BATCH_PREFIX) :])  # parts stay
-            return redirect(f"/documents/{meta.id}?" + urlencode(
-                {"msg": _("The original is back – its parts stay as they are.")}))  # fmt: skip
         if action == "restore" and target.startswith("batch:" + split.BATCH_PREFIX):
             r = split.undo(a, target[6 + len(split.BATCH_PREFIX) :])
             if not r["ids"]:
@@ -588,6 +586,12 @@ def _sources_sync(a, form, action: str) -> RedirectResponse:
                 raise trash.TrashError("; ".join(sorted(set(r["failed"]))) or _("Nothing to do."))
             return redirect(f"/documents/{r['ids'][0]}?" + urlencode(
                 {"msg": _("Combining undone – the individual documents are back.")}))  # fmt: skip
+        if action == "undo" and target.startswith(split.BATCH_PREFIX):
+            r = split.undo(a, target[len(split.BATCH_PREFIX) :])
+            if not r["ids"]:
+                raise trash.TrashError("; ".join(sorted(set(r["failed"]))) or _("Nothing to do."))
+            return redirect(f"/documents/{r['ids'][0]}?" + urlencode(
+                {"msg": _("Splitting undone – the original is back.")}))  # fmt: skip
         if action == "restore" and target:
             meta = trash.restore(a, target)
             return redirect(f"/documents/{meta.id}?" + urlencode({"msg": _("Restored.")}))

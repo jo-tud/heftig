@@ -166,12 +166,13 @@ from scratch – title, date, sender, type, tags, summary and fields come from i
 from the original. Only rearranged (one part: pages turned, moved or removed), it stays the same
 document and keeps its title, date, sender, tags and fields, including what you locked. Notes,
 attachments and the place in the binder go to the first part; the other parts note that their
-paper lies with it. The original goes to the trash unchanged and is **kept there as long as one
-of its parts exists** – it is not deleted after 30 days nor by emptying the trash; *Download the
-original* on each part's page (under *Origin*) gives you the file as it was received, e-mail
-headers and signatures included. *Undo* (or *Undo splitting* in the trash) brings it back and
-moves the parts – also those of a part you split again – to the trash; *Restore the original
-only* brings it back and leaves the parts as they are.
+paper lies with it. The original is **kept for good** as a source document (*Settings → Source
+documents*), unchanged, with its title, notes and history – never deleted automatically, also
+not when its parts are deleted later. *Download the original* on each part's page (under
+*Origin*) gives you the file as it was received, e-mail headers and signatures included. *Undo*
+(or *Undo splitting* under *Source documents*) brings it back and moves the parts – also those of
+a part you split again – to the trash; *Restore only this one* brings the original back and
+leaves the parts as they are.
 
 ## E-mails
 

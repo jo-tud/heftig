@@ -406,7 +406,7 @@ msgstr "Die Notiz ist leer."
 msgid "The paper is not filed."
 msgstr "Das Papier ist nicht abgeheftet."
 
-#: src/heftig/documents.py
+#: src/heftig/documents.py src/heftig/split.py
 msgid "There is no page %(num)s."
 msgstr "Es gibt keine Seite %(num)s."
 
@@ -881,7 +881,7 @@ msgstr "Seite konnte nicht verarbeitet werden (%(error)s)"
 msgid "Processing failed: %(error)s"
 msgstr "Verarbeitung fehlgeschlagen: %(error)s"
 
-#: src/heftig/processing.py
+#: src/heftig/processing.py src/heftig/split.py
 msgid "Text: %(failed)s of %(pages)s pages without recognized text"
 msgstr "Text: %(failed)s von %(pages)s Seiten ohne erkannten Text"
 
@@ -1213,6 +1213,82 @@ msgstr "in die Heftig-Ablage"
 msgid "sort out"
 msgstr "aussortieren"
 
+#: src/heftig/split.py
+msgid "%(name)s (edited)"
+msgstr "%(name)s (bearbeitet)"
+
+#: src/heftig/split.py
+msgid "%(name)s (part %(num)s of %(total)s)"
+msgstr "%(name)s (Teil %(num)s von %(total)s)"
+
+#: src/heftig/split.py
+msgid "Binder %(name)s, with part 1"
+msgstr "Ordner %(name)s, bei Teil 1"
+
+#: src/heftig/split.py
+msgid "Each page can only be in one part."
+msgstr "Jede Seite kann nur in einem Teil sein."
+
+#: src/heftig/split.py src/heftig/web/static/split.js
+msgid "Keep at least one page."
+msgstr "Bitte mindestens eine Seite behalten."
+
+#: src/heftig/split.py
+msgid "Nothing to change – cut, move, turn or remove a page first."
+msgstr "Nichts zu ändern – erst eine Seite abtrennen, verschieben, drehen oder entfernen."
+
+#: src/heftig/split.py
+msgid "Pages can only be turned in steps of 90 degrees."
+msgstr "Seiten lassen sich nur in Schritten von 90 Grad drehen."
+
+#: src/heftig/split.py
+msgid "Part %(num)s is already archived as “%(title)s”."
+msgstr "Teil %(num)s ist schon als „%(title)s“ archiviert."
+
+#: src/heftig/split.py
+msgid "Splitting not possible."
+msgstr "Aufteilen nicht möglich."
+
+#: src/heftig/split.py
+msgid "Splitting undone"
+msgstr "Aufteilen rückgängig gemacht"
+
+#: src/heftig/split.py
+msgid "The document is being split right now – please wait a moment."
+msgstr "Das Dokument wird gerade aufgeteilt – bitte einen Moment warten."
+
+#: src/heftig/split.py src/heftig/web/ui.py
+msgid "The document is still being processed – please wait a moment."
+msgstr "Das Dokument wird gerade noch verarbeitet – bitte kurz warten."
+
+#: src/heftig/split.py
+msgid "The document was changed meanwhile – please open it again."
+msgstr "Das Dokument wurde inzwischen geändert – bitte neu öffnen."
+
+#: src/heftig/split.py
+msgid "Two parts would be identical – please check the cuts."
+msgstr "Zwei Teile wären identisch – bitte die Schnitte prüfen."
+
+#: src/heftig/split.py
+msgid "With part 1"
+msgstr "Bei Teil 1"
+
+#: src/heftig/split.py
+msgid "pages of “%(title)s” rearranged"
+msgstr "Seiten von „%(title)s“ neu angeordnet"
+
+#: src/heftig/split.py
+msgid "pages rearranged in a new document"
+msgstr "Seiten in einem neuen Dokument neu angeordnet"
+
+#: src/heftig/split.py
+msgid "split from “%(title)s” (part %(num)s of %(total)s)"
+msgstr "aufgeteilt aus „%(title)s“ (Teil %(num)s von %(total)s)"
+
+#: src/heftig/split.py
+msgid "split into %(num)s documents"
+msgstr "aufgeteilt in %(num)s Dokumente"
+
 #: src/heftig/storage.py
 msgid "File is larger than %(mb)s MB"
 msgstr "Datei ist größer als %(mb)s MB"
@@ -1328,6 +1404,10 @@ msgstr "Auftrag ist nicht fehlgeschlagen."
 #: src/heftig/web/api.py
 msgid "The path must be inside <archive>/imports/ and exist."
 msgstr "Pfad muss unter <archive>/imports/ liegen und existieren."
+
+#: src/heftig/web/api.py
+msgid "This document was not split from another one."
+msgstr "Dieses Dokument wurde nicht aus einem anderen aufgeteilt."
 
 #: src/heftig/web/api.py
 msgid "To confirm, pass ?confirm=<id>."
@@ -1601,7 +1681,7 @@ msgstr "Gespeichert"
 msgid "Saved and locked 🔒"
 msgstr "Gespeichert und gesperrt 🔒"
 
-#: src/heftig/web/static/autosave.js
+#: src/heftig/web/static/autosave.js src/heftig/web/static/split.js
 msgid "Saving …"
 msgstr "Speichert …"
 
@@ -1665,7 +1745,7 @@ msgstr "Kein Blatt erkannt – eine dunklere Unterlage hilft. Auslöser tippen n
 msgid "Page %(num)s is back."
 msgstr "Seite %(num)s ist wieder da."
 
-#: src/heftig/web/static/scan.js
+#: src/heftig/web/static/scan.js src/heftig/web/static/split.js
 msgid "Page %(num)s removed."
 msgstr "Seite %(num)s entfernt."
 
@@ -1685,7 +1765,7 @@ msgstr "Blatt auf eine ruhige, möglichst dunkle Unterlage legen und von oben fo
 msgid "Ready for the next document."
 msgstr "Bereit für das nächste Dokument."
 
-#: src/heftig/web/static/scan.js
+#: src/heftig/web/static/scan.js src/heftig/web/static/split.js
 msgid "Remove page %(num)s"
 msgstr "Seite %(num)s entfernen"
 
@@ -1747,6 +1827,88 @@ msgstr "Die Liste ließ sich nicht laden."
 msgid "Loading …"
 msgstr "Lädt …"
 
+#: src/heftig/web/static/split.js
+msgid "%(num)d page removed"
+msgid_plural "%(num)d pages removed"
+msgstr[0] "%(num)d Seite entfernt"
+msgstr[1] "%(num)d Seiten entfernt"
+
+#: src/heftig/web/static/split.js
+msgid "Back to the original order."
+msgstr "Zurück zur ursprünglichen Reihenfolge."
+
+#: src/heftig/web/static/split.js
+msgid "Blank pages removed."
+msgstr "Leere Seiten entfernt."
+
+#: src/heftig/web/static/split.js
+msgid "Document %(num)s"
+msgstr "Dokument %(num)s"
+
+#: src/heftig/web/static/split.js
+msgid "Join with the part above"
+msgstr "Mit dem Teil darüber verbinden"
+
+#: src/heftig/web/static/split.js
+msgid "New document after page %(num)s"
+msgstr "Neues Dokument nach Seite %(num)s"
+
+#: src/heftig/web/static/split.js
+msgid "New document starts here"
+msgstr "Hier beginnt ein neues Dokument"
+
+#: src/heftig/web/static/split.js
+msgid "New document starts with page %(num)s."
+msgstr "Neues Dokument beginnt mit Seite %(num)s."
+
+#: src/heftig/web/static/split.js
+msgid "No changes yet."
+msgstr "Noch keine Änderungen."
+
+#: src/heftig/web/static/split.js
+msgid "Not created"
+msgstr "Wird nicht angelegt"
+
+#: src/heftig/web/static/split.js
+msgid "Page %(num)s moved."
+msgstr "Seite %(num)s verschoben."
+
+#: src/heftig/web/static/split.js
+msgid "Page %(num)s put back."
+msgstr "Seite %(num)s zurückgeholt."
+
+#: src/heftig/web/static/split.js
+msgid "Page %(num)s: position %(pos)s"
+msgstr "Seite %(num)s: Position %(pos)s"
+
+#: src/heftig/web/static/split.js
+msgid "Parts joined."
+msgstr "Teile verbunden."
+
+#: src/heftig/web/static/split.js
+msgid "Put back"
+msgstr "Zurückholen"
+
+#: src/heftig/web/static/split.js
+msgid "Put page %(num)s back"
+msgstr "Seite %(num)s zurückholen"
+
+#: src/heftig/web/static/split.js
+msgid "Save as new document"
+msgstr "Als neues Dokument speichern"
+
+#: src/heftig/web/static/split.js
+msgid "Split into %(num)s documents"
+msgstr "In %(num)s Dokumente aufteilen"
+
+#: src/heftig/web/static/split.js
+msgid "all pages removed"
+msgstr "alle Seiten entfernt"
+
+#: src/heftig/web/static/split.js
+msgid "document %(num)s"
+msgstr "Dokument %(num)s"
+
 #: src/heftig/web/static/tagbox.js
 msgid "Add tag …"
 msgstr "Tag hinzufügen …"
@@ -1760,8 +1922,20 @@ msgid "Remove tag %(name)s"
 msgstr "Tag %(name)s entfernen"
 
 #: src/heftig/web/static/viewer.js
+msgid "Done."
+msgstr "Fertig."
+
+#: src/heftig/web/static/viewer.js
 msgid "Show highlights"
 msgstr "Markierung an"
+
+#: src/heftig/web/static/viewer.js
+msgid "Show the result"
+msgstr "Ergebnis anzeigen"
+
+#: src/heftig/web/static/viewer.js
+msgid "This document is no longer in the archive (deleted or split)."
+msgstr "Dieses Dokument ist nicht mehr im Archiv (gelöscht oder aufgeteilt)."
 
 #: src/heftig/web/templates/_macros.html
 msgid "blocked"
@@ -1900,7 +2074,7 @@ msgstr "Privat: an"
 msgid "Skip to content"
 msgstr "Zum Inhalt springen"
 
-#: src/heftig/web/templates/base.html src/heftig/web/templates/settings.html src/heftig/web/templates/sources.html
+#: src/heftig/web/templates/base.html src/heftig/web/templates/document.html src/heftig/web/templates/settings.html src/heftig/web/templates/sources.html
 msgid "Source documents"
 msgstr "Ausgangsdokumente"
 
@@ -2201,7 +2375,7 @@ msgstr "Dokumente zusammenfügen"
 msgid "Move up"
 msgstr "Nach oben"
 
-#: src/heftig/web/templates/combine.html src/heftig/web/templates/documents.html
+#: src/heftig/web/static/split.js src/heftig/web/templates/combine.html src/heftig/web/templates/documents.html
 msgid "Remove"
 msgstr "Entfernen"
 
@@ -2247,7 +2421,7 @@ msgid_plural "%(num)d characters"
 msgstr[0] "%(num)d Zeichen"
 msgstr[1] "%(num)d Zeichen"
 
-#: src/heftig/web/static/scan.js src/heftig/web/templates/document.html src/heftig/web/templates/scan.html src/heftig/web/templates/sources.html
+#: src/heftig/web/static/scan.js src/heftig/web/static/split.js src/heftig/web/templates/document.html src/heftig/web/templates/scan.html src/heftig/web/templates/sources.html
 msgid "%(num)d page"
 msgid_plural "%(num)d pages"
 msgstr[0] "%(num)d Seite"
@@ -2306,6 +2480,10 @@ msgid "Attachments of the e-mail"
 msgstr "Anhänge der E-Mail"
 
 #: src/heftig/web/templates/document.html
+msgid "Being processed – title, date and sender may still change. The page updates itself."
+msgstr "Wird gerade verarbeitet – Titel, Datum und Absender können sich noch ändern. Die Seite aktualisiert sich von selbst."
+
+#: src/heftig/web/templates/document.html
 msgid "Binder <strong>%(binder)s</strong>, section <strong>%(section)s</strong> – position <strong>%(n)s</strong> of %(total)s, counted from the top (newest on top)."
 msgstr "Ordner <strong>%(binder)s</strong>, Abschnitt <strong>%(section)s</strong> – Position <strong>%(n)s</strong> von %(total)s, von oben gezählt (neueste oben)."
 
@@ -2313,7 +2491,7 @@ msgstr "Ordner <strong>%(binder)s</strong>, Abschnitt <strong>%(section)s</stron
 msgid "Blank – hide"
 msgstr "Leer – ausblenden"
 
-#: src/heftig/web/templates/document.html src/heftig/web/templates/duplicate.html
+#: src/heftig/web/templates/document.html src/heftig/web/templates/duplicate.html src/heftig/web/templates/split.html
 msgid "Blur again"
 msgstr "Wieder unscharf machen"
 
@@ -2374,6 +2552,10 @@ msgstr "Doppeltippen zoomt."
 msgid "Download original"
 msgstr "Original herunterladen"
 
+#: src/heftig/web/templates/document.html
+msgid "Download the original"
+msgstr "Original herunterladen"
+
 #: src/heftig/web/templates/document.html src/heftig/web/templates/documents.html
 msgid "E-mail from %(sender)s"
 msgstr "Per E-Mail von %(sender)s"
@@ -2424,7 +2606,7 @@ msgstr[1] "Kommt in den Papierkorb (%(num)s Tage wiederherstellbar)"
 msgid "Handed over, sent away or thrown out – nothing to file"
 msgstr "Abgegeben, verschickt oder weggeworfen – nichts abzuheften"
 
-#: src/heftig/web/templates/document.html src/heftig/web/templates/duplicate.html
+#: src/heftig/web/templates/document.html src/heftig/web/templates/duplicate.html src/heftig/web/templates/split.html
 msgid "Hide"
 msgstr "Verbergen"
 
@@ -2582,6 +2764,10 @@ msgid "Original not needed"
 msgstr "Original nicht nötig"
 
 #: src/heftig/web/templates/document.html
+msgid "Other parts:"
+msgstr "Weitere Teile:"
+
+#: src/heftig/web/templates/document.html
 msgid "Other …"
 msgstr "Sonstiges …"
 
@@ -2593,7 +2779,7 @@ msgstr "PDFs und Bilder darunter folgen der E-Mail als Seiten. Die E-Mail selbst
 msgid "Page %(cur)s / %(total)s"
 msgstr "Seite %(cur)s / %(total)s"
 
-#: src/heftig/web/templates/document.html src/heftig/web/templates/duplicate.html
+#: src/heftig/web/static/split.js src/heftig/web/templates/document.html src/heftig/web/templates/duplicate.html
 msgid "Page %(num)s"
 msgstr "Seite %(num)s"
 
@@ -2624,6 +2810,10 @@ msgid "Paper not kept (handed over, sent away or thrown out) – noted on %(when
 msgstr "Papier nicht aufbewahrt (abgegeben, verschickt oder weggeworfen) – vermerkt am %(when)s."
 
 #: src/heftig/web/templates/document.html
+msgid "Part %(num)s of %(total)s:"
+msgstr "Teil %(num)s von %(total)s:"
+
+#: src/heftig/web/templates/document.html
 msgid "Path in the folder"
 msgstr "Pfad im Ordner"
 
@@ -2635,7 +2825,7 @@ msgstr "Anhang „%(name)s“ endgültig löschen?"
 msgid "Possible duplicate of <a href=\"%(url)s\">%(title)s</a> (%(reasons)s) – <a href=\"%(compare)s\">compare</a>"
 msgstr "Mögliche Dublette von <a href=\"%(url)s\">%(title)s</a> (%(reasons)s) – <a href=\"%(compare)s\">vergleichen</a>"
 
-#: src/heftig/web/templates/document.html src/heftig/web/templates/duplicate.html
+#: src/heftig/web/templates/document.html src/heftig/web/templates/duplicate.html src/heftig/web/templates/split.html
 msgid "Private – tap to show"
 msgstr "Privat – antippen zum Anzeigen"
 
@@ -2729,6 +2919,14 @@ msgid "Somewhere else …"
 msgstr "Liegt woanders …"
 
 #: src/heftig/web/templates/document.html
+msgid "Split from"
+msgstr "Aufgeteilt aus"
+
+#: src/heftig/web/templates/document.html
+msgid "Split or arrange pages …"
+msgstr "Aufteilen oder Seiten ordnen …"
+
+#: src/heftig/web/templates/document.html
 msgid "Stop"
 msgstr "Beenden"
 
@@ -2780,7 +2978,7 @@ msgstr "Alle Seiten nach rechts drehen"
 msgid "Turn page %(num)s to the left"
 msgstr "Seite %(num)s nach links drehen"
 
-#: src/heftig/web/templates/document.html
+#: src/heftig/web/templates/document.html src/heftig/web/templates/split.html
 msgid "Turn page %(num)s to the right"
 msgstr "Seite %(num)s nach rechts drehen"
 
@@ -2836,7 +3034,7 @@ msgstr "Verkleinern (−)"
 msgid "all"
 msgstr "alle"
 
-#: src/heftig/web/templates/document.html
+#: src/heftig/web/templates/document.html src/heftig/web/templates/split.html
 msgid "blank"
 msgstr "leer"
 
@@ -2855,6 +3053,10 @@ msgstr "z. B. Ordner Versicherungen, oder: beim Arzt abgegeben"
 #: src/heftig/web/templates/document.html
 msgid "e.g. separately scanned pages of a letter, or the signed version"
 msgstr "z. B. getrennt gescannte Seiten eines Briefs, oder die unterschriebene Fassung"
+
+#: src/heftig/web/templates/document.html
+msgid "e.g. two letters in one scan: cut between the pages, move, turn or remove pages"
+msgstr "z. B. zwei Briefe in einem Scan: zwischen den Seiten trennen, Seiten verschieben, drehen oder entfernen"
 
 #: src/heftig/web/templates/document.html
 msgid "embedded PDF text"
@@ -2921,6 +3123,14 @@ msgid "“%(q)s” on"
 msgstr "„%(q)s“ auf"
 
 #: src/heftig/web/templates/document.html
+msgid "“%(title)s”, page %(pages)s"
+msgstr "„%(title)s“, Seite %(pages)s"
+
+#: src/heftig/web/templates/document.html
+msgid "“%(title)s”, pages %(pages)s"
+msgstr "„%(title)s“, Seiten %(pages)s"
+
+#: src/heftig/web/templates/document.html
 msgid "“Filed”: Heftig remembers the order – the sheet filed last is on top of the current section."
 msgstr "„Abgeheftet“: Heftig merkt sich die Reihenfolge – das zuletzt abgeheftete Blatt liegt oben im aktuellen Abschnitt."
 
@@ -2932,7 +3142,7 @@ msgstr "← Dokumente"
 msgid "← this document"
 msgstr "← dieses Dokument"
 
-#: src/heftig/web/templates/documents.html src/heftig/web/templates/inbox.html src/heftig/web/templates/sources.html src/heftig/web/templates/trash.html
+#: src/heftig/web/static/split.js src/heftig/web/templates/documents.html src/heftig/web/templates/inbox.html src/heftig/web/templates/sources.html src/heftig/web/templates/trash.html
 msgid "%(num)d document"
 msgid_plural "%(num)d documents"
 msgstr[0] "%(num)d Dokument"
@@ -4540,6 +4750,10 @@ msgid "Yes (recommended)"
 msgstr "Ja (empfohlen)"
 
 #: src/heftig/web/templates/sources.html
+msgid "Back into the archive – what was made from it stays as it is"
+msgstr "Zurück ins Archiv – was daraus entstanden ist, bleibt, wie es ist"
+
+#: src/heftig/web/templates/sources.html
 msgid "Combined into"
 msgstr "Zusammengefügt zu"
 
@@ -4548,8 +4762,8 @@ msgid "Combined into a document that was deleted since"
 msgstr "Zusammengefügt zu einem inzwischen gelöschten Dokument"
 
 #: src/heftig/web/templates/sources.html
-msgid "Documents that were combined into another one. They are kept for good, with their original file, text and notes, but do not show up in the search. Undoing brings them back and moves the combined document to the trash."
-msgstr "Dokumente, die zu einem anderen zusammengefügt wurden. Sie bleiben dauerhaft erhalten – mit Originaldatei, Text und Notizen –, erscheinen aber nicht in der Suche. Rückgängig machen holt sie zurück und legt das zusammengefügte Dokument in den Papierkorb."
+msgid "Documents that were combined into another one, and originals that were split or rearranged. They are kept for good, with their original file, text and notes, but do not show up in the search. Undoing brings them back and moves what was made from them to the trash."
+msgstr "Dokumente, die zu einem anderen zusammengefügt wurden, und Originale, die aufgeteilt oder neu angeordnet wurden. Sie bleiben dauerhaft erhalten – mit Originaldatei, Text und Notizen –, erscheinen aber nicht in der Suche. Rückgängig machen holt sie zurück und legt, was aus ihnen entstanden ist, in den Papierkorb."
 
 #: src/heftig/web/templates/sources.html
 msgid "Download"
@@ -4560,8 +4774,8 @@ msgid "Move “%(title)s” to the trash? It will be deleted permanently after %
 msgstr "„%(title)s“ in den Papierkorb legen? Nach %(days)s Tagen wird es mit seiner Originaldatei endgültig gelöscht."
 
 #: src/heftig/web/templates/sources.html
-msgid "No source documents yet. When documents are combined, the individual documents are kept here."
-msgstr "Noch keine Ausgangsdokumente. Werden Dokumente zusammengefügt, bleiben die einzelnen Dokumente hier erhalten."
+msgid "No source documents yet. When documents are combined or split, what they were made from is kept here."
+msgstr "Noch keine Ausgangsdokumente. Werden Dokumente zusammengefügt oder aufgeteilt, bleibt hier erhalten, woraus sie entstanden sind."
 
 #: src/heftig/web/templates/sources.html
 msgid "Open original"
@@ -4572,8 +4786,78 @@ msgid "Restore"
 msgstr "Wiederherstellen"
 
 #: src/heftig/web/templates/sources.html
+msgid "Restore only this one"
+msgstr "Nur dieses wiederherstellen"
+
+#: src/heftig/web/templates/sources.html
+msgid "Split into"
+msgstr "Aufgeteilt in"
+
+#: src/heftig/web/templates/sources.html
+msgid "Split into documents that were deleted since"
+msgstr "Aufgeteilt in inzwischen gelöschte Dokumente"
+
+#: src/heftig/web/templates/sources.html
 msgid "Undo combining"
 msgstr "Zusammenfügen rückgängig machen"
+
+#: src/heftig/web/templates/sources.html
+msgid "Undo splitting"
+msgstr "Aufteilen rückgängig machen"
+
+#: src/heftig/web/templates/split.html
+msgid "Close"
+msgstr "Schließen"
+
+#: src/heftig/web/templates/split.html
+msgid "Cut into parts, each part becomes a new document and is classified anew (title, date, sender, summary …); only rearranged, the document keeps its details. Removed pages are left out, the recognized text is kept. Notes, attachments and the place in the binder go to the first part. The original is kept unchanged for good under <a href=\"/sources\">Source documents</a> – this can be undone."
+msgstr "Aufgeteilt wird jeder Teil ein neues Dokument und neu eingeordnet (Titel, Datum, Absender, Zusammenfassung …); nur umsortiert, behält das Dokument seine Angaben. Entfernte Seiten fallen weg, der erkannte Text bleibt erhalten. Notizen, Anhänge und der Platz im Ordner gehen an den ersten Teil. Das Original bleibt unverändert und dauerhaft unter <a href=\"/sources\">Ausgangsdokumente</a> erhalten – das lässt sich rückgängig machen."
+
+#: src/heftig/web/templates/split.html
+msgid "Drop here: a new document"
+msgstr "Hier ablegen: ein neues Dokument"
+
+#: src/heftig/web/templates/split.html
+msgid "Keyboard: arrow keys choose a page, Alt + arrow keys move it, R turns it, Del removes it, S starts a new document after it."
+msgstr "Tastatur: Pfeiltasten wählen eine Seite, Alt + Pfeiltasten verschieben sie, R dreht sie, Entf entfernt sie, S beginnt danach ein neues Dokument."
+
+#: src/heftig/web/templates/split.html
+msgid "Next page"
+msgstr "Nächste Seite"
+
+#: src/heftig/web/templates/split.html
+msgid "Previous page"
+msgstr "Vorherige Seite"
+
+#: src/heftig/web/templates/split.html
+msgid "Remove %(num)d blank page"
+msgid_plural "Remove %(num)d blank pages"
+msgstr[0] "%(num)d leere Seite entfernen"
+msgstr[1] "%(num)d leere Seiten entfernen"
+
+#: src/heftig/web/templates/split.html
+msgid "Split or arrange pages"
+msgstr "Aufteilen oder Seiten ordnen"
+
+#: src/heftig/web/templates/split.html
+msgid "Start over"
+msgstr "Neu beginnen"
+
+#: src/heftig/web/templates/split.html
+msgid "Tap ✂ between two pages to start a new document there. Drag pages to move them – on a touch screen, hold a page briefly, then drag. Tap a page to see it large."
+msgstr "✂ zwischen zwei Seiten antippen: Dort beginnt ein neues Dokument. Seiten zum Verschieben ziehen – auf einem Touchscreen eine Seite kurz halten, dann ziehen. Eine Seite antippen zeigt sie groß."
+
+#: src/heftig/web/templates/split.html
+msgid "This page needs JavaScript."
+msgstr "Diese Seite braucht JavaScript."
+
+#: src/heftig/web/templates/split.html
+msgid "Turn"
+msgstr "Drehen"
+
+#: src/heftig/web/static/split.js src/heftig/web/templates/split.html
+msgid "removed"
+msgstr "entfernt"
 
 #: src/heftig/web/templates/suggestions.html
 msgid "%(num)d document – deselect individual ones"
@@ -5155,6 +5439,10 @@ msgid "Restored."
 msgstr "Wiederhergestellt."
 
 #: src/heftig/web/ui.py
+msgid "Saved as a new document – the original is kept under Source documents."
+msgstr "Als neues Dokument gespeichert – das Original wird unter Ausgangsdokumente aufbewahrt."
+
+#: src/heftig/web/ui.py
 msgid "Saved search removed."
 msgstr "Gespeicherte Suche entfernt."
 
@@ -5185,6 +5473,14 @@ msgid "Senders"
 msgstr "Absender"
 
 #: src/heftig/web/ui.py
+msgid "Split into %(num)s documents – the original is kept under Source documents."
+msgstr "In %(num)s Dokumente aufgeteilt – das Original wird unter Ausgangsdokumente aufbewahrt."
+
+#: src/heftig/web/ui.py
+msgid "Splitting undone – the original is back."
+msgstr "Aufteilen rückgängig gemacht – das Original ist zurück."
+
+#: src/heftig/web/ui.py
 msgid "Still not accepted: %(reason)s"
 msgstr "Wieder nicht übernommen: %(reason)s"
 
@@ -5203,6 +5499,10 @@ msgstr "Das Dokument wurde inzwischen verändert (z. B. durch die automatische V
 #: src/heftig/web/ui.py
 msgid "The number you typed does not match – nothing was deleted."
 msgstr "Die eingetippte Anzahl stimmt nicht – nichts gelöscht."
+
+#: src/heftig/web/ui.py
+msgid "The page layout could not be read."
+msgstr "Die Seitenaufteilung ließ sich nicht lesen."
 
 #: src/heftig/web/ui.py
 msgid "The results have changed – please check again."
@@ -5233,6 +5533,10 @@ msgid "Trash emptied (%(num)d document)."
 msgid_plural "Trash emptied (%(num)d documents)."
 msgstr[0] "Papierkorb geleert (%(num)d Dokument)."
 msgstr[1] "Papierkorb geleert (%(num)d Dokumente)."
+
+#: src/heftig/web/ui.py
+msgid "Undone – the original document is back."
+msgstr "Rückgängig gemacht – das Originaldokument ist zurück."
 
 #: src/heftig/web/ui.py
 msgid "Undone."

@@ -17,13 +17,7 @@
   {{ csrf_field(csrf) }}
   <ul class="plain trash-list">
   {% for g in groups %}
-    {% if g.kept %}{% set it = g['items'][0] %}
-    <li><div class="trash-row"><span><strong>{{ _("Original of a split document") }}:</strong> {{ it.title }}
-        <span class="muted small">{% if it.reason %}{{ it.reason | reason }} · {% endif %}{{ time(g.trashed_at) }} · {{ _("kept as long as one of its parts exists") }}</span>
-        {% if it.paper %}<span class="small">{{ paper_line(it) }}</span>{% endif %}</span>
-      <span class="buttons"><button name="target" value="batch:{{ g.batch }}" formaction="/trash/action?action=restore" title="{{ _("The original comes back, its parts go to the trash") }}">{{ _("Undo splitting") }}</button>
-        <button name="target" value="batch:{{ g.batch }}" formaction="/trash/action?action=restore_original" class="secondary" title="{{ _("The original comes back, its parts stay as they are") }}">{{ _("Restore the original only") }}</button></span></div></li>
-    {% elif g.batch %}
+    {% if g.batch %}
     <li>
       <div class="trash-row"><span><strong>{% if g.batch.startswith('auto-') %}{{ _("Automatically resolved duplicates") }}{% else %}{{ _("Bulk delete") }}{% endif %}: {{ ngettext("%(num)d document", "%(num)d documents", g['items'] | length) }}</strong>
         <span class="muted small">{% if g.reason %}{{ g.reason | reason }} · {% endif %}{{ time(g.trashed_at) }} · {{ _("deleted permanently on %(date)s", date=g.purge_at | date) }}</span></span>
@@ -39,7 +33,7 @@
     {% endif %}
   {% endfor %}
   </ul>
-  {% if total %}<p><button name="target" value="all" formaction="/trash/action?action=empty" class="danger" data-confirm-click="{{ _("Empty the trash? %(num)s documents and their originals will be removed permanently.", num=total) }}">{{ _("Empty trash (%(num)s)", num=total) }}</button></p>{% endif %}
+  <p><button name="target" value="all" formaction="/trash/action?action=empty" class="danger" data-confirm-click="{{ _("Empty the trash? %(num)s documents and their originals will be removed permanently.", num=total) }}">{{ _("Empty trash (%(num)s)", num=total) }}</button></p>
 </form>
 {% else %}
 <p class="muted">{{ _("The trash is empty.") }}</p>

@@ -16,11 +16,10 @@ page. Like combining, nothing is changed in place - originals are never modified
 - the user's own additions - notes, attachments - and the filing position go to the first
   part; the paper of the others lies with it;
 - pages the user turned keep their turn (as ``page_rotation``, like any turned page);
-- the original moves to the Papierkorb as batch ``split-<original id>``, but is kept there
-  (not purged) as long as one of its parts exists, live or in the Papierkorb; every part
-  names the original file in ``split_from.originals``, so the file itself stays as long as a
-  part does (``trash.is_referenced``). Undoing restores it and moves the parts (also those of
-  a part that was split again) to the Papierkorb.
+- the original is kept as a source document (archive/sources/, never purged) as batch
+  ``split-<original id>``: the file as received, with its title, notes and history. Undoing
+  restores it and moves the parts (also those of a part that was split again) to the
+  Papierkorb.
 """
 
 from __future__ import annotations
@@ -170,15 +169,8 @@ def _provenance(orig: DocumentMetadata) -> dict[str, Any]:
 def _split_from(
     orig: DocumentMetadata, title: str, pages: list[int], num: int, total: int
 ) -> dict[str, Any]:
-    """Where a part came from. ``originals``: the original's file and, if the original was
-    itself a part, the files before it - they are kept as long as this part exists."""
-    return {
-        "id": orig.id, "title": title, "pages": pages, "part": num, "parts": total,
-        "filename": orig.original_filename, "mime_type": orig.mime_type,
-        "originals": list(
-            dict.fromkeys([orig.original_relpath, *docs.split_originals(orig.source_details)])
-        ),
-    }  # fmt: skip
+    """Where a part came from (the original is kept as a source document)."""
+    return {"id": orig.id, "title": title, "pages": pages, "part": num, "parts": total}
 
 
 def _carry_over(
@@ -270,8 +262,7 @@ def split(
 ) -> list[DocumentMetadata]:
     """New documents from the original's pages (1-based, in this order, one list per part;
     pages in no part are left out), pages turned as in ``turns`` (absolute, page -> degrees;
-    missing: as they are now). The original goes to the Papierkorb (kept there as long as one
-    of the parts exists)."""
+    missing: as they are now). The original is kept as a source document."""
     with _one_at_a_time(doc_id):
         return _split(archive, doc_id, parts, turns, by)
 
@@ -279,7 +270,7 @@ def split(
 @contextmanager
 def _one_at_a_time(doc_id: str) -> Iterator[None]:
     """Two tabs or a repeated request: the second split of the same document is refused while
-    the first runs. (Across processes, the second one fails when it trashes the original -
+    the first runs. (Across processes, the second one fails when it moves the original away -
     and discards its parts.)"""
     with _BUSY_LOCK:
         if doc_id in _BUSY:
@@ -342,7 +333,10 @@ def _split(
             else N_("pages rearranged in a new document")
         )
         try:
-            trash.trash_document(archive, orig.id, reason=reason, batch=batch_for(orig.id), by=by)
+            trash.trash_document(
+                archive, orig.id, reason=reason, batch=batch_for(orig.id), by=by,
+                replaced_by=created,
+            )  # fmt: skip
         except docs.DocumentNotFound:  # split (or deleted) meanwhile by another request
             raise SplitError(
                 _("The document was changed meanwhile – please open it again.")
@@ -379,16 +373,28 @@ def parts_of(archive: Archive, orig_id: str) -> list[dict[str, Any]]:
 
 def descendants(archive: Archive, orig_id: str) -> list[str]:
     """The live documents made from ``orig_id``: its parts, and the parts of a part that was
-    split again (that part is in the Papierkorb as batch ``split-<part id>``)."""
+    split again (that part is a source document, batch ``split-<part id>``)."""
     out = [r["id"] for r in parts_of(archive, orig_id)]
-    resplit = archive.conn.execute(
+    for part_id in _resplit(archive, orig_id):
+        out += descendants(archive, part_id)
+    return out
+
+
+def _resplit(archive: Archive, orig_id: str) -> list[str]:
+    """Parts of ``orig_id`` that were split again (kept as source documents)."""
+    rows = archive.conn.execute(
         "SELECT id FROM trash WHERE batch = ? || id "
         "AND json_extract(metadata_json, '$.source_details.split_from.id') = ? "
         "ORDER BY json_extract(metadata_json, '$.source_details.split_from.part')",
         (BATCH_PREFIX, orig_id),
     ).fetchall()
-    for (part_id,) in resplit:
-        out += descendants(archive, part_id)
+    return [r[0] for r in rows]
+
+
+def _resplit_all(archive: Archive, orig_id: str) -> list[str]:
+    out = []
+    for part_id in _resplit(archive, orig_id):
+        out += [part_id, *_resplit_all(archive, part_id)]
     return out
 
 
@@ -397,6 +403,7 @@ def undo(archive: Archive, orig_id: str) -> dict[str, Any]:
     part holds the original's filing position)."""
     batch = trash.new_batch()
     moved = []
+    between = _resplit_all(archive, orig_id)  # parts split again: nothing left to keep them for
     for part_id in descendants(archive, orig_id):
         try:
             trash.trash_document(archive, part_id, reason=N_("Splitting undone"), batch=batch)
@@ -406,4 +413,10 @@ def undo(archive: Archive, orig_id: str) -> dict[str, Any]:
     r = trash.restore_batch(archive, batch_for(orig_id))
     if moved and not r["restored"]:
         trash.restore_batch(archive, batch)  # the original did not come back: keep the parts
+    elif r["restored"]:
+        for part_id in between:
+            try:
+                trash.discard_source(archive, part_id)
+            except trash.TrashError:
+                pass  # restored or deleted meanwhile
     return r

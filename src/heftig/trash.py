@@ -10,14 +10,11 @@ Purging - after ``trash_retention_days`` automatically, or explicitly - deletes 
 the original / attachments that no other document (live or trashed) references.
 
 Source documents work the same way, but are never purged: the documents that were combined
-into another one move to ``sources/<id>/`` (metadata.json then carries ``replaced_at`` and
-``replaced_by``) and get a row in the same table with ``kind = 'source'``. They stay until the
-user restores them (undoing the combining) or deletes them on purpose - which moves them into
-the Papierkorb like any deleted document.
-the original / attachments that no other document (live or trashed) references. The original
-of a split document is kept: it is neither purged automatically nor by emptying the trash as
-long as one of its parts exists (live or trashed), and its file stays as long as a part names
-it (``split_from.originals``).
+into another one, and the original of a split document, move to ``sources/<id>/``
+(metadata.json then carries ``replaced_at`` and ``replaced_by``) and get a row in the same
+table with ``kind = 'source'``. They stay until the user restores them (undoing the combining
+or splitting) or deletes them on purpose - which moves them into the Papierkorb like any
+deleted document.
 """
 
 from __future__ import annotations
@@ -300,8 +297,6 @@ def purge(archive: Archive, doc_id: str) -> None:
         meta = json.loads(row["metadata_json"])
         conn.execute("DELETE FROM trash WHERE id=?", (doc_id,))
         paths = [row["original_relpath"]] + [a["relpath"] for a in meta.get("attachments") or []]
-        # the last part of a split document also releases the original it kept
-        paths += docs.split_originals(meta.get("source_details") or {})
         for rel in dict.fromkeys(paths):
             if not is_referenced(archive, rel):
                 p = archive.paths.resolve(rel)
@@ -313,13 +308,11 @@ def purge(archive: Archive, doc_id: str) -> None:
 def purge_expired(archive: Archive) -> int:
     adopt_combined(archive)  # archives from before the source documents: first keep those
     cutoff = iso(utcnow() - timedelta(days=archive.settings.trash_retention_days))
-    kept = kept_originals(archive)
     ids = [
         r[0]
         for r in archive.conn.execute(
             "SELECT id FROM trash WHERE kind='trash' AND trashed_at < ?", (cutoff,)
         )
-        if r[0] not in kept
     ]
     for doc_id in ids:
         purge(archive, doc_id)
@@ -328,30 +321,13 @@ def purge_expired(archive: Archive) -> int:
 
 def empty(archive: Archive) -> int:
     adopt_combined(archive)
-    kept = kept_originals(archive)
-    ids = [
-        r[0]
-        for r in archive.conn.execute("SELECT id FROM trash WHERE kind='trash'")
-        if r[0] not in kept
-    ]
+    ids = [r[0] for r in archive.conn.execute("SELECT id FROM trash WHERE kind='trash'")]
     for doc_id in ids:
         purge(archive, doc_id)
     return len(ids)
 
 
-def kept_originals(archive: Archive) -> set[str]:
-    """Trashed originals of split documents that one of their parts (live or trashed) still
-    refers to: they stay in the trash until the last part is gone."""
-    ref = "json_extract(metadata_json, '$.source_details.split_from.id')"
-    refs: set[str] = set()
-    for table in ("documents", "trash"):
-        refs.update(r[0] for r in archive.conn.execute(f"SELECT {ref} FROM {table}") if r[0])
-    return {r[0] for r in archive.conn.execute("SELECT id FROM trash") if r[0] in refs}
-
-
 def is_referenced(archive: Archive, relpath: str) -> bool:
-    """Also by name in a document's metadata: an attachment, or the original a part was split
-    from (``split_from.originals``)."""
     conn = archive.conn
     pattern = f'%"{relpath}"%'
     return bool(
@@ -367,28 +343,17 @@ def is_referenced(archive: Archive, relpath: str) -> bool:
 
 
 def referenced_files(archive: Archive) -> set[str]:
-    """Originals and attachments held by trashed and source documents, and the originals of
-    split documents named by their parts (for the integrity check)."""
+    """Originals and attachments held by trashed and source documents (integrity check)."""
     out: set[str] = set()
     for rel, mj in archive.conn.execute("SELECT original_relpath, metadata_json FROM trash"):
-        data = json.loads(mj)
         out.add(rel)
-        out.update(a["relpath"] for a in data.get("attachments") or [])
-        out.update(docs.split_originals(data.get("source_details") or {}))
-    for (mj,) in archive.conn.execute(
-        "SELECT metadata_json FROM documents WHERE json_extract(metadata_json, "
-        "'$.source_details.split_from.originals') IS NOT NULL"
-    ):
-        out.update(docs.split_originals(json.loads(mj).get("source_details") or {}))
+        out.update(a["relpath"] for a in json.loads(mj).get("attachments") or [])
     return out
 
 
 def listing(archive: Archive) -> list[dict[str, Any]]:
-    """Trash grouped: one entry per bulk batch, single deletions on their own; newest first.
-    ``kept``: the original of a split document, kept as long as one of its parts exists
-    (``purge_at`` is then None)."""
+    """Trash grouped: one entry per bulk batch, single deletions on their own; newest first."""
     keep = archive.settings.trash_retention_days
-    kept = kept_originals(archive)
     groups: dict[str, dict[str, Any]] = {}
     for r in archive.conn.execute(
         "SELECT * FROM trash WHERE kind='trash' ORDER BY trashed_at DESC, title"
@@ -399,8 +364,7 @@ def listing(archive: Archive) -> list[dict[str, Any]]:
         g["items"].append({"id": r["id"], "title": r["title"], "reason": r["reason"]})
     for g in groups.values():
         started = parse_iso(g["trashed_at"]) or utcnow()
-        g["kept"] = all(it["id"] in kept for it in g["items"])
-        g["purge_at"] = None if g["kept"] else iso(started + timedelta(days=keep))
+        g["purge_at"] = iso(started + timedelta(days=keep))
     return list(groups.values())
 
 
@@ -481,14 +445,17 @@ def discard_source(archive: Archive, doc_id: str, by: str = "web") -> None:
 
 
 def sources_listing(archive: Archive) -> list[dict[str, Any]]:
-    """Source documents grouped by what they were combined into; newest first. ``target`` is
-    the combined document while it is in the archive (else None: deleted meanwhile)."""
+    """Source documents grouped by what was made from them (``action``: ``combine`` - the
+    parts of one combined document - or ``split`` - the original of the parts); newest first.
+    ``targets``: those documents still in the archive (empty: deleted meanwhile)."""
     conn = archive.conn
     groups: dict[str, dict[str, Any]] = {}
     for r in conn.execute("SELECT * FROM trash WHERE kind='source' ORDER BY trashed_at DESC"):
         meta = json.loads(r["metadata_json"])
         key = r["batch"] or r["id"]
-        g = groups.setdefault(key, {"batch": r["batch"], "replaced_at": r["trashed_at"],
+        action = "split" if (r["batch"] or "").startswith("split-") else "combine"
+        g = groups.setdefault(key, {"batch": r["batch"], "action": action,
+                                    "replaced_at": r["trashed_at"],
                                     "reason": r["reason"], "replaced_by": meta.get("replaced_by") or [],
                                     "items": []})  # fmt: skip
         g["items"].append(
