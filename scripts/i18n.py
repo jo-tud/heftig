@@ -1,7 +1,7 @@
 """Interface texts: collect them from the sources and keep the catalogues complete.
 
     uv run python scripts/i18n.py check de     # missing / unused translations (exit 1 if missing)
-    uv run python scripts/i18n.py update de    # rewrite locale/de/messages.po (sorted by source)
+    uv run python scripts/i18n.py update de    # rewrite locale/de/messages.po (by file, then text)
 
 Texts are collected from ``_()``, ``N_()``, ``gettext()``, ``ngettext()``, ``pgettext()`` in the
 Python code, the same calls and ``{% trans %}`` blocks in the templates, and ``t()``/``tn()`` in
@@ -125,6 +125,10 @@ def _q(s: str) -> str:
     return '""\n' + "\n".join(lines)
 
 
+def _file(where: str) -> str:
+    return where.rsplit(":", 1)[0]
+
+
 def write_po(lang: str, entries: dict[str, Entry]) -> Path:
     cat = i18n.catalogue.__wrapped__(lang)  # all current translations, uncached
     lines = [
@@ -137,8 +141,15 @@ def write_po(lang: str, entries: dict[str, Entry]) -> Path:
         '"Plural-Forms: nplurals=2; plural=(n != 1);\\n"',
         "",
     ]
-    for key, (msgid, plural, ctx, where) in sorted(entries.items(), key=lambda kv: kv[1][3][0]):
-        lines.append("#: " + " ".join(sorted(set(where))[:6]))
+
+    # grouped by the file a text first appears in, alphabetically within it; references without
+    # line numbers, so that changing code elsewhere does not move or touch an entry (fewer merge
+    # conflicts)
+    def order(kv):
+        return (_file(kv[1][3][0]), kv[1][0], kv[1][2] or "")
+
+    for key, (msgid, plural, ctx, where) in sorted(entries.items(), key=order):
+        lines.append("#: " + " ".join(sorted({_file(w) for w in where})[:6]))
         if ctx:
             lines.append(f"msgctxt {_q(ctx)}")
         lines.append(f"msgid {_q(msgid)}")
