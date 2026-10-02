@@ -17,6 +17,7 @@ import contextlib
 import json
 import logging
 import os
+import shutil
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -166,6 +167,13 @@ def ingest_path(archive: Archive, path: Path, source: str, **kw: Any) -> IngestR
         return ingest_stream(archive, f, path.name, source, **kw)
 
 
+def _remove_unborn(archive: Archive, doc_id: str, relpath: str | None) -> None:
+    shutil.rmtree(docs.files(archive, doc_id).dir, ignore_errors=True)
+    if relpath is not None:
+        with contextlib.suppress(FileNotFoundError):
+            archive.paths.resolve(relpath).unlink()
+
+
 def _commit(
     archive: Archive,
     tmp: Path,
@@ -209,6 +217,7 @@ def _commit(
         if not dest.parent.exists():
             dest.parent.mkdir(parents=True, mode=0o700)
             fsync_dir(dest.parent.parent)
+        placed = False  # the file is put in place by this call (not an earlier leftover)
         if dest.exists():
             # leftover of an interrupted earlier attempt: reuse if intact
             if sha256_file(dest) != sha:
@@ -219,65 +228,72 @@ def _commit(
             os.chmod(tmp, 0o400)
             os.replace(tmp, dest)
             fsync_dir(dest.parent)
+            placed = True
 
-        seq = docs.next_sequence(conn, "ingest_sequence")
-        is_paper = paper if paper is not None else source == "scanner"
         doc_id = str(uuid.uuid4())
-        meta = DocumentMetadata(
-            id=doc_id,
-            sha256=sha,
-            original_filename=name,
-            original_relpath=relpath,
-            mime_type=info.mime_type,
-            size_bytes=size,
-            page_count=info.page_count,
-            source=source,  # type: ignore[arg-type]
-            source_details=details,
-            received_at=now,
-            ingest_sequence=seq,
-            paper=is_paper,
-            title=os.path.splitext(name)[0][:200],
-            field_sources={"title": "rule"},
-            status="queued",
-            text_status="pending",
-            ingest_events=[
-                IngestEvent(
-                    at=now,
-                    source=source,
-                    source_details=details,  # type: ignore[arg-type]
-                    original_filename=name,
-                    result="created",
-                )  # fmt: skip
-            ],
-            revision=0,
-            updated_at=now,
-        )
-        sessions.attach(archive, meta)  # paper during a scan session belongs to it
-        if (
-            is_paper
-            and meta.scan_session is None
-            and source in archive.settings.auto_file_source_set
-        ):
-            meta.filed_at = now
-            meta.filing_sequence = docs.next_sequence(conn, "filing_sequence")
-            meta.filing_section = docs.filing_section_for(archive, now)
-            meta.filing_binder = binders.current(archive)
-            docs.add_history(
-                meta, HistoryEntry(task="filing", at=now, status="auto-filed", by="rule")
+        try:
+            seq = docs.next_sequence(conn, "ingest_sequence")
+            is_paper = paper if paper is not None else source == "scanner"
+            meta = DocumentMetadata(
+                id=doc_id,
+                sha256=sha,
+                original_filename=name,
+                original_relpath=relpath,
+                mime_type=info.mime_type,
+                size_bytes=size,
+                page_count=info.page_count,
+                source=source,  # type: ignore[arg-type]
+                source_details=details,
+                received_at=now,
+                ingest_sequence=seq,
+                paper=is_paper,
+                title=os.path.splitext(name)[0][:200],
+                field_sources={"title": "rule"},
+                status="queued",
+                text_status="pending",
+                ingest_events=[
+                    IngestEvent(
+                        at=now,
+                        source=source,
+                        source_details=details,  # type: ignore[arg-type]
+                        original_filename=name,
+                        result="created",
+                    )  # fmt: skip
+                ],
+                revision=0,
+                updated_at=now,
             )
-        docs.persist(archive, meta, create=True)
-        _event(
-            archive, doc_id=doc_id, sha=sha, source=source, details=details, filename=name,
-            result="created", message="", import_ref=import_ref,
-        )  # fmt: skip
-        if on_create is not None:
-            on_create(meta)
-        job_id = jobs.enqueue(
-            conn,
-            "process",
-            doc_id,
-            {"stages": list(stages)},
-            max_attempts=archive.settings.job_max_attempts,
-        )
+            sessions.attach(archive, meta)  # paper during a scan session belongs to it
+            if (
+                is_paper
+                and meta.scan_session is None
+                and source in archive.settings.auto_file_source_set
+            ):
+                meta.filed_at = now
+                meta.filing_sequence = docs.next_sequence(conn, "filing_sequence")
+                meta.filing_section = docs.filing_section_for(archive, now)
+                meta.filing_binder = binders.current(archive)
+                docs.add_history(
+                    meta, HistoryEntry(task="filing", at=now, status="auto-filed", by="rule")
+                )
+            docs.persist(archive, meta, create=True)
+            _event(
+                archive, doc_id=doc_id, sha=sha, source=source, details=details, filename=name,
+                result="created", message="", import_ref=import_ref,
+            )  # fmt: skip
+            if on_create is not None:
+                on_create(meta)
+            job_id = jobs.enqueue(
+                conn,
+                "process",
+                doc_id,
+                {"stages": list(stages)},
+                max_attempts=archive.settings.job_max_attempts,
+            )
+        except BaseException:
+            # the transaction rolls back - the files written meanwhile must go too, or they
+            # would remain as an orphaned document (e.g. ``on_create`` failed)
+            _remove_unborn(archive, doc_id, relpath if placed else None)
+            raise
     log.info("ingested document %s (seq %s, source %s)", doc_id, seq, source)
     return IngestResult("created", name, doc_id=doc_id, sha256=sha, job_id=job_id)
