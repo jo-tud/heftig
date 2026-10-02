@@ -168,6 +168,19 @@ def test_missing_consume_folder_is_reported(archive):
     assert "cannot be reached" in w.last_error
 
 
+def test_unreachable_share_is_reported_not_raised(archive, monkeypatch):
+    import errno
+    from pathlib import Path
+
+    def host_down(self, *a, **kw):
+        raise OSError(errno.EHOSTDOWN, "Host is down", str(self))
+
+    monkeypatch.setattr(Path, "stat", host_down)
+    w = ConsumeWatcher(archive)
+    assert w.poll() == []
+    assert "cannot be reached" in w.last_error
+
+
 def test_local_folder_takes_digital_files(tmp_path):
     from heftig.worker import Worker
 
