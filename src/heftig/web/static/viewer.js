@@ -162,3 +162,34 @@
     else if (e.key === "Escape") card.classList.remove("viewer-max");
   });
 })();
+
+/* While the document is being processed: wait for the result, then show it (reload) - unless
+   the user is typing in a field, then offer the reload. */
+(function () {
+  const busy = document.getElementById("doc-busy");
+  if (!busy) return;
+  const started = Date.now();
+  function later() {
+    const age = Date.now() - started;
+    if (age < 30 * 60000) setTimeout(poll, age < 60000 ? 2000 : 10000);
+  }
+  function done() {
+    const el = document.activeElement;
+    if (!el || !el.matches("input, textarea, select")) { location.reload(); return; }
+    busy.textContent = `${t("Done.")} `;
+    const a = document.createElement("a");
+    a.href = location.href;
+    a.textContent = t("Show the result");
+    busy.append(a);
+  }
+  function poll() {
+    fetch(`/api/documents/${busy.dataset.doc}`, { credentials: "same-origin", cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        const st = j && j.metadata && j.metadata.status;
+        if (st && st !== "queued" && st !== "processing") done(); else later();
+      })
+      .catch(later);
+  }
+  setTimeout(poll, 1500);
+})();
