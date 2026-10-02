@@ -1,5 +1,5 @@
 #!/bin/sh
-# Heftig installer for Linux: one container, one folder, nothing else on the system.
+# Heftig installer for Linux and macOS: one container, one folder, nothing else on the system.
 #
 #   curl -fsSL https://raw.githubusercontent.com/jo-tud/heftig/main/install.sh | sh
 #
@@ -34,7 +34,8 @@ ask() {  # ask "Question?" -> 0 for yes (works with curl | sh: reads from the te
 
 # everything runs from main(), called on the last line: a download cut off halfway does nothing
 main() {
-    [ "$(uname -s)" = "Linux" ] || die "This installer is for Linux. See the README for other systems."
+    OS=$(uname -s)
+    case "$OS" in Linux | Darwin) ;; *) die "This installer is for Linux and macOS. See the README for other systems." ;; esac
     command -v curl > /dev/null 2>&1 || die "Please install curl first."
     [ "$(id -u)" != "0" ] || say "Note: running as root. Heftig's files will belong to root; a normal user is recommended."
 
@@ -45,6 +46,9 @@ main() {
         ENGINE=podman
     elif command -v docker > /dev/null 2>&1; then
         ENGINE=docker
+    fi
+    if [ -z "$ENGINE" ] && [ "$OS" = Darwin ]; then
+        die "Heftig runs in a container and needs Docker. Install Docker Desktop (https://www.docker.com/products/docker-desktop/), OrbStack or Colima, start it and run this installer again."
     fi
     if [ -z "$ENGINE" ]; then
         install_cmd=""
@@ -66,6 +70,10 @@ main() {
     say "Using $ENGINE ($($ENGINE --version 2>/dev/null | head -n1))."
     if [ "$ENGINE" = docker ] && ! docker info > /dev/null 2>&1; then
         die "Docker is installed but not usable by $(id -un) (is the service running, is the user in the 'docker' group?)."
+    fi
+    # on macOS, Podman runs its containers in a virtual machine that must be started first
+    if [ "$ENGINE" = podman ] && [ "$OS" = Darwin ] && ! podman info > /dev/null 2>&1; then
+        die "Podman is installed but its virtual machine is not running (podman machine init; podman machine start)."
     fi
 
     # --- folders ---------------------------------------------------------------------------------
@@ -157,9 +165,10 @@ main() {
     fi
     say ""
     if [ "${HEFTIG_LAN:-0}" = "1" ]; then
-        ip=$(hostname -I 2>/dev/null | awk '{print $1}')
+        if [ "$OS" = Darwin ]; then ip=$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || true)
+        else ip=$(hostname -I 2>/dev/null | awk '{print $1}'); fi
         [ -n "$ip" ] || ip=$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for (i = 1; i < NF; i++) if ($i == "src") print $(i + 1)}')
-        say "Other devices in your network reach it at http://${ip:-<this computer's address>}:$PORT"
+        say "Other devices in your network reach it at http://${ip:-<address of this computer>}:$PORT"
         say "(The phone camera needs HTTPS - see docs/operations.md, \"HTTPS\".)"
     fi
     say "Files:   $HOME_DIR"
