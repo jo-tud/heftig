@@ -43,6 +43,8 @@
       const body = new URLSearchParams({
         csrf_token: csrf, mode: mode(),
         api_key: ai.elements.api_key.value, base_url: ai.elements.base_url.value,
+        headers: ai.elements.headers ? ai.elements.headers.value : "",
+        clear_headers: ai.elements.clear_headers && ai.elements.clear_headers.checked ? "1" : "",
       });
       try {
         const r = await fetch("/settings/ai/models", { method: "POST", body, headers: { "X-CSRF-Token": csrf } });

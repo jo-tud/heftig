@@ -14,6 +14,7 @@ from urllib.parse import urlparse
 
 import httpx
 
+from ..config import with_headers
 from ..i18n import N_
 from .base import (
     ClassifyRequest,
@@ -37,7 +38,15 @@ OPENAI_BASE = "https://api.openai.com/v1"
 
 
 class _Client:
-    def __init__(self, name: str, base_url: str, api_key: str | None, model: str, timeout: int):
+    def __init__(
+        self,
+        name: str,
+        base_url: str,
+        api_key: str | None,
+        model: str,
+        timeout: int,
+        headers: dict[str, str] | None = None,
+    ):
         if not model:
             raise ProviderUnavailable(
                 N_("No model configured for %(provider)s.") % {"provider": name}
@@ -56,6 +65,8 @@ class _Client:
         self._headers = {"Content-Type": "application/json"}
         if api_key:
             self._headers["Authorization"] = f"Bearer {api_key}"
+        # additional headers of the endpoint (they may replace Authorization); never logged
+        self._headers = with_headers(self._headers, headers or {})
         self._timeout = timeout
         self.usage = UsageMeter()
 
@@ -156,8 +167,9 @@ class OpenAICompatExtractor:
         model: str,
         timeout: int,
         supports_images: bool = True,
+        headers: dict[str, str] | None = None,
     ):
-        self._c = _Client(name, base_url, api_key, model, timeout)
+        self._c = _Client(name, base_url, api_key, model, timeout, headers)
         self.usage = self._c.usage
         self.name, self.model, self.target = name, model, self._c.target
         self.capabilities = ExtractCapabilities(images=supports_images, pdf=False)
@@ -208,8 +220,9 @@ class OpenAICompatClassifier:
         model: str,
         timeout: int,
         json_mode: str = "schema",
+        headers: dict[str, str] | None = None,
     ):
-        self._c = _Client(name, base_url, api_key, model, timeout)
+        self._c = _Client(name, base_url, api_key, model, timeout, headers)
         self.usage = self._c.usage
         self.name, self.model, self.target = name, model, self._c.target
         self.json_mode = json_mode

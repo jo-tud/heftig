@@ -28,6 +28,18 @@
       <input name="api_key" type="password" autocomplete="off" spellcheck="false" placeholder="{{ _('stored – enter a new one to replace it') if has_key else '' }}"></label>
     <p class="hint" data-for="anthropic">{% trans %}Create one at <a href="https://console.anthropic.com/settings/keys" rel="noopener" target="_blank">console.anthropic.com</a>. Set a monthly spending limit there.{% endtrans %}</p>
     <p class="hint" data-for="local">{{ _("Most local servers need no key.") }}</p>
+    <details data-for="local" {% if has_headers %}open{% endif %}>
+      <summary>{{ _("Additional HTTP headers") }}{% if has_headers %} ({{ _("stored") }}){% endif %}</summary>
+      {% if headers_fixed %}
+      <p class="hint">{{ _("Set by the environment variable HEFTIG_CLASSIFY_HEADERS.") }}</p>
+      {% else %}
+      <label>{{ _("One header per line, e.g. x-example-session: 1234") }}
+        <textarea name="headers" rows="3" spellcheck="false" autocomplete="off" placeholder="{{ _('stored – enter new ones to replace them') if has_headers else 'Name: value' }}"></textarea></label>
+      {% if has_headers %}<label class="choice"><input type="checkbox" name="clear_headers" value="1">
+        <span>{{ _("Remove the stored headers") }}</span></label>{% endif %}
+      <p class="hint">{{ _("Only for servers that need more than the key. Sent with every request to this server, treated like the key: never shown again, logged or exported.") }}</p>
+      {% endif %}
+    </details>
     <label data-for="anthropic openai local">{{ _("Model") }}
       <input name="model" value="{{ form.model }}" list="model-list" spellcheck="false" autocomplete="off"></label>
     <datalist id="model-list"></datalist>

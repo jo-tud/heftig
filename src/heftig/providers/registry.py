@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ..config import Settings
+from ..config import Settings, with_headers
 from ..i18n import N_, _, translate_text
 from .base import Classifier, ProviderUnavailable, TextExtractor
 from .openai_compat import OPENAI_BASE
@@ -32,6 +32,19 @@ def clear_overrides() -> None:
     _override.clear()
 
 
+def headers(s: Settings, task: str) -> dict[str, str]:
+    """The additional HTTP headers of a task's OpenAI-compatible endpoint."""
+    try:
+        return s.provider_headers(task)  # type: ignore[arg-type]
+    except OSError as e:
+        raise ProviderUnavailable(
+            N_("The file with the additional headers cannot be read (%(error)s).")
+            % {"error": type(e).__name__}
+        ) from e
+    except ValueError as e:
+        raise ProviderUnavailable(str(e)) from e
+
+
 def get_extractor(s: Settings) -> TextExtractor | None:
     """OCR provider for image pages, or None if OCR is switched off."""
     if "extractor" in _override:
@@ -56,7 +69,7 @@ def get_extractor(s: Settings) -> TextExtractor | None:
         base = s.ocr_base_url or (OPENAI_BASE if name == "openai" else "")
         return OpenAICompatExtractor(
             name, base, s.secret("ocr_api_key"), s.ocr_model, s.provider_timeout_seconds,
-            supports_images=s.ocr_supports_images,
+            supports_images=s.ocr_supports_images, headers=headers(s, "ocr"),
         )  # fmt: skip
     if name == "anthropic":
         from .anthropic_provider import AnthropicExtractor
@@ -90,7 +103,7 @@ def get_classifier(s: Settings) -> Classifier | None:
         base = s.classify_base_url or (OPENAI_BASE if name == "openai" else "")
         return OpenAICompatClassifier(
             name, base, s.secret("classify_api_key"), s.classify_model,
-            s.provider_timeout_seconds, s.classify_json_mode,
+            s.provider_timeout_seconds, s.classify_json_mode, headers(s, "classify"),
         )  # fmt: skip
     if name == "anthropic":
         from .anthropic_provider import AnthropicClassifier
@@ -144,7 +157,7 @@ def get_search_planner(s: Settings):
         name, base, s.secret("classify_api_key"), s.classify_model,
         # a local model may need a while; a cloud service answers quickly or not at all
         s.provider_timeout_seconds if not s.provider_is_cloud(name, base) else
-        min(s.provider_timeout_seconds, 30), s.classify_json_mode,
+        min(s.provider_timeout_seconds, 30), s.classify_json_mode, headers(s, "classify"),
     )  # fmt: skip
 
 
@@ -179,6 +192,12 @@ def describe(s: Settings) -> dict[str, dict]:
             if name not in ("none", "rules", "mock", "tesseract")
             else None
         )
+        has_headers = None
+        if name in ("openai", "openai_compatible"):
+            try:
+                has_headers = bool(s.secret(f"{task}_headers"))
+            except OSError:
+                has_headers = True  # a file is given, it just cannot be read here
         out[task] = {
             "provider": name,
             "model": model,
@@ -186,6 +205,7 @@ def describe(s: Settings) -> dict[str, dict]:
             "cloud": is_cloud,
             "blocked": translate_text(blocked) or None,
             "api_key_configured": key_set,
+            "headers_configured": has_headers,
         }
     return out
 
@@ -206,14 +226,18 @@ def probe_ai(s: Settings) -> bool:
         key = s.secret(f"{task}_api_key")
         if name == "anthropic":
             url = (base or "https://api.anthropic.com").rstrip("/") + "/v1/models"
-            headers = {"x-api-key": key or "", "anthropic-version": "2023-06-01"}
+            sent = {"x-api-key": key or "", "anthropic-version": "2023-06-01"}
         else:
             url = (base or OPENAI_BASE).rstrip("/") + "/models"
-            headers = {"Authorization": f"Bearer {key}"} if key else {}
-        checks.append((url, headers))
-    for url, headers in dict.fromkeys((u, tuple(h.items())) for u, h in checks):
+            sent = {"Authorization": f"Bearer {key}"} if key else {}
+            try:
+                sent = with_headers(sent, headers(s, task))
+            except ProviderUnavailable:
+                return False
+        checks.append((url, sent))
+    for url, sent in dict.fromkeys((u, tuple(h.items())) for u, h in checks):
         try:
-            r = httpx.get(url, headers=dict(headers), timeout=10, follow_redirects=False)
+            r = httpx.get(url, headers=dict(sent), timeout=10, follow_redirects=False)
         except httpx.HTTPError:
             return False
         if r.status_code >= 500 or r.status_code in (408, 429):

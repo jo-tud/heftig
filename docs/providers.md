@@ -232,10 +232,40 @@ downloaded once from huggingface.co (see [search.md](search.md#search-by-meaning
   The direct value wins over the file.
 - Prefer the `*_FILE` variants (container secrets, a file with mode 0600). The file is read when
   the provider is created.
-- Keys are only sent as the authentication header to the configured endpoint. They never appear
+- Keys are only sent as the authentication header to the configured endpoint (see also
+  [Additional HTTP headers](#additional-http-headers)). They never appear
   in logs, error messages, the processing history, exports or the UI; the settings page only
   shows whether a key is configured.
 - Never commit keys. `.env` is in `.gitignore`.
+
+## Additional HTTP headers
+
+Some OpenAI-compatible services need more than the bearer key, e.g. a routing or session header,
+or a key in a header of its own (`api-key`). `HEFTIG_CLASSIFY_HEADERS` and `HEFTIG_OCR_HEADERS`
+(or their `*_FILE` variants) add headers to every request to that task's `openai` or
+`openai_compatible` endpoint: the connection test, the list of models, the reachability check and
+OCR and classification themselves. Give one `Name: value` per line (lines starting with `#` are
+ignored) or a JSON object:
+
+```sh
+HEFTIG_CLASSIFY_HEADERS='{"x-example-session": "heftig-1", "User-Agent": "heftig"}'
+# or, in a file (one header per line): HEFTIG_CLASSIFY_HEADERS_FILE=/run/secrets/ai_headers
+```
+
+On the settings page they are under *Additional HTTP headers* of the option for an own server;
+the OCR task then gets the same headers. An additional header replaces a default one of the same
+name (`Authorization`, `User-Agent`); `Host`, `Content-Type`, `Content-Length`,
+`Transfer-Encoding` and `Connection` cannot be set. Header values are treated like keys: they
+never appear in logs, error messages, exports or the web interface (which only shows that
+headers are stored), and stored ones are only reused for the same server. They are not used for
+`anthropic`.
+
+**OpenCode Go** (`https://opencode.ai/zen/go/v1`) refuses requests without an
+`x-opencode-session` header. Its documentation
+([where can I use it](https://opencode.ai/docs/go/#where-can-i-use-it)) asks for a stable session
+header per conversation, a client-specific User-Agent and typical coding-agent traffic. Sorting
+documents is not that, so OpenCode Go is not a supported provider for Heftig even with the
+header set; use a service meant for general API use.
 
 ## Raw responses
 

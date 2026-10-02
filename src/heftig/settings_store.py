@@ -4,8 +4,8 @@ Priority: an environment variable (``HEFTIG_*``, ``.env``, ``*_FILE``) wins over
 which wins over the default. A setting given by the environment is shown as fixed in the web
 interface. Stored values live in the database's ``meta`` table (keys ``setting.<name>``, JSON
 values), so they travel with the archive and its database backups. Secrets (API keys, the mail
-password) are stored there too - the database is readable by its owner only - and are never
-shown again, only replaced. Exports do not contain them.
+password, additional HTTP headers) are stored there too - the database is readable by its owner
+only - and are never shown again, only replaced. Exports do not contain them.
 
 Every change increases ``settings_revision``; web server and worker compare it and reload.
 """
@@ -18,7 +18,7 @@ from typing import Any
 
 from pydantic import SecretStr, ValidationError
 
-from .config import Settings
+from .config import Settings, parse_headers
 from .db import get_meta, set_meta, write_tx
 
 PREFIX = "setting."
@@ -28,9 +28,9 @@ REVISION = "settings_revision"
 EDITABLE = {
     "language",
     # AI
-    "ocr_provider", "ocr_model", "ocr_base_url", "ocr_api_key", "allow_cloud_ocr",
+    "ocr_provider", "ocr_model", "ocr_base_url", "ocr_api_key", "ocr_headers", "allow_cloud_ocr",
     "classify_provider", "classify_model", "classify_base_url", "classify_api_key",
-    "allow_cloud_classify", "ai_search_model", "ocr_languages",
+    "classify_headers", "allow_cloud_classify", "ai_search_model", "ocr_languages",
     "semantic_search",
     # e-mail
     "imap_host", "imap_port", "imap_user", "imap_password", "imap_mailbox", "imap_move_to",
@@ -38,7 +38,8 @@ EDITABLE = {
     # paper, scanner, trash
     "auto_file_sources", "consume_after", "filing_granularity", "trash_retention_days",
 }  # fmt: skip
-SECRETS = {"ocr_api_key", "classify_api_key", "imap_password"}
+SECRETS = {"ocr_api_key", "classify_api_key", "imap_password", "ocr_headers", "classify_headers"}
+HEADERS = {"ocr_headers", "classify_headers"}
 
 
 class SettingsError(ValueError):
@@ -106,6 +107,11 @@ def save(conn: sqlite3.Connection, base: Settings, changes: dict[str, Any]) -> S
             continue
         if isinstance(value, SecretStr):
             value = value.get_secret_value()
+        if name in HEADERS and value is not None:
+            try:
+                parse_headers(value)
+            except ValueError as e:
+                raise SettingsError(f"{name}: {e}") from e
         clean[name] = value
     current = effective(base, conn)
     candidate = {**dict(current), **{k: v for k, v in clean.items() if v is not None}}

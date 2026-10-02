@@ -29,8 +29,8 @@ from starlette.concurrency import run_in_threadpool
 from .. import auth, connections, i18n
 from .. import settings_store as store
 from ..archive import Archive
-from ..config import Settings, is_local_url
-from ..i18n import _
+from ..config import Settings, is_local_url, parse_headers
+from ..i18n import _, translate_text
 from . import api
 from .deps import ApiError, Principal, client_address, get_archive, require_user, require_write
 from .ui import _browser_only, redirect, render
@@ -60,6 +60,9 @@ MAIL_KEYS = {
     "imap_host", "imap_port", "imap_user", "imap_password", "imap_mailbox", "imap_move_to",
     "imap_delete_after_import", "imap_allowed_senders", "imap_mail_keyword",
 }  # fmt: skip
+# additional HTTP headers of an OpenAI-compatible server: given by the environment they stay
+# as they are, without locking the rest of the page
+HEADER_KEYS = {"classify_headers", "ocr_headers"}
 SCANNER_KEYS = {"auto_file_sources", "consume_after"}
 SEARCH_KEYS = {"semantic_search"}
 
@@ -236,8 +239,10 @@ def _ai_view(request: Request, **kw: Any) -> Any:
         "consent": s.allow_cloud_classify,
     }
     ctx = _ctx(request, "ai", form=form, has_key=store.has_secret(s, "classify_api_key"),
+               has_headers=store.has_secret(s, "classify_headers"),
                defaults=DEFAULT_MODELS, default_url=default_local_url(), **kw)  # fmt: skip
     ctx["locked"] = bool(ctx["fixed"] & AI_KEYS)
+    ctx["headers_fixed"] = "classify_headers" in ctx["fixed"]
     return render(request, "setup_ai.html", **ctx)
 
 
@@ -273,6 +278,11 @@ def ai_changes(form: dict[str, Any], current: Settings) -> tuple[dict[str, Any],
         return {}, _("Please enter the address of the model server.")
     if not model:
         return {}, _("Please enter a model name.")
+    headers = str(form.get("headers") or "").strip() if mode == "local" else ""
+    try:
+        parse_headers(headers)
+    except ValueError as e:
+        return {}, translate_text(str(e))
     provider = {"anthropic": "anthropic", "openai": "openai", "local": "openai_compatible"}[mode]
     # a stored key is only used again for the same provider AND the same server
     same = same_endpoint(current, provider, base)
@@ -287,17 +297,25 @@ def ai_changes(form: dict[str, Any], current: Settings) -> tuple[dict[str, Any],
     if cloud and not consent:
         return {}, _("Please confirm that document texts may be sent to this service.")
     ocr_ai = bool(form.get("ocr_ai"))
+    # the stored headers, like the key, only for the same server - unless they are removed
+    keep_headers = same and mode == "local" and not form.get("clear_headers")
     changes: dict[str, Any] = {
         "classify_provider": provider,
         "classify_model": model,
         "classify_base_url": base,
         "classify_api_key": key if key else ("" if same else None),
+        "classify_headers": headers or ("" if keep_headers else None),
         "allow_cloud_classify": cloud and consent,
         "ocr_provider": provider if ocr_ai else "tesseract",
         "ocr_model": model if ocr_ai else "",
         "ocr_base_url": base if ocr_ai else "",
         # the OCR key: the new one, or the stored one of the same provider - never another's
         "ocr_api_key": (key or (current.secret("classify_api_key") if same else None) or None)
+        if ocr_ai
+        else None,
+        "ocr_headers": (
+            headers or (current.secret("classify_headers") if keep_headers else None) or None
+        )
         if ocr_ai
         else None,
         "allow_cloud_ocr": bool(ocr_ai and cloud and consent),
@@ -320,6 +338,8 @@ def _ai_submit(request: Request, form: dict[str, Any]) -> Any:
             "consent": bool(form.get("consent"))}  # fmt: skip
     if error:
         return _ai_view(request, form=view, error=error)
+    for name in HEADER_KEYS & store.fixed(a.base_settings):
+        changes.pop(name, None)  # set by the environment
     try:
         s = _save(request, changes)
     except store.SettingsError as e:
@@ -349,10 +369,17 @@ def _ai_models(request: Request, form: dict[str, Any]) -> JSONResponse:
     # the server address only counts for a local server (the field is hidden otherwise)
     base = str(form.get("base_url") or "").strip() if mode == "local" else ""
     key = str(form.get("api_key") or "").strip()
-    if not key and same_endpoint(s, provider, base):
+    same = same_endpoint(s, provider, base)
+    if not key and same:
         key = s.secret("classify_api_key") or ""
     try:
-        models = connections.list_models(provider, base, key or None)
+        headers = parse_headers(str(form.get("headers") or "")) if mode == "local" else {}
+        if not headers and same and mode == "local" and not form.get("clear_headers"):
+            headers = s.provider_headers("classify")
+    except (ValueError, OSError) as e:
+        return JSONResponse({"models": [], "error": translate_text(str(e))})
+    try:
+        models = connections.list_models(provider, base, key or None, headers=headers)
     except connections.ConnectionProblem as e:
         return JSONResponse({"models": [], "error": str(e)})
     return JSONResponse({"models": models[:300]})

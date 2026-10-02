@@ -18,7 +18,7 @@
     {% for task, p in providers.items() %}
       <tr><td>{{ _("Text recognition (OCR)") if task == 'ocr' else pgettext("settings task", "Classification") }}</td>
         <td>{{ provider_line(p) }}{% if p.blocked %}<br><span class="small error-text">{{ p.blocked }}</span>{% endif %}</td>
-        <td>{% if p.api_key_configured is none %}–{% elif p.api_key_configured %}{{ _("set") }}{% else %}<span class="error-text">{{ _("missing") }}</span>{% endif %}</td></tr>
+        <td>{% if p.api_key_configured is none %}–{% elif p.api_key_configured %}{{ _("set") }}{% else %}<span class="error-text">{{ _("missing") }}</span>{% endif %}{% if p.headers_configured %}<br><span class="small muted">{{ _("+ additional headers") }}</span>{% endif %}</td></tr>
     {% endfor %}
     </tbody>
   </table>

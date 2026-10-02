@@ -155,6 +155,30 @@ msgid "combined into “%(title)s”"
 msgstr "zusammengefügt zu „%(title)s“"
 
 #: src/heftig/config.py
+msgid "Additional headers: %(name)s cannot be set."
+msgstr "Zusätzliche Header: %(name)s kann nicht gesetzt werden."
+
+#: src/heftig/config.py
+msgid "Additional headers: invalid JSON."
+msgstr "Zusätzliche Header: ungültiges JSON."
+
+#: src/heftig/config.py
+msgid "Additional headers: invalid header name."
+msgstr "Zusätzliche Header: ungültiger Header-Name."
+
+#: src/heftig/config.py
+msgid "Additional headers: invalid value for %(name)s."
+msgstr "Zusätzliche Header: ungültiger Wert für %(name)s."
+
+#: src/heftig/config.py
+msgid "Additional headers: one \"Name: value\" per line."
+msgstr "Zusätzliche Header: ein \"Name: Wert\" pro Zeile."
+
+#: src/heftig/config.py
+msgid "Additional headers: the JSON object must map names to texts."
+msgstr "Zusätzliche Header: Das JSON-Objekt muss Namen auf Texte abbilden."
+
+#: src/heftig/config.py
 msgid "Cloud OCR is not allowed (set HEFTIG_ALLOW_CLOUD_OCR=true if documents may be sent to this provider)."
 msgstr "Cloud-OCR ist nicht freigegeben (HEFTIG_ALLOW_CLOUD_OCR=true setzen, wenn Dokumente an diesen Anbieter gesendet werden dürfen)."
 
@@ -984,6 +1008,10 @@ msgstr "Für %(provider)s ist kein Modell konfiguriert."
 #: src/heftig/providers/registry.py
 msgid "(no URL)"
 msgstr "(keine URL)"
+
+#: src/heftig/providers/registry.py
+msgid "The file with the additional headers cannot be read (%(error)s)."
+msgstr "Die Datei mit den zusätzlichen Headern kann nicht gelesen werden (%(error)s)."
 
 #: src/heftig/providers/registry.py
 msgid "Unknown OCR provider %(name)s"
@@ -4087,6 +4115,10 @@ msgid "%(user)s @ %(host)s:%(port)s (TLS), folder %(mailbox)s, every %(minutes)s
 msgstr "%(user)s @ %(host)s:%(port)s (TLS), Ordner %(mailbox)s, alle %(minutes)s min"
 
 #: src/heftig/web/templates/settings.html
+msgid "+ additional headers"
+msgstr "+ zusätzliche Header"
+
+#: src/heftig/web/templates/settings.html
 msgid "AI and OCR providers"
 msgstr "KI- und OCR-Anbieter"
 
@@ -4498,6 +4530,10 @@ msgid "API key"
 msgstr "API-Schlüssel"
 
 #: src/heftig/web/templates/setup_ai.html
+msgid "Additional HTTP headers"
+msgstr "Zusätzliche HTTP-Header"
+
+#: src/heftig/web/templates/setup_ai.html
 msgid "Also read scans and photos with the AI"
 msgstr "Auch Scans und Fotos mit der KI lesen"
 
@@ -4553,6 +4589,18 @@ msgstr "Ollama auf diesem Computer: <code>http://host.docker.internal:11434/v1</
 msgid "Ollama, LM Studio, vLLM, llama.cpp or any other OpenAI-compatible server. Free and private, but needs a capable machine."
 msgstr "Ollama, LM Studio, vLLM, llama.cpp oder ein anderer OpenAI-kompatibler Server. Kostenlos und privat, braucht aber einen leistungsfähigen Rechner."
 
+#: src/heftig/web/templates/setup_ai.html
+msgid "One header per line, e.g. x-example-session: 1234"
+msgstr "Ein Header pro Zeile, z. B. x-example-session: 1234"
+
+#: src/heftig/web/templates/setup_ai.html
+msgid "Only for servers that need more than the key. Sent with every request to this server, treated like the key: never shown again, logged or exported."
+msgstr "Nur für Server, die mehr als den Schlüssel brauchen. Wird mit jeder Anfrage an diesen Server gesendet und wie der Schlüssel behandelt: nie wieder angezeigt, protokolliert oder exportiert."
+
+#: src/heftig/web/templates/setup_ai.html
+msgid "Remove the stored headers"
+msgstr "Gespeicherte Header entfernen"
+
 #: src/heftig/web/templates/setup_ai.html src/heftig/web/templates/setup_mail.html src/heftig/web/templates/setup_search.html
 msgid "Save and continue"
 msgstr "Speichern und weiter"
@@ -4566,6 +4614,10 @@ msgid "Server address"
 msgstr "Adresse des Servers"
 
 #: src/heftig/web/templates/setup_ai.html
+msgid "Set by the environment variable HEFTIG_CLASSIFY_HEADERS."
+msgstr "Festgelegt durch die Umgebungsvariable HEFTIG_CLASSIFY_HEADERS."
+
+#: src/heftig/web/templates/setup_ai.html
 msgid "Show available models"
 msgstr "Verfügbare Modelle anzeigen"
 
@@ -4577,9 +4629,17 @@ msgstr "Damit wurde Heftig entwickelt und getestet. Die Einordnung kostet mit Cl
 msgid "Which AI should Heftig use?"
 msgstr "Welche KI soll Heftig verwenden?"
 
+#: src/heftig/web/templates/setup_ai.html
+msgid "stored"
+msgstr "gespeichert"
+
 #: src/heftig/web/templates/setup_ai.html src/heftig/web/templates/setup_mail.html
 msgid "stored – enter a new one to replace it"
 msgstr "gespeichert – zum Ersetzen einen neuen eingeben"
+
+#: src/heftig/web/templates/setup_ai.html
+msgid "stored – enter new ones to replace them"
+msgstr "gespeichert – neue eingeben, um sie zu ersetzen"
 
 #: src/heftig/web/templates/setup_mail.html
 msgid "Allowed senders, one per line (an address, or @domain for all of a domain)"
