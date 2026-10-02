@@ -1405,7 +1405,7 @@ msgstr "fertig"
 msgid "to review"
 msgstr "prüfen"
 
-#: src/heftig/web/search_view.py:25 src/heftig/web/static/scan.js:641 src/heftig/web/ui.py:122
+#: src/heftig/web/search_view.py:25 src/heftig/web/static/scan.js:711 src/heftig/web/ui.py:122
 msgid "error"
 msgstr "Fehler"
 
@@ -1613,95 +1613,107 @@ msgstr "Sensible Daten sind verdeckt (Umschalt+P)"
 msgid "All data visible (Shift+P)"
 msgstr "Alle Daten sichtbar (Umschalt+P)"
 
-#: src/heftig/web/static/scan.js:201
+#: src/heftig/web/static/scan.js:206
 msgid "Edit page %(num)s"
 msgstr "Seite %(num)s bearbeiten"
 
-#: src/heftig/web/static/scan.js:249
+#: src/heftig/web/static/scan.js:222
+msgid "Remove page %(num)s"
+msgstr "Seite %(num)s entfernen"
+
+#: src/heftig/web/static/scan.js:251
+msgid "Page %(num)s removed."
+msgstr "Seite %(num)s entfernt."
+
+#: src/heftig/web/static/scan.js:263
+msgid "Page %(num)s is back."
+msgstr "Seite %(num)s ist wieder da."
+
+#: src/heftig/web/static/scan.js:299
 msgid "Put the sheet on a steady, preferably dark surface and photograph it from above."
 msgstr "Blatt auf eine ruhige, möglichst dunkle Unterlage legen und von oben fotografieren."
 
-#: src/heftig/web/static/scan.js:250
+#: src/heftig/web/static/scan.js:300
 msgid "No sheet detected – a darker surface helps. Tapping the shutter button captures the whole image."
 msgstr "Kein Blatt erkannt – eine dunklere Unterlage hilft. Auslöser tippen nimmt das ganze Bild auf."
 
-#: src/heftig/web/static/scan.js:318
+#: src/heftig/web/static/scan.js:368
 msgid "Page captured. Put down the next sheet or tap “Done”."
 msgstr "Seite aufgenommen. Nächstes Blatt hinlegen oder „Fertig“ tippen."
 
-#: src/heftig/web/static/scan.js:377
+#: src/heftig/web/static/scan.js:427
 msgid "Analyzing the photo …"
 msgstr "Foto wird ausgewertet …"
 
-#: src/heftig/web/static/scan.js:384
+#: src/heftig/web/static/scan.js:435
 msgid "Check the corners and move them if needed."
 msgstr "Ecken prüfen und bei Bedarf verschieben."
 
-#: src/heftig/web/static/scan.js:393 src/heftig/web/static/scan.js:595
+#: src/heftig/web/static/scan.js:531
 msgid "Rotate (%(deg)s°)"
 msgstr "Drehen (%(deg)s°)"
 
-#: src/heftig/web/static/scan.js:479
+#: src/heftig/web/static/scan.js:549
 msgid "Page added. Photograph another page or tap “Done”."
 msgstr "Seite übernommen. Weitere Seite fotografieren oder „Fertig“ tippen."
 
-#: src/heftig/web/static/scan.js:539
+#: src/heftig/web/static/scan.js:614
 msgid "Creating and uploading the PDF …"
 msgstr "PDF wird erstellt und hochgeladen …"
 
-#: src/heftig/web/static/scan.js:553
+#: src/heftig/web/static/scan.js:628
 msgid "Uploading … %(percent)s %"
 msgstr "Hochladen … %(percent)s %"
 
-#: src/heftig/web/static/scan.js:566
+#: src/heftig/web/static/scan.js:642
 msgid "Document archived – text recognition is running in the background."
 msgstr "Dokument archiviert – Texterkennung läuft im Hintergrund."
 
-#: src/heftig/web/static/scan.js:567
+#: src/heftig/web/static/scan.js:643
 msgid "This file is already archived."
 msgstr "Diese Datei ist bereits archiviert."
 
-#: src/heftig/web/static/scan.js:569
+#: src/heftig/web/static/scan.js:645
 msgid "Ready for the next document."
 msgstr "Bereit für das nächste Dokument."
 
-#: src/heftig/web/static/scan.js:572
+#: src/heftig/web/static/scan.js:648
 msgid "Upload failed: %(message)s"
 msgstr "Hochladen fehlgeschlagen: %(message)s"
 
-#: src/heftig/web/static/scan.js:577
+#: src/heftig/web/static/scan.js:653
 msgid "Network error while uploading – please tap again."
 msgstr "Netzwerkfehler beim Hochladen – bitte erneut tippen."
 
-#: src/heftig/web/static/scan.js:623
+#: src/heftig/web/static/scan.js:693
 msgid "Loading the scanner …"
 msgstr "Scanner wird geladen …"
 
-#: src/heftig/web/static/scan.js:627
+#: src/heftig/web/static/scan.js:697
 msgid "The image processing could not be loaded. You can still send photos via “Upload”."
 msgstr "Die Bildverarbeitung konnte nicht geladen werden. Du kannst Fotos trotzdem über „Hochladen“ senden."
 
-#: src/heftig/web/static/scan.js:637
+#: src/heftig/web/static/scan.js:707
 msgid "access not allowed – allow it in the browser settings"
 msgstr "Zugriff nicht erlaubt – in den Browser-Einstellungen freigeben"
 
-#: src/heftig/web/static/scan.js:638
+#: src/heftig/web/static/scan.js:708
 msgid "no camera found"
 msgstr "keine Kamera gefunden"
 
-#: src/heftig/web/static/scan.js:639
+#: src/heftig/web/static/scan.js:709
 msgid "the camera is being used by another app"
 msgstr "Kamera wird von einer anderen App benutzt"
 
-#: src/heftig/web/static/scan.js:640
+#: src/heftig/web/static/scan.js:710
 msgid "the camera is not suitable"
 msgstr "Kamera passt nicht"
 
-#: src/heftig/web/static/scan.js:642
+#: src/heftig/web/static/scan.js:712
 msgid "Camera not available (%(reason)s) – take the photo with the camera app."
 msgstr "Kamera nicht verfügbar (%(reason)s) – Foto über die Kamera-App aufnehmen."
 
-#: src/heftig/web/static/scan.js:646
+#: src/heftig/web/static/scan.js:716
 msgid "Tap the shutter button: the camera app opens, then the sheet is cropped automatically."
 msgstr "Auf den Auslöser tippen: Die Kamera-App öffnet sich, danach wird das Blatt automatisch zugeschnitten."
 
@@ -1751,7 +1763,7 @@ msgstr "Notiz bearbeiten"
 msgid "Save"
 msgstr "Speichern"
 
-#: src/heftig/web/templates/_notes.html:13 src/heftig/web/templates/categories.html:46 src/heftig/web/templates/scan.html:55
+#: src/heftig/web/templates/_notes.html:13 src/heftig/web/templates/categories.html:46 src/heftig/web/templates/scan.html:41
 msgid "Delete"
 msgstr "Löschen"
 
@@ -1876,7 +1888,7 @@ msgstr "Privat: an"
 msgid "Moved to the trash."
 msgstr "In den Papierkorb verschoben."
 
-#: src/heftig/web/static/autosave.js:139 src/heftig/web/templates/base.html:40
+#: src/heftig/web/static/autosave.js:139 src/heftig/web/templates/base.html:40 src/heftig/web/templates/scan.html:49
 msgid "Undo"
 msgstr "Rückgängig"
 
@@ -2014,7 +2026,7 @@ msgid_plural "Move %(num)d documents to the trash"
 msgstr[0] "%(num)d Dokument in den Papierkorb"
 msgstr[1] "%(num)d Dokumente in den Papierkorb"
 
-#: src/heftig/web/templates/bulk_delete.html:24 src/heftig/web/templates/scan.html:52
+#: src/heftig/web/templates/bulk_delete.html:24 src/heftig/web/templates/scan.html:38
 msgid "Cancel"
 msgstr "Abbrechen"
 
@@ -2739,7 +2751,7 @@ msgstr "In den Papierkorb"
 msgid "Same file received again"
 msgstr "Weitere Eingänge derselben Datei"
 
-#: src/heftig/web/static/scan.js:212 src/heftig/web/templates/document.html:40 src/heftig/web/templates/scan.html:21
+#: src/heftig/web/static/scan.js:227 src/heftig/web/templates/document.html:40 src/heftig/web/templates/scan.html:21
 msgid "%(num)d page"
 msgid_plural "%(num)d pages"
 msgstr[0] "%(num)d Seite"
@@ -3739,44 +3751,44 @@ msgstr "Das Live-Kamerabild mit automatischer Auslösung braucht eine HTTPS-Verb
 msgid "Over HTTP, the camera app opens instead."
 msgstr "Über HTTP öffnet sich stattdessen die Kamera-App."
 
-#: src/heftig/web/templates/scan.html:40
-msgid "Captured pages"
-msgstr "Aufgenommene Seiten"
-
-#: src/heftig/web/templates/scan.html:43
-msgid "Capture page"
-msgstr "Seite aufnehmen"
-
-#: src/heftig/web/templates/scan.html:44
-msgid "Done"
-msgstr "Fertig"
-
-#: src/heftig/web/templates/scan.html:49
+#: src/heftig/web/templates/scan.html:35
 msgid "Crop page"
 msgstr "Seite zuschneiden"
 
-#: src/heftig/web/templates/scan.html:53
+#: src/heftig/web/templates/scan.html:39
 msgid "Whole image"
 msgstr "Ganzes Bild"
 
-#: src/heftig/web/static/scan.js:393 src/heftig/web/templates/scan.html:54
+#: src/heftig/web/static/scan.js:531 src/heftig/web/templates/scan.html:40
 msgid "Rotate"
 msgstr "Drehen"
 
-#: src/heftig/web/templates/scan.html:56
+#: src/heftig/web/templates/scan.html:42
 msgctxt "crop editor"
 msgid "Apply"
 msgstr "Übernehmen"
 
-#: src/heftig/web/templates/scan.html:60
+#: src/heftig/web/templates/scan.html:53
+msgid "Captured pages"
+msgstr "Aufgenommene Seiten"
+
+#: src/heftig/web/templates/scan.html:56
+msgid "Capture page"
+msgstr "Seite aufnehmen"
+
+#: src/heftig/web/templates/scan.html:57
+msgid "Done"
+msgstr "Fertig"
+
+#: src/heftig/web/templates/scan.html:62
 msgid "Uploaded"
 msgstr "Hochgeladen"
 
-#: src/heftig/web/static/app.js:74 src/heftig/web/templates/scan.html:62 src/heftig/web/templates/upload.html:38
+#: src/heftig/web/static/app.js:74 src/heftig/web/templates/scan.html:64 src/heftig/web/templates/upload.html:38
 msgid "Open document"
 msgstr "Zum Dokument"
 
-#: src/heftig/web/templates/scan.html:63
+#: src/heftig/web/templates/scan.html:65
 msgid "Next document"
 msgstr "Nächstes Dokument"
 
@@ -4944,7 +4956,7 @@ msgctxt "duplicate facts"
 msgid "Received"
 msgstr "Eingang"
 
-#: src/heftig/web/templates/scan.html:42 src/heftig/web/ui.py:1379
+#: src/heftig/web/templates/scan.html:55 src/heftig/web/ui.py:1379
 msgid "Paper"
 msgstr "Papier"
 

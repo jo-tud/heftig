@@ -32,9 +32,22 @@
     <p id="insecure" class="small" hidden>{{ _("The live camera view with automatic capture needs an HTTPS connection.") }}
       {{ _("Over HTTP, the camera app opens instead.") }}</p>
   </div>
+  <div id="editor" class="editor" hidden role="region" aria-label="{{ _("Crop page") }}">
+    <div id="edit-stage" class="edit-stage"><canvas id="edit-canvas"></canvas></div>
+    <div class="edit-bar">
+      <button id="edit-cancel" type="button">{{ _("Cancel") }}</button>
+      <button id="edit-full" type="button">{{ _("Whole image") }}</button>
+      <button id="edit-rotate" type="button">{{ _("Rotate") }}</button>
+      <button id="edit-delete" type="button" class="danger">{{ _("Delete") }}</button>
+      <button id="edit-apply" type="button" class="primary">{{ pgettext("crop editor", "Apply") }}</button>
+    </div>
+  </div>
 </main>
 
-<p id="hint" class="hint" role="status" aria-live="polite"></p>
+<div class="hint-row">
+  <p id="hint" class="hint" role="status" aria-live="polite"></p>
+  <button id="undo" class="undo" type="button" hidden>{{ _("Undo") }}</button>
+</div>
 
 <footer class="scan-bottom">
   <ol id="pages" class="pages" aria-label="{{ _("Captured pages") }}"></ol>
@@ -45,17 +58,6 @@
   </div>
   <input id="file" type="file" accept="image/*" capture="environment" hidden>
 </footer>
-
-<div id="editor" class="editor" hidden role="dialog" aria-label="{{ _("Crop page") }}">
-  <div id="edit-stage" class="edit-stage"><canvas id="edit-canvas"></canvas></div>
-  <div class="edit-bar">
-    <button id="edit-cancel" type="button">{{ _("Cancel") }}</button>
-    <button id="edit-full" type="button">{{ _("Whole image") }}</button>
-    <button id="edit-rotate" type="button">{{ _("Rotate") }}</button>
-    <button id="edit-delete" type="button" class="danger">{{ _("Delete") }}</button>
-    <button id="edit-apply" type="button" class="primary">{{ pgettext("crop editor", "Apply") }}</button>
-  </div>
-</div>
 
 <div id="result" class="result" hidden role="dialog" aria-label="{{ _("Uploaded") }}">
   <p id="result-text"></p>
