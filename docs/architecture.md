@@ -126,15 +126,15 @@ references); it must be confirmed explicitly (UI: in the trash; API:
 `DELETE /api/trash/<id>?confirm=<id>`, while `DELETE /api/documents/<id>?confirm=<id>` only
 moves to the trash).
 
-Combining keeps the parts as **source documents** instead: their sidecar folder moves to
-`sources/<id>/` (with `replaced_at` and `replaced_by`), and they get a row in the same `trash`
-table with `kind = 'source'`. Like trashed documents they are out of the `documents` table - no
-query, search, facet or duplicate check sees them - and their originals count as referenced. They
-are never purged: the only ways out are restoring (undoing the combining) and deleting one on
-purpose, which moves it into the trash like any deleted document. Archives from before
-migration 13 had the parts in the trash; before the first purge after the update, the parts of
-combined documents still in the archive are moved to `sources/` (`trash.adopt_combined`). Source
-documents are part of backups and exports.
+Combining keeps the parts, and splitting the original, as **source documents** instead: their
+sidecar folder moves to `sources/<id>/` (with `replaced_at` and `replaced_by`), and they get a row
+in the same `trash` table with `kind = 'source'`. Like trashed documents they are out of the
+`documents` table - no query, search, facet or duplicate check sees them - and their originals
+count as referenced. They are never purged: the only ways out are restoring (undoing the combining
+or splitting) and deleting one on purpose, which moves it into the trash like any deleted document.
+Archives from before migration 13 had the parts in the trash; before the first purge after the
+update, the parts of combined documents still in the archive are moved to `sources/`
+(`trash.adopt_combined`). Source documents are part of backups and exports.
 
 ## Jobs
 

@@ -69,8 +69,6 @@ def test_parts_pages_text_and_user_data(archive):
     assert second.paper_location == "Binder Ordner 1, with part 1"
     assert second.source_details["split_from"] == {
         "id": orig, "title": "Mietvertrag Wohnung", "pages": [4], "part": 2, "parts": 2,
-        "filename": "scan.pdf", "mime_type": "application/pdf",
-        "originals": [filed.original_relpath],
     }  # fmt: skip
     # only the classification runs again - no second text recognition
     for part in (first, second):
@@ -81,9 +79,15 @@ def test_parts_pages_text_and_user_data(archive):
         "SELECT task FROM processing_runs ORDER BY id")][runs_before:]  # fmt: skip
     assert "extract" not in kinds
     assert docs.load_meta(archive, first.id).document_date != "2020-01-31"
-    # the original is in the Papierkorb; search finds the parts
-    group = trash.listing(archive)[0]
+    # the original is kept as a source document (not in the Papierkorb); search finds the parts
+    assert trash.listing(archive) == []
+    group = trash.sources_listing(archive)[0]
     assert group["batch"] == split.batch_for(orig) and [i["id"] for i in group["items"]] == [orig]
+    assert group["action"] == "split" and [t["id"] for t in group["targets"]] == [
+        first.id,
+        second.id,
+    ]
+    assert trash.source_meta(archive, orig).replaced_by == [first.id, second.id]
     assert orig not in ids(archive, "Mietvertrag")
     assert ids(archive, "Stromrechnung") == [second.id]
     assert [r["id"] for r in split.parts_of(archive, orig)] == [first.id, second.id]
@@ -123,7 +127,7 @@ def test_rearranged_only_keeps_the_users_fields(archive):
     assert "Wohnung" in after.tags
 
 
-def test_the_original_is_kept_while_a_part_exists(archive):
+def test_the_original_is_kept_for_good(archive):
     orig = four_pages(archive)
     process_all(archive)
     rel = docs.load_meta(archive, orig).original_relpath
@@ -132,30 +136,20 @@ def test_the_original_is_kept_while_a_part_exists(archive):
     archive.conn.execute("UPDATE trash SET trashed_at='2000-01-01T00:00:00Z'")
     # neither the retention period nor emptying the trash removes it
     assert trash.purge_expired(archive) == 0 and trash.empty(archive) == 0
-    (group,) = trash.listing(archive)
-    assert group["kept"] and group["purge_at"] is None
-    assert archive.paths.resolve(rel).read_bytes() == data
-    # even purged on purpose, its file stays as long as a part names it
-    trash.purge(archive, orig)
     assert archive.paths.resolve(rel).read_bytes() == data
     assert not [i for i in maintenance.check(archive)["issues"] if i["kind"].startswith("orphan")]
-    # gone only with the last part
+    # not even when all its parts are deleted and purged
     for part in (first, second):
         trash.trash_document(archive, part.id)
-    assert archive.paths.resolve(rel).exists()
     archive.conn.execute("UPDATE trash SET trashed_at='2000-01-01T00:00:00Z'")
     assert trash.purge_expired(archive) == 2
-    assert not archive.paths.resolve(rel).exists()
-
-
-def test_the_original_outlives_its_parts_in_the_trash(archive):
-    orig = four_pages(archive)
-    process_all(archive)
-    first, second = split.split(archive, orig, [[1, 2], [4]])
-    trash.trash_document(archive, first.id)
-    archive.conn.execute("UPDATE trash SET trashed_at='2000-01-01T00:00:00Z' WHERE id=?", (orig,))
-    assert trash.purge_expired(archive) == 0  # the trashed part still refers to it
-    assert {g["items"][0]["id"] for g in trash.listing(archive) if g["kept"]} == {orig}
+    assert archive.paths.resolve(rel).read_bytes() == data
+    (group,) = trash.sources_listing(archive)
+    assert group["targets"] == [] and group["items"][0]["id"] == orig
+    # only when it is deleted on purpose (then through the Papierkorb)
+    trash.discard_source(archive, orig)
+    archive.conn.execute("UPDATE trash SET trashed_at='2000-01-01T00:00:00Z'")
+    assert trash.purge_expired(archive) == 1 and not archive.paths.resolve(rel).exists()
 
 
 def test_email_original_is_kept(archive):
@@ -167,12 +161,12 @@ def test_email_original_is_kept(archive):
     assert meta.page_count == 3
     mail_page, contract = split.split(archive, orig, [[1], [2, 3]])
     assert mail_page.mime_type == contract.mime_type == "application/pdf"
-    assert contract.source_details["split_from"]["mime_type"] == "message/rfc822"
     archive.conn.execute("UPDATE trash SET trashed_at='2000-01-01T00:00:00Z'")
     trash.purge_expired(archive)
     # headers, the attachments as sent: the .eml stays byte for byte
-    (rel,) = docs.split_originals(contract.source_details)
-    assert archive.paths.resolve(rel).read_bytes() == raw
+    kept = trash.source_meta(archive, orig)
+    assert kept.mime_type == "message/rfc822"
+    assert archive.paths.resolve(kept.original_relpath).read_bytes() == raw
     assert split.undo(archive, orig)["ids"] == [orig]
 
 
@@ -249,6 +243,9 @@ def test_undo_after_a_part_was_edited_or_split_again(archive):
     # nothing made from it stays live - no second copy of the pages
     assert ids(archive, "Mietvertrag") == [orig] and ids(archive, "Stromrechnung") == [orig]
     assert split.descendants(archive, orig) == []
+    # the part that was split again is not kept as a source document of nothing: in the trash
+    assert trash.sources_listing(archive) == []
+    assert second.id in {it["id"] for g in trash.listing(archive) for it in g["items"]}
 
 
 def test_undo_restores_the_original(archive):
@@ -356,25 +353,37 @@ def test_api(web):
     assert c.post(f"/api/documents/{orig}/split", json=body, headers=h).status_code == 409
     process_all(arch)
     r = c.post(f"/api/documents/{orig}/split", json=body, headers=h)
-    assert r.status_code == 201 and r.json()["trash_batch"] == f"split-{orig}"
+    assert r.status_code == 201 and r.json()["batch"] == f"split-{orig}"
     first, second = r.json()["document_ids"]
     assert docs.load_meta(arch, second).page_rotation == {1: 270}
     assert c.post(f"/api/documents/{orig}/unsplit", headers=h).json()["restored"] == [orig]
     assert ids(arch, "Mietvertrag") == [orig]
 
 
-def test_trash_page_keeps_the_original_and_restores_it_alone(web):
+def test_sources_page_keeps_the_original_and_restores_it_alone(web):
     arch, c, csrf = web
     orig = four_pages(arch)
     process_all(arch)
     first, second = split.split(arch, orig, [[1, 2], [4]])
-    page = c.get("/trash").text
-    assert "Original eines aufgeteilten Dokuments" in page and "Nur das Original" in page
-    assert "Papierkorb leeren" not in page  # nothing in it that emptying would remove
-    r = c.post("/trash/action", data={"csrf_token": csrf, "action": "restore_original",
-               "target": f"batch:{split.batch_for(orig)}"}, follow_redirects=False)  # fmt: skip
+    assert "Papierkorb leeren" not in c.get("/trash").text  # the original is not in the trash
+    page = c.get("/sources").text
+    assert "Aufgeteilt in" in page and f'href="/documents/{second.id}"' in page
+    assert "Aufteilen rückgängig machen" in page and "Nur dieses wiederherstellen" in page
+    r = c.post("/sources/action?action=restore", data={"csrf_token": csrf, "target": orig},
+               follow_redirects=False)  # fmt: skip
     assert r.headers["location"].startswith(f"/documents/{orig}")
     assert set(ids(arch, "Mietvertrag")) == {orig, first.id}  # the parts stay
+
+
+def test_undo_from_the_sources_page(web):
+    arch, c, csrf = web
+    orig = four_pages(arch)
+    process_all(arch)
+    split.split(arch, orig, [[1, 2], [4]])
+    r = c.post("/sources/action?action=undo",
+               data={"csrf_token": csrf, "target": split.batch_for(orig)}, follow_redirects=False)  # fmt: skip
+    assert r.headers["location"].startswith(f"/documents/{orig}")
+    assert ids(arch, "Mietvertrag") == [orig] and trash.sources_listing(arch) == []
 
 
 def test_parts_link_the_original_file(web):
