@@ -1,5 +1,6 @@
 """Splitting a document: cut into parts, pages moved, turned or left out."""
 
+import contextlib
 import io
 import logging
 
@@ -7,12 +8,13 @@ import pypdfium2 as pdfium
 import pytest
 from fastapi.testclient import TestClient
 
-from heftig import auth, split, trash
+from heftig import auth, maintenance, split, trash
 from heftig import documents as docs
 from heftig.search import SearchParams, search
 
 from .conftest import ingest_bytes, make_settings, process_all
 from .helpers import multipage_tiff, text_pdf
+from .test_mail import eml
 
 PASSWORD = "richtig-langes-passwort"
 
@@ -64,9 +66,11 @@ def test_parts_pages_text_and_user_data(archive):
     # the others start fresh, but know where they came from and where their paper is
     assert not second.notes and not second.attachments
     assert second.source == "scanner" and second.paper and second.filing_sequence is None
-    assert "Mietvertrag Wohnung" in second.paper_location
+    assert second.paper_location == "Binder Ordner 1, with part 1"
     assert second.source_details["split_from"] == {
         "id": orig, "title": "Mietvertrag Wohnung", "pages": [4], "part": 2, "parts": 2,
+        "filename": "scan.pdf", "mime_type": "application/pdf",
+        "originals": [filed.original_relpath],
     }  # fmt: skip
     # only the classification runs again - no second text recognition
     for part in (first, second):
@@ -97,12 +101,154 @@ def test_image_frames(archive):
     ]  # fmt: skip
 
 
-def test_rearranged_only_is_one_new_document(archive):
+def test_rearranged_only_keeps_the_users_fields(archive):
     orig = four_pages(archive)
     process_all(archive)
+    docs.update_fields(
+        archive, orig,
+        {"title": "Mietvertrag Wohnung", "document_date": "2020-01-31", "tags": ["Wohnung"]}, {},
+    )  # fmt: skip
+    before = docs.load_meta(archive, orig)
     (new,) = split.split(archive, orig, [[1, 2, 4]])
     assert new.page_count == 3 and "(bearbeitet)" in new.original_filename
     assert new.source_details["split_from"]["parts"] == 1
+    # the same document, only rearranged: what the user decided stays, locks included
+    for f in ("title", "document_date", "correspondent", "document_type", "tags",
+              "custom_fields", "field_locks", "field_sources", "keep_original"):  # fmt: skip
+        assert getattr(new, f) == getattr(before, f), f
+    assert new.field_locks.get("title") and new.field_locks.get("document_date")
+    process_all(archive)  # the classification respects the locks
+    after = docs.load_meta(archive, new.id)
+    assert (after.title, after.document_date) == ("Mietvertrag Wohnung", "2020-01-31")
+    assert "Wohnung" in after.tags
+
+
+def test_the_original_is_kept_while_a_part_exists(archive):
+    orig = four_pages(archive)
+    process_all(archive)
+    rel = docs.load_meta(archive, orig).original_relpath
+    data = archive.paths.resolve(rel).read_bytes()
+    first, second = split.split(archive, orig, [[1, 2], [4]])
+    archive.conn.execute("UPDATE trash SET trashed_at='2000-01-01T00:00:00Z'")
+    # neither the retention period nor emptying the trash removes it
+    assert trash.purge_expired(archive) == 0 and trash.empty(archive) == 0
+    (group,) = trash.listing(archive)
+    assert group["kept"] and group["purge_at"] is None
+    assert archive.paths.resolve(rel).read_bytes() == data
+    # even purged on purpose, its file stays as long as a part names it
+    trash.purge(archive, orig)
+    assert archive.paths.resolve(rel).read_bytes() == data
+    assert not [i for i in maintenance.check(archive)["issues"] if i["kind"].startswith("orphan")]
+    # gone only with the last part
+    for part in (first, second):
+        trash.trash_document(archive, part.id)
+    assert archive.paths.resolve(rel).exists()
+    archive.conn.execute("UPDATE trash SET trashed_at='2000-01-01T00:00:00Z'")
+    assert trash.purge_expired(archive) == 2
+    assert not archive.paths.resolve(rel).exists()
+
+
+def test_the_original_outlives_its_parts_in_the_trash(archive):
+    orig = four_pages(archive)
+    process_all(archive)
+    first, second = split.split(archive, orig, [[1, 2], [4]])
+    trash.trash_document(archive, first.id)
+    archive.conn.execute("UPDATE trash SET trashed_at='2000-01-01T00:00:00Z' WHERE id=?", (orig,))
+    assert trash.purge_expired(archive) == 0  # the trashed part still refers to it
+    assert {g["items"][0]["id"] for g in trash.listing(archive) if g["kept"]} == {orig}
+
+
+def test_email_original_is_kept(archive):
+    raw = eml(attachments=[("vertrag.pdf", "application/pdf",
+                            text_pdf(["Mietvertrag Seite eins", "Mietvertrag Seite zwei"]))])  # fmt: skip
+    orig = ingest_bytes(archive, raw, "m.eml").doc_id
+    process_all(archive)
+    meta = docs.load_meta(archive, orig)
+    assert meta.page_count == 3
+    mail_page, contract = split.split(archive, orig, [[1], [2, 3]])
+    assert mail_page.mime_type == contract.mime_type == "application/pdf"
+    assert contract.source_details["split_from"]["mime_type"] == "message/rfc822"
+    archive.conn.execute("UPDATE trash SET trashed_at='2000-01-01T00:00:00Z'")
+    trash.purge_expired(archive)
+    # headers, the attachments as sent: the .eml stays byte for byte
+    (rel,) = docs.split_originals(contract.source_details)
+    assert archive.paths.resolve(rel).read_bytes() == raw
+    assert split.undo(archive, orig)["ids"] == [orig]
+
+
+def test_a_failing_part_leaves_nothing_behind(archive, monkeypatch):
+    orig = four_pages(archive)
+    process_all(archive)
+    real = split._carry_over
+
+    def fails_on_second(archive_, meta, *args):
+        real(archive_, meta, *args)  # sidecar, text and PDF are written - then it fails
+        if args[-2] == 2:
+            raise RuntimeError("disk full")
+
+    monkeypatch.setattr(split, "_carry_over", fails_on_second)
+    dirs_before = sorted(p.name for p in archive.paths.documents.iterdir())
+    with pytest.raises(RuntimeError, match="disk full"):
+        split.split(archive, orig, [[1, 2], [4]])
+    assert ids(archive, "Mietvertrag") == [orig]
+    assert sorted(p.name for p in archive.paths.documents.iterdir()) == dirs_before
+    trash.empty(archive)  # the first part, discarded
+    assert maintenance.check(archive)["issues"] == []
+
+
+def test_a_second_split_of_the_same_document_is_refused(archive, monkeypatch):
+    orig = four_pages(archive)
+    process_all(archive)
+    real = split.build_pdfs
+    inner: list[Exception] = []
+
+    def meanwhile(*args):  # another tab sends the same split while this one runs
+        try:
+            split.split(archive, orig, [[1], [2]])
+        except split.SplitError as e:
+            inner.append(e)
+        return real(*args)
+
+    monkeypatch.setattr(split, "build_pdfs", meanwhile)
+    first, second = split.split(archive, orig, [[1, 2], [4]])
+    assert "being split" in str(inner[0])
+    assert {r["id"] for r in split.parts_of(archive, orig)} == {first.id, second.id}
+
+
+def test_concurrent_split_in_another_process_discards_its_parts(archive, monkeypatch):
+    orig = four_pages(archive)
+    process_all(archive)
+    real = split.build_pdfs
+    calls: list[int] = []
+
+    def meanwhile(*args):  # the other process wins the race (no shared lock between them)
+        calls.append(1)
+        if len(calls) == 1:
+            split.split(archive, orig, [[1], [4]])
+        return real(*args)
+
+    monkeypatch.setattr(split, "build_pdfs", meanwhile)
+    monkeypatch.setattr(split, "_one_at_a_time", lambda doc_id: contextlib.nullcontext())
+    with pytest.raises(split.SplitError, match="meanwhile"):
+        split.split(archive, orig, [[1, 2], [3, 4]])
+    # only the winner's parts are live
+    assert [r["page_count"] for r in split.parts_of(archive, orig)] == [1, 1]
+    assert maintenance.check(archive)["issues"] == []
+
+
+def test_undo_after_a_part_was_edited_or_split_again(archive):
+    orig = four_pages(archive)
+    process_all(archive)
+    first, second = split.split(archive, orig, [[1, 2], [3, 4]])
+    process_all(archive)
+    docs.update_fields(archive, first.id, {"title": "Mietvertrag"}, {})
+    sub = split.split(archive, second.id, [[1], [2]])
+    process_all(archive)
+    assert split.descendants(archive, orig) == [first.id] + [p.id for p in sub]
+    assert split.undo(archive, orig)["ids"] == [orig]
+    # nothing made from it stays live - no second copy of the pages
+    assert ids(archive, "Mietvertrag") == [orig] and ids(archive, "Stromrechnung") == [orig]
+    assert split.descendants(archive, orig) == []
 
 
 def test_undo_restores_the_original(archive):
@@ -215,3 +361,36 @@ def test_api(web):
     assert docs.load_meta(arch, second).page_rotation == {1: 270}
     assert c.post(f"/api/documents/{orig}/unsplit", headers=h).json()["restored"] == [orig]
     assert ids(arch, "Mietvertrag") == [orig]
+
+
+def test_trash_page_keeps_the_original_and_restores_it_alone(web):
+    arch, c, csrf = web
+    orig = four_pages(arch)
+    process_all(arch)
+    first, second = split.split(arch, orig, [[1, 2], [4]])
+    page = c.get("/trash").text
+    assert "Original eines aufgeteilten Dokuments" in page and "Nur das Original" in page
+    assert "Papierkorb leeren" not in page  # nothing in it that emptying would remove
+    r = c.post("/trash/action", data={"csrf_token": csrf, "action": "restore_original",
+               "target": f"batch:{split.batch_for(orig)}"}, follow_redirects=False)  # fmt: skip
+    assert r.headers["location"].startswith(f"/documents/{orig}")
+    assert set(ids(arch, "Mietvertrag")) == {orig, first.id}  # the parts stay
+
+
+def test_parts_link_the_original_file(web):
+    arch, c, csrf = web
+    orig = four_pages(arch, source="scanner")
+    process_all(arch)
+    data = arch.paths.resolve(docs.load_meta(arch, orig).original_relpath).read_bytes()
+    docs.mark_filed(arch, orig)
+    first, second = split.split(arch, orig, [[1, 2], [4]])
+    page = c.get(f"/documents/{second.id}").text
+    assert f'href="/documents/{second.id}/split-original"' in page
+    assert "Ordner 1, bei Teil 1" in page  # where the paper is, translated
+    for url in (f"/documents/{second.id}/split-original",
+                f"/api/documents/{second.id}/split-original"):  # fmt: skip
+        r = c.get(url)
+        assert r.status_code == 200 and r.content == data
+        assert "attachment" in r.headers["content-disposition"] and "scan.pdf" in r.headers[
+            "content-disposition"]  # fmt: skip
+    assert c.get(f"/api/documents/{orig}/split-original").status_code == 404

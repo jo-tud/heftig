@@ -206,7 +206,7 @@
           <button name="action" value="paper_discarded" class="secondary" title="{{ _("Handed over, sent away or thrown out – nothing to file") }}">{{ _("Not kept") }}</button>
           <button name="action" value="unfile" class="secondary">{{ _("Undo filing") }}</button></form></details>
     {% elif m.paper_location %}
-      <p>{% trans loc=m.paper_location %}Where the paper is: <strong>{{ loc }}</strong>{% endtrans %}</p>
+      <p>{% trans loc=m.paper_location | reason %}Where the paper is: <strong>{{ loc }}</strong>{% endtrans %}</p>
       <form method="post" action="/documents/{{ m.id }}/action">{{ csrf_field(csrf) }}{{ rv }}
         <button name="action" value="paper_reset" class="secondary">{{ _("Revert") }}</button></form>
     {% elif m.paper_discarded_at %}
@@ -338,6 +338,7 @@
     {% if m.source_details.combined_from %}<dt>{{ _("Combined from") }}</dt><dd>{% set ns = namespace(p=1) %}
       {% for c in m.source_details.combined_from %}{% if c.pages > 1 %}{{ _("p. %(first)s–%(last)s: “%(title)s”", first=ns.p, last=ns.p + c.pages - 1, title=c.title) }}{% else %}{{ _("p. %(first)s: “%(title)s”", first=ns.p, title=c.title) }}{% endif %}{% set ns.p = ns.p + c.pages %}{% if not loop.last %}<br>{% endif %}{% endfor %}</dd>{% endif %}
     {% set sf = m.source_details.split_from %}{% if sf %}<dt>{{ _("Split from") }}</dt><dd>{% if sf.pages | length > 1 %}{{ _("“%(title)s”, pages %(pages)s", title=sf.title, pages=sf.pages | join(', ')) }}{% else %}{{ _("“%(title)s”, page %(pages)s", title=sf.title, pages=sf.pages | join(', ')) }}{% endif %}
+      {% if sf.originals %}· <a href="/documents/{{ m.id }}/split-original" download>{{ _("Download the original") }}</a>{% endif %}
       {% set others = split_parts | rejectattr('id', 'equalto', m.id) | list %}{% if others %}<br>{{ _("Other parts:") }} {% for r in others %}<a href="/documents/{{ r.id }}">{{ r.title or r.original_filename }}</a>{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}</dd>{% endif %}
     <dt>ID</dt><dd><code>{{ m.id }}</code></dd>
     <dt>SHA-256</dt><dd><code class="hash">{{ m.sha256 }}</code> {{ _("– original, byte for byte as received") }}</dd>

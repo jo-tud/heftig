@@ -184,8 +184,12 @@
   }
   function poll() {
     fetch(`/api/documents/${busy.dataset.doc}`, { credentials: "same-origin", cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : null))
+      .then((r) => (r.ok ? r.json() : r.status === 404 ? "gone" : null))
       .then((j) => {
+        if (j === "gone") { // deleted or split meanwhile: nothing more to wait for
+          busy.textContent = t("This document is no longer in the archive (deleted or split).");
+          return;
+        }
         const st = j && j.metadata && j.metadata.status;
         if (st && st !== "queued" && st !== "processing") done(); else later();
       })

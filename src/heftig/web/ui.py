@@ -215,9 +215,9 @@ def render(request: Request, name: str, *, http_status: int = 200, **ctx: Any) -
             a = request.app.state.archive
             n = len(split.parts_of(a, undo[6 + len(split.BATCH_PREFIX) :]))
             ctx["undo_label"] = (
-                _("Split into %(num)s documents – the original is in the trash.", num=n)
+                _("Split into %(num)s documents – the original is kept in the trash.", num=n)
                 if n > 1
-                else _("Saved as a new document – the original is in the trash.")
+                else _("Saved as a new document – the original is kept in the trash.")
             )
         elif undo.startswith("doc:"):
             row = request.app.state.archive.conn.execute(
@@ -475,7 +475,8 @@ def trash_page(request: Request, p: Principal = Depends(require_user)):
             it["paper"] = _trashed_paper(a, it["id"])
     return render(
         request, "trash.html", nav="settings", groups=groups,
-        total=sum(len(g["items"]) for g in groups), days=a.settings.trash_retention_days,
+        total=sum(len(g["items"]) for g in groups if not g["kept"]),
+        days=a.settings.trash_retention_days,
         message=request.query_params.get("msg"),
     )  # fmt: skip
 
@@ -492,6 +493,10 @@ def _trash_sync(a, form, query_action: str) -> RedirectResponse:
                 raise trash.TrashError("; ".join(sorted(set(r["failed"]))) or _("Nothing to do."))
             return redirect(f"/documents/{r['ids'][0]}?" + urlencode(
                 {"msg": _("Combining undone – the individual documents are back.")}))  # fmt: skip
+        if action == "restore_original" and target.startswith("batch:" + split.BATCH_PREFIX):
+            meta = trash.restore(a, target[6 + len(split.BATCH_PREFIX) :])  # parts stay
+            return redirect(f"/documents/{meta.id}?" + urlencode(
+                {"msg": _("The original is back – its parts stay as they are.")}))  # fmt: skip
         if action == "restore" and target.startswith("batch:" + split.BATCH_PREFIX):
             r = split.undo(a, target[6 + len(split.BATCH_PREFIX) :])
             if not r["ids"]:
@@ -876,6 +881,11 @@ def document_original(
     request: Request, doc_id: str, inline: int = 0, p: Principal = Depends(require_user)
 ):
     return api.original_response(request, doc_id, bool(inline))
+
+
+@router.get("/documents/{doc_id}/split-original")
+def document_split_original(request: Request, doc_id: str, p: Principal = Depends(require_user)):
+    return api.split_original_response(request, doc_id)
 
 
 @router.get("/documents/{doc_id}/mail-attachments/{index}")

@@ -42,7 +42,7 @@ msgstr "Es gibt bereits einen Benutzer (Einzelbenutzer-System)."
 msgid "There already is a binder named “%(name)s”."
 msgstr "Es gibt schon einen Ordner „%(name)s“."
 
-#: src/heftig/binders.py:126 src/heftig/web/ui.py:1196
+#: src/heftig/binders.py:126 src/heftig/web/ui.py:1206
 msgid "Unknown binder."
 msgstr "Unbekannter Ordner."
 
@@ -346,83 +346,83 @@ msgstr "letzte Woche"
 msgid "the week before last"
 msgstr "vorletzte Woche"
 
-#: src/heftig/documents.py:1005 src/heftig/documents.py:1032 src/heftig/documents.py:1045
+#: src/heftig/documents.py:1019 src/heftig/documents.py:1046 src/heftig/documents.py:1059
 msgid "Note not found."
 msgstr "Notiz nicht gefunden."
 
-#: src/heftig/documents.py:1012
+#: src/heftig/documents.py:1026
 msgid "The note is empty."
 msgstr "Die Notiz ist leer."
 
-#: src/heftig/documents.py:1014 src/heftig/documents.py:1027
+#: src/heftig/documents.py:1028 src/heftig/documents.py:1041
 msgid "Note too long (max. %(num)s characters)."
 msgstr "Notiz zu lang (max. %(num)s Zeichen)."
 
-#: src/heftig/documents.py:1053
+#: src/heftig/documents.py:1067
 msgid "Invalid attachment."
 msgstr "Ungültiger Anhang."
 
-#: src/heftig/documents.py:1057 src/heftig/documents.py:1136 src/heftig/web/api.py:370 src/heftig/web/api.py:376 src/heftig/web/api.py:743
+#: src/heftig/documents.py:1071 src/heftig/documents.py:1150 src/heftig/web/api.py:392 src/heftig/web/api.py:398 src/heftig/web/api.py:773
 msgid "Attachment not found."
 msgstr "Anhang nicht gefunden."
 
-#: src/heftig/documents.py:1086
+#: src/heftig/documents.py:1100
 msgid "The file is empty."
 msgstr "Die Datei ist leer."
 
-#: src/heftig/documents.py:1107
+#: src/heftig/documents.py:1121
 msgid "Checksum conflict in the attachment store – run `heftig check`."
 msgstr "Prüfsummenkonflikt im Anhangspeicher – `heftig check` ausführen."
 
-#: src/heftig/documents.py:128 src/heftig/documents.py:156 src/heftig/split.py:71
+#: src/heftig/documents.py:142 src/heftig/documents.py:170 src/heftig/split.py:90
 msgid "There is no page %(num)s."
 msgstr "Es gibt keine Seite %(num)s."
 
-#: src/heftig/documents.py:425
+#: src/heftig/documents.py:439
 msgid "Please enter the date as YYYY-MM-DD."
 msgstr "Datum bitte als JJJJ-MM-TT angeben."
 
-#: src/heftig/documents.py:451 src/heftig/web/ui.py:1131
+#: src/heftig/documents.py:465 src/heftig/web/ui.py:1141
 msgid "Field “%(field)s” cannot be locked."
 msgstr "Feld „%(field)s“ kann nicht gesperrt werden."
 
-#: src/heftig/documents.py:385 src/heftig/documents.py:491 src/heftig/web/ui.py:1136
+#: src/heftig/documents.py:399 src/heftig/documents.py:505 src/heftig/web/ui.py:1146
 msgid "Field “%(field)s” cannot be edited."
 msgstr "Feld „%(field)s“ ist nicht bearbeitbar."
 
-#: src/heftig/documents.py:518
+#: src/heftig/documents.py:532
 msgid "This change cannot be undone any more."
 msgstr "Diese Änderung lässt sich nicht mehr rückgängig machen."
 
-#: src/heftig/documents.py:534 src/heftig/documents.py:546
+#: src/heftig/documents.py:548 src/heftig/documents.py:560
 msgid "Suggestion not found."
 msgstr "Vorschlag nicht gefunden."
 
-#: src/heftig/documents.py:634
+#: src/heftig/documents.py:648
 msgid "The paper is not filed."
 msgstr "Das Papier ist nicht abgeheftet."
 
-#: src/heftig/documents.py:635 src/heftig/web/templates/documents.html:246
+#: src/heftig/documents.py:649 src/heftig/web/templates/documents.html:246
 msgid "taken out"
 msgstr "herausgenommen"
 
-#: src/heftig/documents.py:808
+#: src/heftig/documents.py:822
 msgid "Document “%(title)s” deleted"
 msgstr "Dokument „%(title)s“ gelöscht"
 
-#: src/heftig/documents.py:835
+#: src/heftig/documents.py:849
 msgid "Merging is only possible within the same kind."
 msgstr "Zusammenführen nur innerhalb derselben Art möglich."
 
-#: src/heftig/documents.py:880
+#: src/heftig/documents.py:894
 msgid "The new name must not be empty."
 msgstr "Der neue Name darf nicht leer sein."
 
-#: src/heftig/documents.py:884 src/heftig/documents.py:945 src/heftig/taxonomy.py:155
+#: src/heftig/documents.py:898 src/heftig/documents.py:959 src/heftig/taxonomy.py:155
 msgid "Unknown entry"
 msgstr "Unbekannter Eintrag"
 
-#: src/heftig/documents.py:887
+#: src/heftig/documents.py:901
 msgid "“%(name)s” already exists – please merge."
 msgstr "„%(name)s“ existiert bereits – bitte zusammenführen."
 
@@ -570,11 +570,11 @@ msgstr "Nachricht %(uid)s leer"
 msgid "Moving to %(mailbox)s failed"
 msgstr "Verschieben nach %(mailbox)s fehlgeschlagen"
 
-#: src/heftig/ingest.py:200
+#: src/heftig/ingest.py:208
 msgid "Identical file is already archived – no second original created."
 msgstr "Identische Datei ist bereits archiviert – kein zweites Original angelegt."
 
-#: src/heftig/ingest.py:216
+#: src/heftig/ingest.py:225
 msgid "Hash conflict in %(path)s – please run `heftig check`"
 msgstr "Hash-Konflikt in %(path)s – bitte `heftig check` ausführen"
 
@@ -853,7 +853,7 @@ msgstr "Text: Seite %(page)s lokal erkannt (KI lehnte ab: %(error)s)"
 msgid "Page could not be processed (%(error)s)"
 msgstr "Seite konnte nicht verarbeitet werden (%(error)s)"
 
-#: src/heftig/processing.py:471 src/heftig/split.py:200
+#: src/heftig/processing.py:471 src/heftig/split.py:236
 msgid "Text: %(failed)s of %(pages)s pages without recognized text"
 msgstr "Text: %(failed)s von %(pages)s Seiten ohne erkannten Text"
 
@@ -1025,7 +1025,7 @@ msgstr "Leere Suche – nichts zu speichern."
 msgid "At most %(num)s saved searches."
 msgstr "Höchstens %(num)s gespeicherte Suchen."
 
-#: src/heftig/search.py:1038 src/heftig/web/search_view.py:28 src/heftig/web/templates/document.html:151 src/heftig/web/templates/document.html:156 src/heftig/web/templates/document.html:161 src/heftig/web/ui.py:1398
+#: src/heftig/search.py:1038 src/heftig/web/search_view.py:28 src/heftig/web/templates/document.html:151 src/heftig/web/templates/document.html:156 src/heftig/web/templates/document.html:161 src/heftig/web/ui.py:1408
 msgid "Type"
 msgstr "Typ"
 
@@ -1105,7 +1105,7 @@ msgstr "„%(label)s:%(value)s“ – Datum bitte als JJJJ, JJJJ-MM, JJJJ-MM-TT 
 msgid "Number/ID"
 msgstr "Nummer/ID"
 
-#: src/heftig/search.py:57 src/heftig/suggestions.py:25 src/heftig/web/templates/document.html:131 src/heftig/web/templates/documents.html:197 src/heftig/web/ui.py:1395 src/heftig/web/ui.py:97
+#: src/heftig/search.py:57 src/heftig/suggestions.py:25 src/heftig/web/templates/document.html:131 src/heftig/web/templates/documents.html:197 src/heftig/web/ui.py:1405 src/heftig/web/ui.py:97
 msgid "Title"
 msgstr "Titel"
 
@@ -1133,7 +1133,7 @@ msgstr "Datum"
 msgid "Summary"
 msgstr "Zusammenfassung"
 
-#: src/heftig/search.py:65 src/heftig/web/templates/document.html:149 src/heftig/web/templates/document.html:320 src/heftig/web/templates/inbox.html:136 src/heftig/web/ui.py:1402
+#: src/heftig/search.py:65 src/heftig/web/templates/document.html:149 src/heftig/web/templates/document.html:320 src/heftig/web/templates/inbox.html:136 src/heftig/web/ui.py:1412
 msgid "Text"
 msgstr "Text"
 
@@ -1213,83 +1213,91 @@ msgstr "Bitte den Ordner benennen, z. B. „Versicherungen“."
 msgid "Unknown paper handling."
 msgstr "Unbekannte Papier-Behandlung."
 
-#: src/heftig/split.py:182
-msgid "Binder %(name)s, with “%(title)s”"
-msgstr "Ordner %(name)s, bei „%(title)s“"
+#: src/heftig/split.py:105 src/heftig/web/ui.py:1711
+msgid "The document is still being processed – please wait a moment."
+msgstr "Das Dokument wird gerade noch verarbeitet – bitte kurz warten."
 
-#: src/heftig/split.py:184
-msgid "With “%(title)s”"
-msgstr "Bei „%(title)s“"
+#: src/heftig/split.py:218
+msgid "Binder %(name)s, with part 1"
+msgstr "Ordner %(name)s, bei Teil 1"
 
-#: src/heftig/split.py:216
+#: src/heftig/split.py:220
+msgid "With part 1"
+msgstr "Bei Teil 1"
+
+#: src/heftig/split.py:252
 msgid "split from “%(title)s” (part %(num)s of %(total)s)"
 msgstr "aufgeteilt aus „%(title)s“ (Teil %(num)s von %(total)s)"
 
-#: src/heftig/split.py:219
+#: src/heftig/split.py:255
 msgid "pages of “%(title)s” rearranged"
 msgstr "Seiten von „%(title)s“ neu angeordnet"
 
-#: src/heftig/split.py:242
+#: src/heftig/split.py:286
+msgid "The document is being split right now – please wait a moment."
+msgstr "Das Dokument wird gerade aufgeteilt – bitte einen Moment warten."
+
+#: src/heftig/split.py:306
 msgid "Two parts would be identical – please check the cuts."
 msgstr "Zwei Teile wären identisch – bitte die Schnitte prüfen."
 
-#: src/heftig/split.py:249
+#: src/heftig/split.py:313
 msgid "Part %(num)s is already archived as “%(title)s”."
 msgstr "Teil %(num)s ist schon als „%(title)s“ archiviert."
 
-#: src/heftig/split.py:260
+#: src/heftig/split.py:324
 msgid "%(name)s (part %(num)s of %(total)s)"
 msgstr "%(name)s (Teil %(num)s von %(total)s)"
 
-#: src/heftig/split.py:262
+#: src/heftig/split.py:326
 msgid "%(name)s (edited)"
 msgstr "%(name)s (bearbeitet)"
 
-#: src/heftig/split.py:279
+#: src/heftig/split.py:340
 msgid "split into %(num)s documents"
 msgstr "aufgeteilt in %(num)s Dokumente"
 
-#: src/heftig/split.py:281
+#: src/heftig/split.py:342
 msgid "pages rearranged in a new document"
 msgstr "Seiten in einem neuen Dokument neu angeordnet"
 
-#: src/heftig/split.py:272 src/heftig/split.py:293
+#: src/heftig/split.py:348
+msgid "The document was changed meanwhile – please open it again."
+msgstr "Das Dokument wurde inzwischen geändert – bitte neu öffnen."
+
+#: src/heftig/split.py:336 src/heftig/split.py:362
 msgid "Splitting not possible."
 msgstr "Aufteilen nicht möglich."
 
-#: src/heftig/split.py:318
+#: src/heftig/split.py:402
 msgid "Splitting undone"
 msgstr "Aufteilen rückgängig gemacht"
 
-#: src/heftig/split.py:68 src/heftig/web/static/split.js:99
+#: src/heftig/split.py:87 src/heftig/web/static/split.js:99
 msgid "Keep at least one page."
 msgstr "Bitte mindestens eine Seite behalten."
 
-#: src/heftig/split.py:73
+#: src/heftig/split.py:92
 msgid "Each page can only be in one part."
 msgstr "Jede Seite kann nur in einem Teil sein."
 
-#: src/heftig/split.py:76
+#: src/heftig/split.py:95
 msgid "Pages can only be turned in steps of 90 degrees."
 msgstr "Seiten lassen sich nur in Schritten von 90 Grad drehen."
 
-#: src/heftig/split.py:80
+#: src/heftig/split.py:99
 msgid "Nothing to change – cut, move, turn or remove a page first."
 msgstr "Nichts zu ändern – erst eine Seite abtrennen, verschieben, drehen oder entfernen."
-
-#: src/heftig/split.py:86 src/heftig/web/ui.py:1701
-msgid "The document is still being processed – please wait a moment."
-msgstr "Das Dokument wird gerade noch verarbeitet – bitte kurz warten."
 
 #: src/heftig/storage.py:204
 msgid "File is larger than %(mb)s MB"
 msgstr "Datei ist größer als %(mb)s MB"
 
-#: src/heftig/suggestions.py:23 src/heftig/web/templates/document.html:140 src/heftig/web/templates/documents.html:72 src/heftig/web/ui.py:101 src/heftig/web/ui.py:1404 src/heftig/web/ui.py:2132
+#: src/heftig/suggestions.py:23 src/heftig/web/templates/document.html:140 src/heftig/web/templates/documents.html:72 src/heftig/web/ui.py:101 src/heftig/web/ui.py:1414 src/heftig/web/ui.py:2142
 msgid "Tags"
 msgstr "Tags"
 
-#: src/heftig/suggestions.py:24 src/heftig/web/templates/document.html:133 src/heftig/web/templates/documents.html:197 src/heftig/web/templates/documents.html:242 src/heftig/web/templates/documents.html:31 src/heftig/web/ui.py:1396
+#: src/heftig/suggestions.py:24 src/heftig/web/templates/document.html:133 src/heftig/web/templates/documents.html:197 src/heftig/web/templates/documents.html:242 src/heftig/web/templates/documents.html:31 src/heftig/web/ui.py:1406
 msgid "Document date"
 msgstr "Dokumentdatum"
 
@@ -1309,39 +1317,39 @@ msgstr "Leerer Name"
 msgid "This needs an AI provider for the classification."
 msgstr "Dafür ist ein KI-Anbieter für die Einordnung nötig."
 
-#: src/heftig/trash.py:106
+#: src/heftig/trash.py:109
 msgid "“%(title)s” moved to the trash (%(reason)s)"
 msgstr "„%(title)s“ in den Papierkorb (%(reason)s)"
 
-#: src/heftig/trash.py:109
+#: src/heftig/trash.py:112
 msgid "“%(title)s” moved to the trash"
 msgstr "„%(title)s“ in den Papierkorb"
 
-#: src/heftig/trash.py:152
+#: src/heftig/trash.py:155
 msgid "Filing: The filing position now belongs to “%(title)s” – please check where the paper is."
 msgstr "Ablage: Die Ablageposition gehört inzwischen zu „%(title)s“ – bitte prüfen, wo das Papier liegt."
 
-#: src/heftig/trash.py:170 src/heftig/web/ui.py:518
+#: src/heftig/trash.py:173 src/heftig/web/ui.py:523
 msgid "No longer in the trash."
 msgstr "Nicht (mehr) im Papierkorb."
 
-#: src/heftig/trash.py:178
+#: src/heftig/trash.py:181
 msgid "The same file is back in the archive (“%(title)s”) – not restored."
 msgstr "Dieselbe Datei ist inzwischen wieder im Archiv („%(title)s“) – nicht wiederhergestellt."
 
-#: src/heftig/trash.py:184
+#: src/heftig/trash.py:187
 msgid "The original file is missing – cannot be restored."
 msgstr "Die Originaldatei fehlt – nicht wiederherstellbar."
 
-#: src/heftig/trash.py:187
+#: src/heftig/trash.py:190
 msgid "A document with this ID already exists."
 msgstr "Ein Dokument mit dieser Kennung existiert bereits."
 
-#: src/heftig/trash.py:216
+#: src/heftig/trash.py:219
 msgid "“%(title)s” restored"
 msgstr "„%(title)s“ wiederhergestellt"
 
-#: src/heftig/trash.py:259
+#: src/heftig/trash.py:262
 msgid "Not in the trash."
 msgstr "Nicht im Papierkorb."
 
@@ -1361,35 +1369,39 @@ msgstr "Token nicht gefunden oder bereits widerrufen."
 msgid "Saved search not found."
 msgstr "Gespeicherte Suche nicht gefunden."
 
-#: src/heftig/web/api.py:286 src/heftig/web/api.py:457 src/heftig/web/app.py:186 src/heftig/web/app.py:188
+#: src/heftig/web/api.py:286 src/heftig/web/api.py:479 src/heftig/web/app.py:186 src/heftig/web/app.py:188
 msgid "Document not found."
 msgstr "Dokument nicht gefunden."
 
-#: src/heftig/web/api.py:337 src/heftig/web/api.py:372
+#: src/heftig/web/api.py:337 src/heftig/web/api.py:370 src/heftig/web/api.py:394
 msgid "Original file is missing – run `heftig check`."
 msgstr "Originaldatei fehlt – `heftig check` ausführen."
 
-#: src/heftig/web/api.py:453
+#: src/heftig/web/api.py:367
+msgid "This document was not split from another one."
+msgstr "Dieses Dokument wurde nicht aus einem anderen aufgeteilt."
+
+#: src/heftig/web/api.py:475
 msgid "To confirm, pass ?confirm=<id>."
 msgstr "Zur Bestätigung ?confirm=<id> angeben."
 
-#: src/heftig/web/api.py:479
+#: src/heftig/web/api.py:501
 msgid "Delete permanently: pass ?confirm=<id>."
 msgstr "Endgültig löschen: ?confirm=<id> angeben."
 
-#: src/heftig/web/api.py:513 src/heftig/web/api.py:551 src/heftig/web/ui.py:492 src/heftig/web/ui.py:498
+#: src/heftig/web/api.py:535 src/heftig/web/api.py:581 src/heftig/web/ui.py:493 src/heftig/web/ui.py:503
 msgid "Nothing to do."
 msgstr "Nichts zu tun."
 
-#: src/heftig/web/api.py:645
+#: src/heftig/web/api.py:675
 msgid "The job has not failed."
 msgstr "Auftrag ist nicht fehlgeschlagen."
 
-#: src/heftig/web/api.py:747
+#: src/heftig/web/api.py:777
 msgid "Attachment file is missing – run `heftig check`."
 msgstr "Anhangdatei fehlt – `heftig check` ausführen."
 
-#: src/heftig/web/api.py:918
+#: src/heftig/web/api.py:948
 msgid "The path must be inside <archive>/imports/ and exist."
 msgstr "Pfad muss unter <archive>/imports/ liegen und existieren."
 
@@ -1561,7 +1573,7 @@ msgstr "Gespeichert. Die Anmeldung am Postfach klappt; neue E-Mails werden alle 
 msgid "E-mail import is off."
 msgstr "Der E-Mail-Import ist aus."
 
-#: src/heftig/web/setup.py:192 src/heftig/web/ui.py:2109
+#: src/heftig/web/setup.py:192 src/heftig/web/ui.py:2119
 msgid "Saved."
 msgstr "Gespeichert."
 
@@ -1905,6 +1917,10 @@ msgstr "Fertig."
 msgid "Show the result"
 msgstr "Ergebnis anzeigen"
 
+#: src/heftig/web/static/viewer.js:190
+msgid "This document is no longer in the archive (deleted or split)."
+msgstr "Dieses Dokument ist nicht mehr im Archiv (gelöscht oder aufgeteilt)."
+
 #: src/heftig/web/templates/_macros.html:14
 msgid "blocked"
 msgstr "gesperrt"
@@ -2084,7 +2100,7 @@ msgstr "Abschnitte %(first)s bis %(last)s"
 msgid "full since %(when)s"
 msgstr "voll seit %(when)s"
 
-#: src/heftig/web/templates/binders.html:15 src/heftig/web/templates/categories.html:33 src/heftig/web/templates/trash.html:25
+#: src/heftig/web/templates/binders.html:15 src/heftig/web/templates/categories.html:33 src/heftig/web/templates/trash.html:31
 msgid "Show documents"
 msgstr "Dokumente anzeigen"
 
@@ -2912,14 +2928,18 @@ msgid "“%(title)s”, page %(pages)s"
 msgstr "„%(title)s“, Seite %(pages)s"
 
 #: src/heftig/web/templates/document.html:341
+msgid "Download the original"
+msgstr "Original herunterladen"
+
+#: src/heftig/web/templates/document.html:342
 msgid "Other parts:"
 msgstr "Weitere Teile:"
 
-#: src/heftig/web/templates/document.html:343
+#: src/heftig/web/templates/document.html:344
 msgid "– original, byte for byte as received"
 msgstr "– Original bytegenau wie empfangen"
 
-#: src/heftig/web/templates/document.html:346
+#: src/heftig/web/templates/document.html:347
 msgid "Same file received again"
 msgstr "Weitere Eingänge derselben Datei"
 
@@ -3373,7 +3393,7 @@ msgstr "Dokumente pro Monat %(year)s"
 msgid "Documents per year"
 msgstr "Dokumente pro Jahr"
 
-#: src/heftig/web/static/split.js:103 src/heftig/web/templates/documents.html:37 src/heftig/web/templates/inbox.html:14 src/heftig/web/templates/trash.html:22
+#: src/heftig/web/static/split.js:103 src/heftig/web/templates/documents.html:37 src/heftig/web/templates/inbox.html:14 src/heftig/web/templates/trash.html:28
 msgid "%(num)d document"
 msgid_plural "%(num)d documents"
 msgstr[0] "%(num)d Dokument"
@@ -4720,8 +4740,8 @@ msgid "Drop here: a new document"
 msgstr "Hier ablegen: ein neues Dokument"
 
 #: src/heftig/web/templates/split.html:46
-msgid "Each part becomes a new document and is classified anew (title, date, sender, summary …); removed pages are left out. The recognized text is kept. Notes, attachments and the place in the binder go to the first part. The original goes to the <a href=\"/trash\">trash</a> – this can be undone."
-msgstr "Jeder Teil wird ein neues Dokument und neu eingeordnet (Titel, Datum, Absender, Zusammenfassung …); entfernte Seiten fallen weg. Der erkannte Text bleibt erhalten. Notizen, Anhänge und der Platz im Ordner gehen an den ersten Teil. Das Original kommt in den <a href=\"/trash\">Papierkorb</a> – das lässt sich rückgängig machen."
+msgid "Cut into parts, each part becomes a new document and is classified anew (title, date, sender, summary …); only rearranged, the document keeps its details. Removed pages are left out, the recognized text is kept. Notes, attachments and the place in the binder go to the first part. The original is kept unchanged in the <a href=\"/trash\">trash</a> as long as one of its parts exists – this can be undone."
+msgstr "Aufgeteilt wird jeder Teil ein neues Dokument und neu eingeordnet (Titel, Datum, Absender, Zusammenfassung …); nur umsortiert, behält das Dokument seine Angaben. Entfernte Seiten fallen weg, der erkannte Text bleibt erhalten. Notizen, Anhänge und der Platz im Ordner gehen an den ersten Teil. Das Original bleibt unverändert im <a href=\"/trash\">Papierkorb</a> erhalten, solange einer seiner Teile existiert – das lässt sich rückgängig machen."
 
 #: src/heftig/web/templates/split.html:51
 msgid "Close"
@@ -4853,43 +4873,67 @@ msgstr "Vorschläge erstellen"
 msgid "Deleted documents stay here for %(days)s days and can be restored; after that, the original and the data are removed permanently."
 msgstr "Gelöschte Dokumente bleiben %(days)s Tage hier und können wiederhergestellt werden; danach werden Original und Daten endgültig entfernt."
 
+#: src/heftig/web/templates/trash.html:21
+msgid "Original of a split document"
+msgstr "Original eines aufgeteilten Dokuments"
+
 #: src/heftig/web/templates/trash.html:22
+msgid "kept as long as one of its parts exists"
+msgstr "bleibt erhalten, solange einer seiner Teile existiert"
+
+#: src/heftig/web/templates/trash.html:24
+msgid "The original comes back, its parts go to the trash"
+msgstr "Das Original kommt zurück, seine Teile kommen in den Papierkorb"
+
+#: src/heftig/web/templates/trash.html:24
+msgid "Undo splitting"
+msgstr "Aufteilen rückgängig machen"
+
+#: src/heftig/web/templates/trash.html:25
+msgid "The original comes back, its parts stay as they are"
+msgstr "Das Original kommt zurück, seine Teile bleiben, wie sie sind"
+
+#: src/heftig/web/templates/trash.html:25
+msgid "Restore the original only"
+msgstr "Nur das Original wiederherstellen"
+
+#: src/heftig/web/templates/trash.html:28
 msgid "Automatically resolved duplicates"
 msgstr "Automatisch aufgelöste Dubletten"
 
-#: src/heftig/web/templates/trash.html:22
+#: src/heftig/web/templates/trash.html:28
 msgid "Bulk delete"
 msgstr "Sammellöschung"
 
-#: src/heftig/web/templates/trash.html:23 src/heftig/web/templates/trash.html:29
+#: src/heftig/web/templates/trash.html:29 src/heftig/web/templates/trash.html:35
 msgid "deleted permanently on %(date)s"
 msgstr "endgültig ab %(date)s"
 
-#: src/heftig/web/templates/trash.html:24
+#: src/heftig/web/templates/trash.html:30
 msgid "Restore all"
 msgstr "Alle wiederherstellen"
 
-#: src/heftig/web/templates/trash.html:31
+#: src/heftig/web/templates/trash.html:37
 msgid "Restore"
 msgstr "Wiederherstellen"
 
-#: src/heftig/web/templates/trash.html:32
+#: src/heftig/web/templates/trash.html:38
 msgid "Delete “%(title)s” permanently? The original will be removed."
 msgstr "„%(title)s“ endgültig löschen? Das Original wird entfernt."
 
-#: src/heftig/web/templates/trash.html:32
+#: src/heftig/web/templates/trash.html:38
 msgid "Delete permanently"
 msgstr "Endgültig löschen"
 
-#: src/heftig/web/templates/trash.html:36
+#: src/heftig/web/templates/trash.html:42
 msgid "Empty the trash? %(num)s documents and their originals will be removed permanently."
 msgstr "Papierkorb leeren? %(num)s Dokumente und ihre Originale werden endgültig entfernt."
 
-#: src/heftig/web/templates/trash.html:36
+#: src/heftig/web/templates/trash.html:42
 msgid "Empty trash (%(num)s)"
 msgstr "Papierkorb leeren (%(num)s)"
 
-#: src/heftig/web/templates/trash.html:39
+#: src/heftig/web/templates/trash.html:45
 msgid "The trash is empty."
 msgstr "Der Papierkorb ist leer."
 
@@ -4985,11 +5029,15 @@ msgstr "Papier mit dem Handy"
 msgid "Scan with the camera"
 msgstr "Mit der Kamera scannen"
 
-#: src/heftig/web/templates/document.html:148 src/heftig/web/templates/duplicate.html:49 src/heftig/web/ui.py:103 src/heftig/web/ui.py:1405
+#: src/heftig/web/ui.py:1002
+msgid "The document has been changed in the meantime (e.g. by the automatic processing). Please check the page and enter your change again."
+msgstr "Das Dokument wurde inzwischen verändert (z. B. durch die automatische Verarbeitung). Bitte die Seite prüfen und die Änderung erneut eintragen."
+
+#: src/heftig/web/templates/document.html:148 src/heftig/web/templates/duplicate.html:49 src/heftig/web/ui.py:103 src/heftig/web/ui.py:1415
 msgid "Custom fields"
 msgstr "Zusatzfelder"
 
-#: src/heftig/web/ui.py:1041
+#: src/heftig/web/ui.py:1051
 msgid "Invalid number in the field “%(field)s”"
 msgstr "Zahl im Feld „%(field)s“ ungültig"
 
@@ -5065,37 +5113,25 @@ msgstr "Neuaufbau"
 msgid "Titles"
 msgstr "Titel"
 
-#: src/heftig/web/ui.py:1183
+#: src/heftig/web/ui.py:1193
 msgid "Marked as filed."
 msgstr "Als abgeheftet markiert."
 
-#: src/heftig/web/ui.py:1186
+#: src/heftig/web/ui.py:1196
 msgid "Filing undone."
 msgstr "Ablage zurückgenommen."
 
-#: src/heftig/web/ui.py:1189
+#: src/heftig/web/ui.py:1199
 msgid "Noted as taken out – the sheet keeps its place."
 msgstr "Als herausgenommen vermerkt – das Blatt behält seinen Platz."
 
-#: src/heftig/web/ui.py:1192
+#: src/heftig/web/ui.py:1202
 msgid "Back in its place."
 msgstr "Wieder an seinem Platz."
 
-#: src/heftig/web/ui.py:1198
+#: src/heftig/web/ui.py:1208
 msgid "Moved to binder %(name)s, on top of the current section."
 msgstr "In Ordner %(name)s umsortiert, oben auf den aktuellen Abschnitt."
-
-#: src/heftig/web/ui.py:1201
-msgid "Location saved."
-msgstr "Ort gespeichert."
-
-#: src/heftig/web/ui.py:1204
-msgid "Noted: the paper is not kept."
-msgstr "Vermerkt: Das Papier wird nicht aufbewahrt."
-
-#: src/heftig/web/ui.py:1207
-msgid "Undone."
-msgstr "Zurückgenommen."
 
 #: src/heftig/web/static/app.js:48 src/heftig/web/ui.py:121
 msgid "newly archived"
@@ -5109,6 +5145,18 @@ msgstr "Dublette"
 msgid "rejected"
 msgstr "abgelehnt"
 
+#: src/heftig/web/ui.py:1211
+msgid "Location saved."
+msgstr "Ort gespeichert."
+
+#: src/heftig/web/ui.py:1214
+msgid "Noted: the paper is not kept."
+msgstr "Vermerkt: Das Papier wird nicht aufbewahrt."
+
+#: src/heftig/web/ui.py:1217
+msgid "Undone."
+msgstr "Zurückgenommen."
+
 #: src/heftig/web/ui.py:122
 msgid "skipped"
 msgstr "übersprungen"
@@ -5116,14 +5164,6 @@ msgstr "übersprungen"
 #: src/heftig/web/ui.py:122
 msgid "deleted"
 msgstr "gelöscht"
-
-#: src/heftig/web/ui.py:1221
-msgid "Marked as reviewed."
-msgstr "Als geprüft markiert."
-
-#: src/heftig/web/ui.py:1228 src/heftig/web/ui.py:1236
-msgid "Unknown page."
-msgstr "Unbekannte Seite."
 
 #: src/heftig/web/ui.py:123
 msgid "already imported"
@@ -5133,228 +5173,236 @@ msgstr "bereits importiert"
 msgid "restored"
 msgstr "wiederhergestellt"
 
-#: src/heftig/web/ui.py:1242
+#: src/heftig/web/ui.py:1231
+msgid "Marked as reviewed."
+msgstr "Als geprüft markiert."
+
+#: src/heftig/web/ui.py:1238 src/heftig/web/ui.py:1246
+msgid "Unknown page."
+msgstr "Unbekannte Seite."
+
+#: src/heftig/web/ui.py:1252
 msgid "Page %(num)s is hidden as blank."
 msgstr "Seite %(num)s wird als leer ausgeblendet."
 
-#: src/heftig/web/ui.py:1243
+#: src/heftig/web/ui.py:1253
 msgid "Page %(num)s is always shown."
 msgstr "Seite %(num)s wird immer angezeigt."
 
-#: src/heftig/web/ui.py:1247
+#: src/heftig/web/ui.py:1257
 msgid "All pages are being recognized with AI and the document is classified again."
 msgstr "Alle Seiten werden mit KI erkannt und das Dokument neu eingeordnet."
 
-#: src/heftig/web/ui.py:1336
+#: src/heftig/web/ui.py:1346
 msgid "Note saved."
 msgstr "Notiz gespeichert."
 
-#: src/heftig/web/ui.py:1339
+#: src/heftig/web/ui.py:1349
 msgid "Note changed."
 msgstr "Notiz geändert."
 
-#: src/heftig/web/ui.py:1342
+#: src/heftig/web/ui.py:1352
 msgid "Note deleted."
 msgstr "Notiz gelöscht."
 
-#: src/heftig/web/ui.py:1345
+#: src/heftig/web/ui.py:1355
 msgid "Attachment deleted."
 msgstr "Anhang gelöscht."
 
-#: src/heftig/web/ui.py:1355
+#: src/heftig/web/ui.py:1365
 msgid "%(num)d attachment added."
 msgid_plural "%(num)d attachments added."
 msgstr[0] "%(num)d Anhang hinzugefügt."
 msgstr[1] "%(num)d Anhänge hinzugefügt."
 
-#: src/heftig/web/ui.py:1357
+#: src/heftig/web/ui.py:1367
 msgid "No file selected."
 msgstr "Keine Datei ausgewählt."
 
-#: src/heftig/web/ui.py:1381
+#: src/heftig/web/ui.py:1391
 msgid "filed: %(section)s, position %(position)s"
 msgstr "abgeheftet: %(section)s, Position %(position)s"
 
-#: src/heftig/web/ui.py:1388
+#: src/heftig/web/ui.py:1398
 msgid "not kept"
 msgstr "nicht aufbewahrt"
 
-#: src/heftig/web/ui.py:1390
+#: src/heftig/web/ui.py:1400
 msgid "paper, open"
 msgstr "Papier, offen"
 
-#: src/heftig/web/templates/documents.html:261 src/heftig/web/ui.py:1399
+#: src/heftig/web/templates/documents.html:261 src/heftig/web/ui.py:1409
 msgid "Pages"
 msgstr "Seiten"
 
-#: src/heftig/web/templates/inbox.html:173 src/heftig/web/ui.py:1400
+#: src/heftig/web/templates/inbox.html:173 src/heftig/web/ui.py:1410
 msgid "File"
 msgstr "Datei"
 
-#: src/heftig/web/ui.py:1401
+#: src/heftig/web/ui.py:1411
 msgctxt "duplicate facts"
 msgid "Received"
 msgstr "Eingang"
 
-#: src/heftig/web/templates/scan.html:42 src/heftig/web/ui.py:1403
+#: src/heftig/web/templates/scan.html:42 src/heftig/web/ui.py:1413
 msgid "Paper"
 msgstr "Papier"
 
-#: src/heftig/web/ui.py:1406
+#: src/heftig/web/ui.py:1416
 msgid "Notes/attachments"
 msgstr "Notizen/Anhänge"
 
-#: src/heftig/web/ui.py:1414
+#: src/heftig/web/ui.py:1424
 msgid "paper filing"
 msgstr "Papierablage"
 
-#: src/heftig/web/ui.py:1416
+#: src/heftig/web/ui.py:1426
 msgid "%(num)d note"
 msgid_plural "%(num)d notes"
 msgstr[0] "%(num)d Notiz"
 msgstr[1] "%(num)d Notizen"
 
-#: src/heftig/web/ui.py:1418
+#: src/heftig/web/ui.py:1428
 msgid "%(num)d attachment"
 msgid_plural "%(num)d attachments"
 msgstr[0] "%(num)d Anhang"
 msgstr[1] "%(num)d Anhänge"
 
-#: src/heftig/web/ui.py:1420
+#: src/heftig/web/ui.py:1430
 msgid "manual corrections"
 msgstr "manuelle Korrekturen"
 
-#: src/heftig/web/ui.py:1434
+#: src/heftig/web/ui.py:1444
 msgid "additional marks on p. %(page)s (e.g. a signature)"
 msgstr "zusätzliche Markierungen auf S. %(page)s (z. B. Unterschrift)"
 
-#: src/heftig/web/ui.py:1438
+#: src/heftig/web/ui.py:1448
 msgid "has %(items)s"
 msgstr "hat %(items)s"
 
-#: src/heftig/web/ui.py:1443
+#: src/heftig/web/ui.py:1453
 msgid "more pages"
 msgstr "mehr Seiten"
 
-#: src/heftig/web/ui.py:1470
+#: src/heftig/web/ui.py:1480
 msgid "No possible duplicates open."
 msgstr "Keine möglichen Dubletten offen."
 
-#: src/heftig/web/ui.py:1514
+#: src/heftig/web/ui.py:1524
 msgid "Both documents are kept."
 msgstr "Beide Dokumente bleiben erhalten."
 
-#: src/heftig/web/ui.py:1519
+#: src/heftig/web/ui.py:1529
 msgid "Duplicate of “%(title)s”"
 msgstr "Dublette von „%(title)s“"
 
-#: src/heftig/web/ui.py:1525
+#: src/heftig/web/ui.py:1535
 msgid "Duplicate moved to the trash."
 msgstr "Dublette in den Papierkorb verschoben."
 
-#: src/heftig/web/ui.py:1529
+#: src/heftig/web/ui.py:1539
 msgid "Duplicate moved to the trash; the kept copy takes over its place in the binder."
 msgstr "Dublette in den Papierkorb verschoben; das behaltene Exemplar übernimmt ihren Platz im Ordner."
 
-#: src/heftig/web/ui.py:1539
+#: src/heftig/web/ui.py:1549
 msgid "Combined."
 msgstr "Zusammengefügt."
 
-#: src/heftig/web/ui.py:1549
+#: src/heftig/web/ui.py:1559
 msgid "Next pair (%(num)s open)."
 msgstr "Nächstes Paar (%(num)s offen)."
 
-#: src/heftig/web/ui.py:1553
+#: src/heftig/web/ui.py:1563
 msgid "No more possible duplicates."
 msgstr "Keine weiteren möglichen Dubletten."
 
-#: src/heftig/web/ui.py:1585
+#: src/heftig/web/ui.py:1595
 msgid "Accepted for %(num)d document."
 msgid_plural "Accepted for %(num)d documents."
 msgstr[0] "Bei %(num)d Dokument übernommen."
 msgstr[1] "Bei %(num)d Dokumenten übernommen."
 
-#: src/heftig/web/ui.py:1587
+#: src/heftig/web/ui.py:1597
 msgid "Dismissed for %(num)d document."
 msgid_plural "Dismissed for %(num)d documents."
 msgstr[0] "Bei %(num)d Dokument verworfen."
 msgstr[1] "Bei %(num)d Dokumenten verworfen."
 
-#: src/heftig/web/ui.py:1608
+#: src/heftig/web/ui.py:1618
 msgid "Still not accepted: %(reason)s"
 msgstr "Wieder nicht übernommen: %(reason)s"
 
-#: src/heftig/web/ui.py:1611
+#: src/heftig/web/ui.py:1621
 msgid "Accepted from quarantine."
 msgstr "Aus der Quarantäne übernommen."
 
-#: src/heftig/web/ui.py:1614
+#: src/heftig/web/ui.py:1624
 msgid "Hidden (stays in quarantine/ausgeblendet/)."
 msgstr "Ausgeblendet (liegt weiter in quarantine/ausgeblendet/)."
 
-#: src/heftig/web/ui.py:1728
+#: src/heftig/web/ui.py:1738
 msgid "The page layout could not be read."
 msgstr "Die Seitenaufteilung ließ sich nicht lesen."
 
-#: src/heftig/web/ui.py:1768
+#: src/heftig/web/ui.py:1778
 msgid "Last attempt failed: %(error)s"
 msgstr "Letzter Versuch fehlgeschlagen: %(error)s"
 
-#: src/heftig/web/ui.py:1795
+#: src/heftig/web/ui.py:1805
 msgid "%(num)d title accepted."
 msgid_plural "%(num)d titles accepted."
 msgstr[0] "%(num)d Titel übernommen."
 msgstr[1] "%(num)d Titel übernommen."
 
-#: src/heftig/web/ui.py:1797
+#: src/heftig/web/ui.py:1807
 msgid "%(num)s skipped (changed in the meantime)."
 msgstr "%(num)s übersprungen (inzwischen geändert)."
 
-#: src/heftig/web/ui.py:1804
+#: src/heftig/web/ui.py:1814
 msgid "Suggestions dismissed."
 msgstr "Vorschläge verworfen."
 
-#: src/heftig/web/ui.py:1830
+#: src/heftig/web/ui.py:1840
 msgid "Batch “%(name)s” is running – just scan now."
 msgstr "Scan-Sitzung „%(name)s“ läuft – jetzt einfach scannen."
 
-#: src/heftig/web/ui.py:1833
+#: src/heftig/web/ui.py:1843
 msgid "Batch ended."
 msgstr "Scan-Sitzung beendet."
 
-#: src/heftig/web/ui.py:1836
+#: src/heftig/web/ui.py:1846
 msgid "Hidden – open paper is listed under “Paper still to file”."
 msgstr "Ausgeblendet – offenes Papier steht unter „Papier noch abzuheften“."
 
-#: src/heftig/web/ui.py:1839
+#: src/heftig/web/ui.py:1849
 msgid "%(num)d document filed."
 msgid_plural "%(num)d documents filed – the first scanned on top."
 msgstr[0] "%(num)d Dokument abgeheftet."
 msgstr[1] "%(num)d Dokumente abgeheftet – das zuerst gescannte oben."
 
-#: src/heftig/web/ui.py:1844
+#: src/heftig/web/ui.py:1854
 msgid "%(kept)s originals filed, %(gone)s marked as discarded."
 msgstr "%(kept)s Originale abgeheftet, %(gone)s als vernichtet markiert."
 
-#: src/heftig/web/ui.py:1862
+#: src/heftig/web/ui.py:1872
 msgid "Heftig – document archive"
 msgstr "Heftig – Dokumentenarchiv"
 
-#: src/heftig/web/ui.py:1876
+#: src/heftig/web/ui.py:1886
 msgctxt "app shortcut"
 msgid "Scan"
 msgstr "Scannen"
 
-#: src/heftig/web/ui.py:1877
+#: src/heftig/web/ui.py:1887
 msgctxt "app shortcut"
 msgid "Search"
 msgstr "Suchen"
 
-#: src/heftig/web/ui.py:1212 src/heftig/web/ui.py:2012
+#: src/heftig/web/ui.py:1222 src/heftig/web/ui.py:2022
 msgid "Reprocessing scheduled."
 msgstr "Neuverarbeitung eingeplant."
 
-#: src/heftig/web/ui.py:2085
+#: src/heftig/web/ui.py:2095
 msgid "%(num)d group saved."
 msgid_plural "%(num)d groups saved."
 msgstr[0] "%(num)d Gruppe gespeichert."
@@ -5364,89 +5412,89 @@ msgstr[1] "%(num)d Gruppen gespeichert."
 msgid "Combined – the individual documents are in the trash."
 msgstr "Zusammengefügt – die Einzeldokumente liegen im Papierkorb."
 
-#: src/heftig/web/ui.py:2130
+#: src/heftig/web/ui.py:2140
 msgid "Senders"
 msgstr "Absender"
 
-#: src/heftig/web/ui.py:2131
+#: src/heftig/web/ui.py:2141
 msgid "Document types"
 msgstr "Dokumenttypen"
 
-#: src/heftig/web/ui.py:2140
+#: src/heftig/web/ui.py:2150
 msgid "New filings go into the new binder from now on."
 msgstr "Neu Abgeheftetes kommt ab jetzt in den neuen Ordner."
 
-#: src/heftig/web/ui.py:2141
+#: src/heftig/web/ui.py:2151
 msgid "Renamed."
 msgstr "Umbenannt."
 
 #: src/heftig/web/ui.py:218
-msgid "Split into %(num)s documents – the original is in the trash."
-msgstr "In %(num)s Dokumente aufgeteilt – das Original liegt im Papierkorb."
+msgid "Split into %(num)s documents – the original is kept in the trash."
+msgstr "In %(num)s Dokumente aufgeteilt – das Original bleibt im Papierkorb erhalten."
 
 #: src/heftig/web/ui.py:220
-msgid "Saved as a new document – the original is in the trash."
-msgstr "Als neues Dokument gespeichert – das Original liegt im Papierkorb."
+msgid "Saved as a new document – the original is kept in the trash."
+msgstr "Als neues Dokument gespeichert – das Original bleibt im Papierkorb erhalten."
 
-#: src/heftig/web/ui.py:2210
+#: src/heftig/web/ui.py:2220
 msgid "Entry created."
 msgstr "Eintrag angelegt."
 
-#: src/heftig/web/ui.py:2213
+#: src/heftig/web/ui.py:2223
 msgid "Renamed (%(num)d document updated)."
 msgid_plural "Renamed (%(num)d documents updated)."
 msgstr[0] "Umbenannt (%(num)d Dokument aktualisiert)."
 msgstr[1] "Umbenannt (%(num)d Dokumente aktualisiert)."
 
-#: src/heftig/web/ui.py:2220
+#: src/heftig/web/ui.py:2230
 msgid "“%(name)s” does not exist here."
 msgstr "„%(name)s“ gibt es hier nicht."
 
-#: src/heftig/web/ui.py:2222
+#: src/heftig/web/ui.py:2232
 msgid "Merged (%(num)d document updated)."
 msgid_plural "Merged (%(num)d documents updated)."
 msgstr[0] "Zusammengeführt (%(num)d Dokument aktualisiert)."
 msgstr[1] "Zusammengeführt (%(num)d Dokumente aktualisiert)."
 
-#: src/heftig/web/ui.py:2228
+#: src/heftig/web/ui.py:2238
 msgid "Alias added."
 msgstr "Alias hinzugefügt."
 
-#: src/heftig/web/ui.py:2231
+#: src/heftig/web/ui.py:2241
 msgid "Alias removed."
 msgstr "Alias entfernt."
 
-#: src/heftig/web/ui.py:2234
+#: src/heftig/web/ui.py:2244
 msgid "Deleted (%(num)d document updated)."
 msgid_plural "Deleted (%(num)d documents updated)."
 msgstr[0] "Gelöscht (%(num)d Dokument aktualisiert)."
 msgstr[1] "Gelöscht (%(num)d Dokumente aktualisiert)."
 
-#: src/heftig/web/ui.py:2238 src/heftig/web/ui.py:2283
+#: src/heftig/web/ui.py:2248 src/heftig/web/ui.py:2293
 msgid "Error: %(error)s"
 msgstr "Fehler: %(error)s"
-
-#: src/heftig/web/ui.py:2266
-msgid "Token created – copy it now, it will not be shown again."
-msgstr "Token erstellt – jetzt kopieren, er wird nicht erneut angezeigt."
 
 #: src/heftig/web/ui.py:227
 msgid "“%(title)s” moved to the trash."
 msgstr "„%(title)s“ in den Papierkorb verschoben."
 
-#: src/heftig/web/ui.py:2272
+#: src/heftig/web/ui.py:2276
+msgid "Token created – copy it now, it will not be shown again."
+msgstr "Token erstellt – jetzt kopieren, er wird nicht erneut angezeigt."
+
+#: src/heftig/web/ui.py:2282
 msgid "Token revoked."
 msgstr "Token widerrufen."
 
-#: src/heftig/web/ui.py:2275
+#: src/heftig/web/ui.py:2285
 msgid "Export scheduled – progress in the inbox."
 msgstr "Export eingeplant – Fortschritt im Eingang."
 
-#: src/heftig/web/ui.py:2278
+#: src/heftig/web/ui.py:2288
 msgid "Search index rebuild scheduled."
 msgstr "Suchindex-Neuaufbau eingeplant."
 
-#: src/heftig/web/ui.py:2281
+#: src/heftig/web/ui.py:2291
 msgid "Database snapshot written: %(path)s"
 msgstr "Datenbank-Snapshot geschrieben: %(path)s"
 
@@ -5458,85 +5506,85 @@ msgstr "Suche gespeichert."
 msgid "Saved search removed."
 msgstr "Gespeicherte Suche entfernt."
 
-#: src/heftig/web/ui.py:494
+#: src/heftig/web/ui.py:495
 msgid "Combining undone – the individual documents are back."
 msgstr "Zusammenfügen rückgängig gemacht – die Einzeldokumente sind zurück."
 
-#: src/heftig/web/ui.py:500
+#: src/heftig/web/ui.py:499
+msgid "The original is back – its parts stay as they are."
+msgstr "Das Original ist zurück – seine Teile bleiben, wie sie sind."
+
+#: src/heftig/web/ui.py:505
 msgid "Undone – the original document is back."
 msgstr "Rückgängig gemacht – das Originaldokument ist zurück."
 
-#: src/heftig/web/ui.py:503
+#: src/heftig/web/ui.py:508
 msgid "%(num)d document restored."
 msgid_plural "%(num)d documents restored."
 msgstr[0] "%(num)d Dokument wiederhergestellt."
 msgstr[1] "%(num)d Dokumente wiederhergestellt."
 
-#: src/heftig/web/ui.py:507
+#: src/heftig/web/ui.py:512
 msgid "Not possible: %(reasons)s"
 msgstr "Nicht möglich: %(reasons)s"
 
-#: src/heftig/web/ui.py:512
+#: src/heftig/web/ui.py:517
 msgid "Restored."
 msgstr "Wiederhergestellt."
 
-#: src/heftig/web/ui.py:523
+#: src/heftig/web/ui.py:528
 msgid "The sheet stays in the binder – its place keeps counting."
 msgstr "Das Blatt bleibt im Ordner – sein Platz zählt weiter."
 
-#: src/heftig/web/ui.py:526
+#: src/heftig/web/ui.py:531
 msgid "Noted: the sheet is out of the binder."
 msgstr "Vermerkt: Das Blatt ist aus dem Ordner genommen."
 
-#: src/heftig/web/ui.py:529
+#: src/heftig/web/ui.py:534
 msgid "Deleted permanently."
 msgstr "Endgültig gelöscht."
 
-#: src/heftig/web/ui.py:532
+#: src/heftig/web/ui.py:537
 msgid "Trash emptied (%(num)d document)."
 msgid_plural "Trash emptied (%(num)d documents)."
 msgstr[0] "Papierkorb geleert (%(num)d Dokument)."
 msgstr[1] "Papierkorb geleert (%(num)d Dokumente)."
 
-#: src/heftig/web/ui.py:561
+#: src/heftig/web/ui.py:566
 msgid "Only for a search or a filtered selection – not for the whole archive."
 msgstr "Nur für eine Suche oder gefilterte Auswahl – nicht für das ganze Archiv."
 
-#: src/heftig/web/ui.py:616
+#: src/heftig/web/ui.py:621
 msgid "The results have changed – please check again."
 msgstr "Die Trefferliste hat sich geändert – bitte erneut prüfen."
 
-#: src/heftig/web/ui.py:621
+#: src/heftig/web/ui.py:626
 msgid "The number you typed does not match – nothing was deleted."
 msgstr "Die eingetippte Anzahl stimmt nicht – nichts gelöscht."
 
-#: src/heftig/web/ui.py:628
+#: src/heftig/web/ui.py:633
 msgid "Bulk deletion “%(label)s”"
 msgstr "Sammellöschung „%(label)s“"
 
-#: src/heftig/web/ui.py:707
+#: src/heftig/web/ui.py:712
 msgid "Too many AI searches in a short time – please wait a moment."
 msgstr "Zu viele KI-Suchen in kurzer Zeit – bitte einen Moment warten."
 
-#: src/heftig/web/ui.py:712
+#: src/heftig/web/ui.py:717
 msgid "AI search not possible: %(error)s"
 msgstr "KI-Suche nicht möglich: %(error)s"
 
-#: src/heftig/web/ui.py:716
+#: src/heftig/web/ui.py:721
 msgid "(not in the archive: %(names)s)"
 msgstr "(nicht im Archiv: %(names)s)"
 
-#: src/heftig/web/ui.py:735
+#: src/heftig/web/ui.py:740
 msgid "All reviewed – nothing left open."
 msgstr "Alles geprüft – nichts mehr offen."
 
 #: src/heftig/web/ui.py:88
 msgid "Only with a sign-in in the browser (API: /api/…)."
 msgstr "Nur mit Anmeldung im Browser (API: /api/…)."
-
-#: src/heftig/web/ui.py:992
-msgid "The document has been changed in the meantime (e.g. by the automatic processing). Please check the page and enter your change again."
-msgstr "Das Dokument wurde inzwischen verändert (z. B. durch die automatische Verarbeitung). Bitte die Seite prüfen und die Änderung erneut eintragen."
 
 #: src/heftig/worker.py:36
 msgid "Unknown job type %(kind)s"

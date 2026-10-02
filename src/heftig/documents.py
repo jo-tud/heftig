@@ -69,6 +69,20 @@ def files(archive: Archive, doc_id: str) -> DocFiles:
     return DocFiles(archive.paths.doc_dir(doc_id))
 
 
+_ORIGINAL = re.compile(r"originals/[0-9a-f]{2}/[0-9a-f]{64}\.[a-z0-9]{1,5}")
+
+
+def split_originals(source_details: dict[str, Any]) -> list[str]:
+    """The files of the documents this one was split from (``split_from.originals``, the
+    nearest first): they are kept as long as this document exists. Only well-formed paths
+    below ``originals/``."""
+    sf = source_details.get("split_from")
+    rels = sf.get("originals") if isinstance(sf, dict) else None
+    if not isinstance(rels, list):
+        return []
+    return [r for r in rels if isinstance(r, str) and _ORIGINAL.fullmatch(r)]
+
+
 def load_meta(archive: Archive, doc_id: str) -> DocumentMetadata:
     try:
         f = files(archive, doc_id)
