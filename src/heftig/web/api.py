@@ -559,9 +559,10 @@ def api_split(
 ):
     """New documents from this document's pages: ``parts`` lists the page numbers (1-based) of
     each new document in order - pages in no part are left out; ``rotation`` turns pages
-    (page -> 0/90/180/270 degrees clockwise, absolute; missing pages keep their turn). The
-    first part keeps the metadata. The original goes to the trash as batch
-    ``split-<id>``. Undo: POST /api/documents/{id}/unsplit."""
+    (page -> 0/90/180/270 degrees clockwise, absolute; missing pages keep their turn). Each
+    part is classified as a new document; notes, attachments and the filing position go to
+    the first. The original goes to the trash as batch ``split-<id>``.
+    Undo: POST /api/documents/{id}/unsplit."""
     from .. import split
 
     _load(request, doc_id)
