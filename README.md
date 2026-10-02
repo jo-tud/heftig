@@ -94,7 +94,7 @@ Other ways to run it (Docker Compose, without containers, behind a reverse proxy
   shows exactly where it is, and which letters lie above and below it.
 - **Keeping it clean:** duplicates are recognised (the identical file, and the same letter as
   scan and PDF); deleted documents stay in the trash for 30 days; combining and bulk deletion
-  can be undone.
+  can be undone, and the documents that were combined are kept for good.
 - **Asking questions:** connect Claude via MCP and ask “how much did I pay for electricity in
   2025?” – with links to the pages the answer comes from ([docs/mcp.md](docs/mcp.md)).
 

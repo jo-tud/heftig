@@ -30,7 +30,7 @@ onnxruntime, tokenizers and numpy). There is no message broker, no external data
 | Worker | `heftig worker` | Consume folder polling, IMAP polling, processing jobs (OCR, classification), export/import/reindex/rebuild/title jobs, embedding documents for the search by meaning, heartbeat, hourly maintenance |
 | Both | `heftig run` | Web server plus the worker in a thread of the same process (simple local setup) |
 | Database | `archive/index.sqlite` | Search index and a queryable copy of all document metadata; primary store for jobs, users, sessions, API tokens, IMAP cursors, the ingest event log and the settings saved in the web interface |
-| Sidecars | `archive/documents/<uuid>/`, `archive/trash/<uuid>/`, `taxonomy.json`, `binders.json`, `saved_searches.json`, `synonyms.json`, `senders.json` | Authoritative, human-readable document data; the database can be rebuilt from them |
+| Sidecars | `archive/documents/<uuid>/`, `archive/trash/<uuid>/`, `archive/sources/<uuid>/`, `taxonomy.json`, `binders.json`, `saved_searches.json`, `synonyms.json`, `senders.json` | Authoritative, human-readable document data; the database can be rebuilt from them |
 
 Settings come from environment variables (`config.Settings`) plus the values saved on the setup
 and settings pages (`settings_store`, stored in the database's `meta` table). An environment
@@ -46,7 +46,7 @@ The main modules:
 | `documents.py`, `storage.py`, `db.py`, `index.py`, `migrations/` | Sidecars, atomic writes, the SQLite database and its FTS index |
 | `search.py`, `expand.py`, `synonyms.py`, `datephrases.py`, `aisearch.py`, `wordboxes.py` | Search and ranking, what a search word stands for (forms, compounds, similar spellings), words that mean the same, date phrases, the optional AI search, hit boxes on page images |
 | `semantic.py`, `local_embed.py`, `searcheval.py` | The optional search by meaning (pieces, vectors, fusion with the word search) and its built-in ONNX model; measuring search quality |
-| `duplicates.py`, `pagediff.py`, `combine.py`, `trash.py` | Possible duplicates and the page comparison, combining documents, the trash |
+| `duplicates.py`, `pagediff.py`, `combine.py`, `trash.py` | Possible duplicates and the page comparison, combining documents, the trash and the source documents |
 | `binders.py`, `sessions.py` | Paper filing in named binders (`binders.json`), batches for scanning old binders |
 | `titles.py`, `taxonomy.py`, `suggestions.py`, `saved_searches.py`, `senders.py` | Title normalisation and harmonisation, categories, AI suggestions, saved searches, names for e-mail sender addresses (`senders.json`) |
 | `settings_store.py`, `web/setup.py`, `connections.py` | Settings saved in the web interface, the setup/settings pages for AI, search, mail and scanner, and the connection tests behind their "Test" buttons (IMAP presets, model lists) |
@@ -125,6 +125,16 @@ operation that removes an original (and only one that no other live or trashed d
 references); it must be confirmed explicitly (UI: in the trash; API:
 `DELETE /api/trash/<id>?confirm=<id>`, while `DELETE /api/documents/<id>?confirm=<id>` only
 moves to the trash).
+
+Combining keeps the parts as **source documents** instead: their sidecar folder moves to
+`sources/<id>/` (with `replaced_at` and `replaced_by`), and they get a row in the same `trash`
+table with `kind = 'source'`. Like trashed documents they are out of the `documents` table - no
+query, search, facet or duplicate check sees them - and their originals count as referenced. They
+are never purged: the only ways out are restoring (undoing the combining) and deleting one on
+purpose, which moves it into the trash like any deleted document. Archives from before
+migration 13 had the parts in the trash; before the first purge after the update, the parts of
+combined documents still in the archive are moved to `sources/` (`trash.adopt_combined`). Source
+documents are part of backups and exports.
 
 ## Jobs
 

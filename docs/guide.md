@@ -29,7 +29,8 @@ How the parts fit together in daily use. Setup and operation: [operations.md](op
    right away*).
 
 Nothing is ever lost by a click: deleted documents go to the trash for 30 days, combining and
-bulk deletion can be undone.
+bulk deletion can be undone, and documents that were combined into another one are kept for good
+(*Settings → Source documents*).
 
 ## Paper without archive numbers
 
@@ -146,7 +147,11 @@ your notes, attachments or corrections stays.
 together (unsigned and signed): *Combine with another document …* on the document page (neighbours
 in scan order and similar documents are suggested), or Z in the comparison. Heftig makes one PDF
 with all pages in the chosen order, without re-encoding, keeps the recognised text (no second
-paid text recognition) and puts the parts in the trash as one batch – *Undo* restores them.
+paid text recognition) and keeps the parts as *source documents*: out of the search, but with
+their original file, text and notes, and never deleted automatically. *Settings → Source
+documents* lists them by the document they went into – open or download an original there,
+*Undo combining* brings the parts back (the combined document goes to the trash), *Delete* moves
+one to the trash on purpose. The combined document links to them under *Combined from*.
 
 ## E-mails
 

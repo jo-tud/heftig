@@ -268,7 +268,7 @@ heftig backup /mnt/backup/heftig
 ```
 
 The backup contains a consistent copy of the database made with SQLite's online backup API, plus
-`originals/`, `documents/`, `trash/`, `taxonomy.json`, `saved_searches.json`, `binders.json`,
+`originals/`, `documents/`, `trash/`, `sources/`, `taxonomy.json`, `saved_searches.json`, `binders.json`,
 `synonyms.json`, `senders.json`, `email/`, `quarantine/` and a `backup.json` marker (not `models/`: the search
 model is downloaded again when missing).
 It is a full copy every time (no deduplication), so it suits small archives or an external disk.

@@ -11,8 +11,9 @@ ordinary archived PDF; the parts are never changed:
   the user locked on the first part;
 - notes, attachments, the paper location and scan session are carried over, the metadata of
   the first part is the starting point;
-- the parts move to the Papierkorb as one batch ``combine-<new id>``. Undoing restores them
-  and moves the combined document to the Papierkorb.
+- the parts are kept as source documents (archive/sources/, never purged) as one batch
+  ``combine-<new id>``. Undoing restores them and moves the combined document to the
+  Papierkorb.
 """
 
 from __future__ import annotations
@@ -117,7 +118,7 @@ def _carry_over(
     meta.paper = any(m.paper for m in parts)
     meta.scan_session = next((m.scan_session for m in parts if m.scan_session), None)
     # where the paper is: from the first part that knows it (the filing position itself is
-    # unique and taken over once the parts are in the Papierkorb, see combine())
+    # unique and taken over once the parts are out of the archive, see combine())
     placed = _placed(parts)
     if placed is not None and not placed.filed_at:
         meta.paper_location = placed.paper_location
@@ -222,7 +223,8 @@ def check(archive: Archive, ids: list[str]) -> list[DocumentMetadata]:
 
 
 def combine(archive: Archive, ids: list[str], by: str = "web") -> DocumentMetadata:
-    """Combine the documents (in this order) into a new one; the parts go to the Papierkorb."""
+    """Combine the documents (in this order) into a new one; the parts are kept as source
+    documents."""
     parts = check(archive, ids)
     data = build_pdf(archive, parts)
     tp = _text(archive, parts)
@@ -237,12 +239,14 @@ def combine(archive: Archive, ids: list[str], by: str = "web") -> DocumentMetada
     )  # fmt: skip
     if result.status != "created" or result.doc_id is None:
         raise CombineError(translate_text(result.message) or _("Combining not possible."))
-    # the parts only go once the new document is safely archived
+    # the parts only become source documents once the new document is safely archived
     new = docs.load_meta(archive, result.doc_id)
     reason = N_("combined into “%(title)s”") % {"title": new.title or new.original_filename}
     for m in parts:
         try:
-            trash.trash_document(archive, m.id, reason=reason, batch=batch_for(new.id), by=by)
+            trash.trash_document(
+                archive, m.id, reason=reason, batch=batch_for(new.id), by=by, replaced_by=[new.id]
+            )
         except docs.DocumentNotFound:
             pass  # deleted meanwhile (by hand, or as an identical copy): nothing to move
     placed = _placed(parts)

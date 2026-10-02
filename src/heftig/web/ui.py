@@ -120,6 +120,7 @@ RESULT_LABELS = i18n.Labels({
     "created": N_("newly archived"), "duplicate": N_("duplicate"), "rejected": N_("rejected"),
     "skipped": N_("skipped"), "imported": N_("imported"), "deleted": N_("deleted"),
     "already_imported": N_("already imported"), "error": N_("error"), "restored": N_("restored"),
+    "replaced": N_("kept as source document"),
 })  # fmt: skip
 
 
@@ -209,7 +210,9 @@ def render(request: Request, name: str, *, http_status: int = 200, **ctx: Any) -
     if undo.startswith(("doc:", "batch:")) and "undo" not in ctx:
         ctx["undo"] = undo[:80]
         if undo.startswith("batch:" + combine.BATCH_PREFIX):
-            ctx["undo_label"] = _("Combined – the individual documents are in the trash.")
+            ctx["undo_label"] = _(
+                "Combined – the individual documents are kept under Source documents."
+            )
         elif undo.startswith("doc:"):
             row = request.app.state.archive.conn.execute(
                 "SELECT title FROM trash WHERE id=?", (undo[4:],)
@@ -530,6 +533,59 @@ async def trash_action(request: Request, p: Principal = Depends(require_write)):
     form = await request.form()
     return await run_in_threadpool(
         _trash_sync, get_archive(request), form, request.query_params.get("action", "")
+    )
+
+
+# --- source documents: what was combined into another document, kept for good -------------
+
+
+@router.get("/sources")
+def sources_page(request: Request, p: Principal = Depends(require_user)):
+    a = get_archive(request)
+    return render(
+        request, "sources.html", nav="settings", groups=trash.sources_listing(a),
+        days=a.settings.trash_retention_days, message=request.query_params.get("msg"),
+    )  # fmt: skip
+
+
+@router.get("/sources/{doc_id}/original")
+def source_original(
+    request: Request, doc_id: str, inline: int = 0, p: Principal = Depends(require_user)
+):
+    try:
+        meta = trash.source_meta(get_archive(request), doc_id)
+    except docs.DocumentNotFound:
+        return Response(status_code=404)
+    return api.original_response(request, doc_id, bool(inline), meta=meta)
+
+
+def _sources_sync(a, form, action: str) -> RedirectResponse:
+    target = _form_val(form, "target")
+    try:
+        if action == "undo" and target.startswith(combine.BATCH_PREFIX):
+            r = combine.undo(a, target[len(combine.BATCH_PREFIX) :])
+            if not r["ids"]:
+                raise trash.TrashError("; ".join(sorted(set(r["failed"]))) or _("Nothing to do."))
+            return redirect(f"/documents/{r['ids'][0]}?" + urlencode(
+                {"msg": _("Combining undone – the individual documents are back.")}))  # fmt: skip
+        if action == "restore" and target:
+            meta = trash.restore(a, target)
+            return redirect(f"/documents/{meta.id}?" + urlencode({"msg": _("Restored.")}))
+        if action == "delete" and target:
+            trash.discard_source(a, target)
+            msg = _("Moved to the trash.")
+        else:
+            msg = ""
+    except (trash.TrashError, docs.DocumentNotFound) as e:
+        msg = str(e) if isinstance(e, trash.TrashError) else _("Document not found.")
+    return redirect("/sources?" + urlencode({"msg": msg}))
+
+
+@router.post("/sources/action")
+async def sources_action(request: Request, p: Principal = Depends(require_write)):
+    form = await request.form()
+    return await run_in_threadpool(
+        _sources_sync, get_archive(request), form, request.query_params.get("action", "")
     )
 
 

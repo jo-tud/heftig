@@ -190,6 +190,10 @@ class DocumentMetadata(BaseModel):
     trashed_at: str | None = None
     trash_reason: str | None = None
     trash_batch: str | None = None
+    # set while the document is kept as a source document (archive/sources/<id>/): it was
+    # combined into the documents in replaced_by; never purged
+    replaced_at: str | None = None
+    replaced_by: list[str] = Field(default_factory=list)
     notes: list[Note] = Field(default_factory=list)
     attachments: list[Attachment] = Field(default_factory=list)
     processing_history: list[HistoryEntry] = Field(default_factory=list)

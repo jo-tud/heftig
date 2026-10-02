@@ -15,7 +15,7 @@ FTS5, vanilla JavaScript, no build step. Read `docs/architecture.md` before larg
 | `src/heftig/documents.py` | loading/saving a document (`persist`: sidecar + DB row + index), user edits |
 | `src/heftig/search.py`, `expand.py`, `synonyms.py`, `datephrases.py` | search: query parsing, what a word stands for (forms, compounds, similar spellings, synonyms), date phrases, FTS5, ranking, facets, suggestions; quality measured by `searcheval.py` and `tests/search_bench.py` (docs/search.md) |
 | `src/heftig/semantic.py`, `local_embed.py` | the optional search by meaning: pieces, vectors, fusion with the word search; the built-in ONNX model |
-| `src/heftig/binders.py`, `titles.py`, `duplicates.py`, `trash.py`, `combine.py` | paper filing in named binders, consistent titles, duplicates, trash, combining documents |
+| `src/heftig/binders.py`, `titles.py`, `duplicates.py`, `trash.py`, `combine.py` | paper filing in named binders, consistent titles, duplicates, trash and source documents (what was combined, kept for good), combining documents |
 | `src/heftig/web/ui.py`, `web/templates/` | the HTML pages; `web/api.py` the REST API; `web/setup.py` setup and connection pages, their "Test" buttons in `connections.py` |
 | `src/heftig/worker.py` | background loop: scanner folder, IMAP, jobs, embedding for the search by meaning, hourly maintenance |
 | `src/heftig/config.py`, `settings_store.py` | settings: environment variables win over values saved in the web interface |

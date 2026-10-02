@@ -387,8 +387,10 @@ def test_automatic_snapshot_and_copy_before_an_update(tmp_path):
         assert "vor 3 Tagen" in maintenance.snapshot_overdue(a)
     assert maintenance.snapshot_if_due(a) is not None
     # an update with migrations first copies the database as it was
-    # (the database as version 10 left it: without the binder column of migration 11 and the
-    # embedding tables of migration 12)
+    # (the database as version 10 left it: without the binder column of migration 11, the
+    # embedding tables of migration 12 and the source documents of migration 13)
+    a.conn.execute("DROP INDEX idx_trash_kind")
+    a.conn.execute("ALTER TABLE trash DROP COLUMN kind")
     a.conn.execute("DROP INDEX idx_documents_binder")
     a.conn.execute("ALTER TABLE documents DROP COLUMN filing_binder")
     a.conn.execute("DROP TABLE doc_embeddings")

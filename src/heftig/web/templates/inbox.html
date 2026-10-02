@@ -176,7 +176,7 @@
       <tr class="res-{{ e.result }}">
         <td class="nowrap">{{ time(e.created_at) }}</td>
         <td>{{ SOURCE_LABELS.get(e.source, e.source) }}{% if e.source_details.subject %}<br><span class="small muted">{{ e.source_details.subject }}</span>{% endif %}</td>
-        <td>{% if e.doc_id and e.result not in ('deleted',) %}<a href="/documents/{{ e.doc_id }}">{{ e.filename }}</a>{% else %}{{ e.filename }}{% endif %}</td>
+        <td>{% if e.doc_id and e.result not in ('deleted', 'replaced') %}<a href="/documents/{{ e.doc_id }}">{{ e.filename }}</a>{% else %}{{ e.filename }}{% endif %}</td>
         <td>{{ RESULT_LABELS.get(e.result, e.result) }}{% if e.message %}<br><span class="small">{{ e.message | reason }}</span>{% endif %}</td>
       </tr>
     {% else %}
