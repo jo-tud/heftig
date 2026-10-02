@@ -17,7 +17,15 @@
   {{ csrf_field(csrf) }}
   <ul class="plain trash-list">
   {% for g in groups %}
-    {% if g.kept %}{% set it = g['items'][0] %}
+    {% if g.kept and g.batch.startswith('combine-') %}
+    <li>
+      <div class="trash-row"><span><strong>{{ _("Parts of a combined document") }}: {{ ngettext("%(num)d document", "%(num)d documents", g['items'] | length) }}</strong>
+        <span class="muted small">{% if g.reason %}{{ g.reason | reason }} · {% endif %}{{ time(g.trashed_at) }} · {{ _("kept as long as the combined document exists") }}</span></span>
+        <span class="buttons"><button name="target" value="batch:{{ g.batch }}" formaction="/trash/action?action=restore" title="{{ _("The documents come back, the combined one goes to the trash") }}">{{ _("Undo combining") }}</button>
+          <button name="target" value="batch:{{ g.batch }}" formaction="/trash/action?action=restore_parts" class="secondary" title="{{ _("The documents come back, the combined one stays as it is") }}">{{ _("Restore the documents only") }}</button></span></div>
+      <details {% if g['items'] | selectattr('paper') | list %}open{% endif %}><summary class="small">{{ _("Show documents") }}</summary><ul class="small">{% for it in g['items'] %}<li>{{ it.title }}{% if it.paper %} – {{ paper_line(it) }}{% endif %}</li>{% endfor %}</ul></details>
+    </li>
+    {% elif g.kept %}{% set it = g['items'][0] %}
     <li><div class="trash-row"><span><strong>{{ _("Original of a split document") }}:</strong> {{ it.title }}
         <span class="muted small">{% if it.reason %}{{ it.reason | reason }} · {% endif %}{{ time(g.trashed_at) }} · {{ _("kept as long as one of its parts exists") }}</span>
         {% if it.paper %}<span class="small">{{ paper_line(it) }}</span>{% endif %}</span>

@@ -11,8 +11,11 @@ ordinary archived PDF; the parts are never changed:
   the user locked on the first part;
 - notes, attachments, the paper location and scan session are carried over, the metadata of
   the first part is the starting point;
-- the parts move to the Papierkorb as one batch ``combine-<new id>``. Undoing restores them
-  and moves the combined document to the Papierkorb.
+- the parts move to the Papierkorb as one batch ``combine-<new id>``, but are kept there (not
+  purged) as long as the combined document exists, live or in the Papierkorb; it names their
+  files in ``combined_from[].originals``, so the files stay as long as it does
+  (``trash.is_referenced``). Undoing restores them and moves the combined document to the
+  Papierkorb.
 """
 
 from __future__ import annotations
@@ -150,7 +153,16 @@ def _carry_over(
     meta.source_details = {
         **meta.source_details,
         "combined_from": [
-            {"id": m.id, "title": m.title or m.original_filename, "pages": m.page_count or 1}
+            {
+                "id": m.id,
+                "title": m.title or m.original_filename,
+                "pages": m.page_count or 1,
+                "filename": m.original_filename,
+                "mime_type": m.mime_type,
+                "originals": list(
+                    dict.fromkeys([m.original_relpath, *docs.source_originals(m.source_details)])
+                ),
+            }
             for m in parts
         ],
     }

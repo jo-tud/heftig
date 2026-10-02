@@ -30,7 +30,7 @@ How the parts fit together in daily use. Setup and operation: [operations.md](op
 
 Nothing is ever lost by a click: deleted documents go to the trash for 30 days, combining,
 splitting and bulk deletion can be undone (the original of a split document stays as long as one
-of its parts does).
+of its parts does, the parts of a combined document as long as it does).
 
 ## Paper without archive numbers
 
@@ -147,7 +147,11 @@ your notes, attachments or corrections stays.
 together (unsigned and signed): *Combine with another document …* on the document page (neighbours
 in scan order and similar documents are suggested), or Z in the comparison. Heftig makes one PDF
 with all pages in the chosen order, without re-encoding, keeps the recognised text (no second
-paid text recognition) and puts the parts in the trash as one batch – *Undo* restores them.
+paid text recognition) and puts the parts in the trash as one batch, where they are **kept as
+long as the combined document exists** – not deleted after 30 days nor by emptying the trash;
+*Download the original* next to each part (under *Origin*) gives you its file as it was
+received. *Undo* (or *Undo combining* in the trash) restores them; *Restore the documents only*
+brings them back and leaves the combined document as it is.
 
 **Splitting and arranging pages.** One scan that holds two letters, pages in the wrong order, an
 empty back page: *More … → Split or arrange pages …* on the document page shows the pages as

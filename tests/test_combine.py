@@ -7,7 +7,7 @@ import pypdfium2 as pdfium
 import pytest
 from fastapi.testclient import TestClient
 
-from heftig import auth, combine, trash
+from heftig import auth, combine, maintenance, split, trash
 from heftig import documents as docs
 from heftig.search import SearchParams, search
 
@@ -86,6 +86,49 @@ def test_refused_while_processing_or_alone(archive):
     assert set(ids(archive, "Brief")) == {a, b}
 
 
+def test_the_parts_are_kept_while_the_combined_document_exists(archive):
+    a = ingest_bytes(archive, text_pdf(["Vertrag ohne Unterschrift"]), "a.pdf").doc_id
+    b = ingest_bytes(archive, text_pdf(["Vertrag mit Unterschrift"]), "b.pdf").doc_id
+    process_all(archive)
+    files = {i: docs.load_meta(archive, i).original_relpath for i in (a, b)}
+    data = {i: archive.paths.resolve(r).read_bytes() for i, r in files.items()}
+    new = combine.combine(archive, [a, b])
+    assert [p["originals"] for p in new.source_details["combined_from"]] == [
+        [files[a]], [files[b]],
+    ]  # fmt: skip
+    archive.conn.execute("UPDATE trash SET trashed_at='2000-01-01T00:00:00Z'")
+    # neither the retention period nor emptying the trash removes them
+    assert trash.purge_expired(archive) == 0 and trash.empty(archive) == 0
+    (group,) = trash.listing(archive)
+    assert group["kept"] and group["purge_at"] is None
+    # purged on purpose, their files stay as long as the combined document names them
+    trash.purge(archive, a)
+    assert archive.paths.resolve(files[a]).read_bytes() == data[a]
+    assert not [i for i in maintenance.check(archive)["issues"] if i["kind"].startswith("orphan")]
+    # gone only with the combined document
+    trash.trash_document(archive, new.id)
+    archive.conn.execute("UPDATE trash SET trashed_at='2000-01-01T00:00:00Z'")
+    assert trash.purge_expired(archive) == 1  # the combined document; b waits for it
+    assert trash.purge_expired(archive) == 1  # now b
+    assert not any(archive.paths.resolve(r).exists() for r in files.values())
+    assert maintenance.check(archive)["issues"] == []
+
+
+def test_split_after_combining_keeps_every_original(archive):
+    a = ingest_bytes(archive, text_pdf(["Rechnung Seite eins"]), "a.pdf").doc_id
+    b = ingest_bytes(archive, text_pdf(["Mahnung Seite eins"]), "b.pdf").doc_id
+    process_all(archive)
+    files = [docs.load_meta(archive, i).original_relpath for i in (a, b)]
+    new = combine.combine(archive, [a, b])
+    process_all(archive)
+    first, _second = split.split(archive, new.id, [[1], [2]])
+    assert docs.source_originals(first.source_details) == [new.original_relpath, *files]
+    archive.conn.execute("UPDATE trash SET trashed_at='2000-01-01T00:00:00Z'")
+    assert trash.purge_expired(archive) == 0  # a part made from them still exists
+    for rel in (new.original_relpath, *files):
+        assert archive.paths.resolve(rel).exists()
+
+
 @pytest.fixture
 def web(tmp_path):
     logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -149,3 +192,27 @@ def test_api(web):
     new = r.json()["document_id"]
     assert r.status_code == 201 and ids(arch, "Zeugnis") == [new]
     assert set(c.post(f"/api/documents/{new}/uncombine", headers=h).json()["restored"]) == {a, b}
+
+
+def test_trash_page_and_the_parts_files(web):
+    arch, c, csrf = web
+    a = ingest_bytes(arch, text_pdf(["Zeugnis Seite eins"]), "a.pdf").doc_id
+    b = ingest_bytes(arch, text_pdf(["Zeugnis Seite zwei"]), "b.pdf").doc_id
+    process_all(arch)
+    data = arch.paths.resolve(docs.load_meta(arch, b).original_relpath).read_bytes()
+    new = combine.combine(arch, [a, b])
+    page = c.get(f"/documents/{new.id}").text
+    assert f'href="/documents/{new.id}/combined-original/1"' in page
+    for url in (f"/documents/{new.id}/combined-original/1",
+                f"/api/documents/{new.id}/combined-original/1"):  # fmt: skip
+        r = c.get(url)
+        assert r.status_code == 200 and r.content == data
+        assert 'filename="b.pdf"' in r.headers["content-disposition"]
+    assert c.get(f"/api/documents/{new.id}/combined-original/2").status_code == 404
+    assert c.get(f"/api/documents/{new.id}/split-original").status_code == 404
+    page = c.get("/trash").text
+    assert "Teile eines zusammengefügten Dokuments" in page and "Papierkorb leeren" not in page
+    r = c.post("/trash/action", data={"csrf_token": csrf, "action": "restore_parts",
+               "target": f"batch:{combine.batch_for(new.id)}"}, follow_redirects=False)  # fmt: skip
+    assert r.headers["location"].startswith(f"/documents/{a}")
+    assert set(ids(arch, "Zeugnis")) == {a, b, new.id}  # the combined document stays

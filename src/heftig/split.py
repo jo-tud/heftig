@@ -171,12 +171,12 @@ def _split_from(
     orig: DocumentMetadata, title: str, pages: list[int], num: int, total: int
 ) -> dict[str, Any]:
     """Where a part came from. ``originals``: the original's file and, if the original was
-    itself a part, the files before it - they are kept as long as this part exists."""
+    itself split or combined, the files before it - kept as long as this part exists."""
     return {
         "id": orig.id, "title": title, "pages": pages, "part": num, "parts": total,
         "filename": orig.original_filename, "mime_type": orig.mime_type,
         "originals": list(
-            dict.fromkeys([orig.original_relpath, *docs.split_originals(orig.source_details)])
+            dict.fromkeys([orig.original_relpath, *docs.source_originals(orig.source_details)])
         ),
     }  # fmt: skip
 

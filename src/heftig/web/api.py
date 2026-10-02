@@ -357,23 +357,28 @@ def original_response(request: Request, doc_id: str, inline: bool) -> FileRespon
     )
 
 
-def split_original_response(request: Request, doc_id: str) -> FileResponse:
-    """The file this document was split from, as it was received - always as a download (the
-    original itself may be in the trash, where it is kept as long as its parts exist)."""
+def made_from_response(request: Request, doc_id: str, index: int | None = None) -> FileResponse:
+    """A file this document was made from, as it was received - the original it was split
+    from (``index`` None) or the part number ``index`` (0-based) it was combined from. Always
+    as a download; the document itself may be in the trash, where it is kept."""
     a = get_archive(request)
     meta = _load(request, doc_id)
-    rels = docs.split_originals(meta.source_details)
-    if not rels:
-        raise ApiError(404, "not_found", _("This document was not split from another one."))
+    if index is None:
+        entry = meta.source_details.get("split_from")
+    else:
+        combined = meta.source_details.get("combined_from")
+        ok = isinstance(combined, list) and 0 <= index < len(combined)
+        entry = combined[index] if ok else None
+    rels = docs.split_originals({"split_from": entry})
+    if not isinstance(entry, dict) or not rels:
+        raise ApiError(404, "not_found", _("No original file is recorded for this."))
     path = a.paths.resolve(rels[0])
     if not path.exists():
         raise ApiError(410, "original_missing", _("Original file is missing – run `heftig check`."))
-    sf = meta.source_details["split_from"]
-    mime = str(sf.get("mime_type") or "application/octet-stream")
     return FileResponse(
         path,
-        media_type=mime,
-        filename=str(sf.get("filename") or path.name),
+        media_type=str(entry.get("mime_type") or "application/octet-stream"),
+        filename=str(entry.get("filename") or path.name),
         content_disposition_type="attachment",
         headers={"X-Content-Type-Options": "nosniff", "Cache-Control": "private, no-store"},
     )
@@ -513,7 +518,9 @@ class CombineBody(BaseModel):
 @router.post("/documents/combine", tags=["documents"], status_code=201)
 def api_combine(request: Request, body: CombineBody, p: Principal = Depends(require_write)):
     """Combine documents (pages in this order) into a new one; the parts go to the trash
-    as batch ``combine-<new id>``. Undo: POST /api/documents/{new id}/uncombine."""
+    as batch ``combine-<new id>`` and are kept there as long as the new document exists (GET
+    /api/documents/{new id}/combined-original/{index} downloads a part's file).
+    Undo: POST /api/documents/{new id}/uncombine."""
     from .. import combine
 
     for i in body.ids:
@@ -567,7 +574,16 @@ def api_split(
 @router.get("/documents/{doc_id}/split-original", tags=["documents"])
 def api_split_original(request: Request, doc_id: str, p: Principal = Depends(require_user)):
     """The original file this document was split from (unchanged, as received)."""
-    return split_original_response(request, doc_id)
+    return made_from_response(request, doc_id)
+
+
+@router.get("/documents/{doc_id}/combined-original/{index}", tags=["documents"])
+def api_combined_original(
+    request: Request, doc_id: str, index: int, p: Principal = Depends(require_user)
+):
+    """The original file of part ``index`` (0-based, as in ``combined_from``) this document was
+    combined from (unchanged, as received)."""
+    return made_from_response(request, doc_id, index)
 
 
 @router.post("/documents/{doc_id}/unsplit", tags=["documents"])

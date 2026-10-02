@@ -210,7 +210,7 @@ def render(request: Request, name: str, *, http_status: int = 200, **ctx: Any) -
     if undo.startswith(("doc:", "batch:")) and "undo" not in ctx:
         ctx["undo"] = undo[:80]
         if undo.startswith("batch:" + combine.BATCH_PREFIX):
-            ctx["undo_label"] = _("Combined – the individual documents are in the trash.")
+            ctx["undo_label"] = _("Combined – the individual documents are kept in the trash.")
         elif undo.startswith("batch:" + split.BATCH_PREFIX):
             a = request.app.state.archive
             n = len(split.parts_of(a, undo[6 + len(split.BATCH_PREFIX) :]))
@@ -493,6 +493,12 @@ def _trash_sync(a, form, query_action: str) -> RedirectResponse:
                 raise trash.TrashError("; ".join(sorted(set(r["failed"]))) or _("Nothing to do."))
             return redirect(f"/documents/{r['ids'][0]}?" + urlencode(
                 {"msg": _("Combining undone – the individual documents are back.")}))  # fmt: skip
+        if action == "restore_parts" and target.startswith("batch:" + combine.BATCH_PREFIX):
+            r = trash.restore_batch(a, target[6:])  # the combined document stays
+            if not r["ids"]:
+                raise trash.TrashError("; ".join(sorted(set(r["failed"]))) or _("Nothing to do."))
+            return redirect(f"/documents/{r['ids'][0]}?" + urlencode(
+                {"msg": _("The individual documents are back – the combined one stays.")}))  # fmt: skip
         if action == "restore_original" and target.startswith("batch:" + split.BATCH_PREFIX):
             meta = trash.restore(a, target[6 + len(split.BATCH_PREFIX) :])  # parts stay
             return redirect(f"/documents/{meta.id}?" + urlencode(
@@ -885,7 +891,14 @@ def document_original(
 
 @router.get("/documents/{doc_id}/split-original")
 def document_split_original(request: Request, doc_id: str, p: Principal = Depends(require_user)):
-    return api.split_original_response(request, doc_id)
+    return api.made_from_response(request, doc_id)
+
+
+@router.get("/documents/{doc_id}/combined-original/{index}")
+def document_combined_original(
+    request: Request, doc_id: str, index: int, p: Principal = Depends(require_user)
+):
+    return api.made_from_response(request, doc_id, index)
 
 
 @router.get("/documents/{doc_id}/mail-attachments/{index}")
