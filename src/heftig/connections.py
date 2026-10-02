@@ -12,7 +12,7 @@ from typing import Any
 
 import httpx
 
-from .config import Settings
+from .config import Settings, with_headers
 from .i18n import _
 from .providers import registry
 from .providers.base import ProviderError
@@ -93,23 +93,27 @@ def test_ai(settings: Settings) -> str:
     return getattr(classifier, "model", "")
 
 
-def list_models(provider: str, base_url: str, api_key: str | None) -> list[str]:
-    """Model names the endpoint offers (for a selection list)."""
-    headers: dict[str, str] = {}
+def list_models(
+    provider: str, base_url: str, api_key: str | None, headers: dict[str, str] | None = None
+) -> list[str]:
+    """Model names the endpoint offers (for a selection list); ``headers``: the additional
+    headers of an OpenAI-compatible endpoint."""
+    sent: dict[str, str] = {}
     if provider == "anthropic":
         base = (base_url or ANTHROPIC_BASE).rstrip("/")
         if not base.endswith("/v1"):
             base += "/v1"
-        headers = {"x-api-key": api_key or "", "anthropic-version": "2023-06-01"}
+        sent = {"x-api-key": api_key or "", "anthropic-version": "2023-06-01"}
     else:
         base = (base_url or (OPENAI_BASE if provider == "openai" else "")).rstrip("/")
         if not base:
             raise ConnectionProblem(_("Enter the address of the server first."))
         if api_key:
-            headers["Authorization"] = f"Bearer {api_key}"
+            sent["Authorization"] = f"Bearer {api_key}"
+        sent = with_headers(sent, headers or {})
     try:
         with httpx.Client(timeout=TIMEOUT, follow_redirects=False) as c:
-            r = c.get(f"{base}/models", headers=headers, params={"limit": 1000})
+            r = c.get(f"{base}/models", headers=sent, params={"limit": 1000})
     except httpx.HTTPError as e:
         raise ConnectionProblem(
             _("No connection to %(host)s (%(error)s).", host=base, error=type(e).__name__)

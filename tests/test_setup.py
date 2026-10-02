@@ -158,7 +158,7 @@ def test_stored_keys_never_go_to_another_server(signed_in, monkeypatch):
                                  "consent": "1"})  # fmt: skip
     sent = []
     monkeypatch.setattr(
-        connections, "list_models", lambda p, base, key: sent.append((base, key)) or []
+        connections, "list_models", lambda p, base, key, headers: sent.append((base, key)) or []
     )
     # the (hidden) server field of the local mode is not used for Anthropic
     c.post("/settings/ai/models", data={"csrf_token": csrf, "mode": "anthropic",
@@ -180,6 +180,40 @@ def test_stored_keys_never_go_to_another_server(signed_in, monkeypatch):
     r = c.post("/settings/mail", data={"csrf_token": csrf, "imap_user": "a@example.org",
                                        "imap_host": "imap.other.example", "after": "seen"})  # fmt: skip
     assert "enter the password" in r.text and arch.settings.imap_host == "imap.example.org"
+
+
+def test_additional_headers_for_an_own_server(signed_in, monkeypatch):
+    arch, c, csrf = signed_in
+    monkeypatch.setattr(connections, "test_ai", lambda s: s.classify_model)
+    form = {"csrf_token": csrf, "mode": "local", "model": "glm-5.1", "consent": "1",
+            "base_url": "https://opencode.example/zen/go/v1", "ocr_ai": "1"}  # fmt: skip
+    r = c.post("/settings/ai", data={**form, "headers": "Bearer geheim"})
+    assert "geheim" not in r.text and "classify_headers" not in store.stored(arch.conn)
+    r = c.post("/settings/ai", data={**form, "headers": "x-opencode-session: geheim-1"},
+               follow_redirects=False)  # fmt: skip
+    assert r.status_code == 303
+    s = arch.settings
+    assert s.provider_headers("classify") == s.provider_headers("ocr") == {
+        "x-opencode-session": "geheim-1"}  # fmt: skip
+    page = c.get("/settings/ai").text
+    assert "geheim-1" not in page and "clear_headers" in page
+    assert "geheim-1" not in c.get("/settings").text
+    # kept when left empty, sent with the list of models
+    c.post("/settings/ai", data=form)
+    assert arch.settings.provider_headers("classify") == {"x-opencode-session": "geheim-1"}
+    sent = []
+    monkeypatch.setattr(connections, "list_models",
+                        lambda p, base, key, headers: sent.append(headers) or [])  # fmt: skip
+    c.post("/settings/ai/models", data=form)
+    c.post("/settings/ai/models", data={**form, "base_url": "https://other.example/v1"})
+    assert sent == [{"x-opencode-session": "geheim-1"}, {}]
+    # never handed to another server, removed on request
+    c.post("/settings/ai", data={**form, "base_url": "https://other.example/v1"})
+    assert arch.settings.provider_headers("classify") == {}
+    c.post("/settings/ai", data={**form, "headers": "x-a: 1"})
+    c.post("/settings/ai", data={**form, "clear_headers": "1"})
+    s = arch.settings
+    assert s.provider_headers("classify") == s.provider_headers("ocr") == {}
 
 
 def test_a_rejected_key_is_reported_as_such(monkeypatch):

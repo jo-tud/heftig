@@ -8,6 +8,8 @@ work without putting passwords into the environment.
 from __future__ import annotations
 
 import ipaddress
+import json
+import re
 import socket
 from functools import lru_cache
 from pathlib import Path
@@ -29,6 +31,58 @@ def _read_secret_file(path: str | None) -> str | None:
     if not path:
         return None
     return Path(path).read_text(encoding="utf-8").strip()
+
+
+# request headers that belong to the connection itself (httpx sets them); everything else,
+# Authorization and User-Agent included, may be given as an additional header
+RESERVED_HEADERS = {"host", "content-length", "content-type", "transfer-encoding", "connection"}
+_HEADER_NAME = re.compile(r"^[!#$%&'*+.^_`|~0-9A-Za-z-]+$")
+
+
+def parse_headers(text: str | None) -> dict[str, str]:
+    """Additional HTTP headers for an OpenAI-compatible endpoint: a JSON object or one
+    ``Name: value`` per line. Raises ValueError with a message that never contains a value
+    (header values may be secrets)."""
+    text = (text or "").strip()
+    if not text:
+        return {}
+    if text.startswith("{"):
+        try:
+            data = json.loads(text)
+        except ValueError as e:
+            raise ValueError(N_("Additional headers: invalid JSON.")) from e
+        if not isinstance(data, dict) or not all(
+            isinstance(v, (str, int, float)) and not isinstance(v, bool) for v in data.values()
+        ):
+            raise ValueError(N_("Additional headers: the JSON object must map names to texts."))
+        pairs = [(str(k), str(v)) for k, v in data.items()]
+    else:
+        pairs = []
+        for line in text.splitlines():
+            if not line.strip() or line.lstrip().startswith("#"):
+                continue
+            name, colon, value = line.partition(":")
+            if not colon:
+                raise ValueError(N_('Additional headers: one "Name: value" per line.'))
+            pairs.append((name, value))
+    out: dict[str, str] = {}
+    for name, value in pairs:
+        name, value = name.strip(), value.strip()
+        if not _HEADER_NAME.match(name):  # not repeated: it might be part of a value
+            raise ValueError(N_("Additional headers: invalid header name."))
+        if name.lower() in RESERVED_HEADERS:
+            raise ValueError(N_("Additional headers: %(name)s cannot be set.") % {"name": name})
+        if not (value.isascii() and value.isprintable()):  # no line breaks, control chars
+            raise ValueError(N_("Additional headers: invalid value for %(name)s.") % {"name": name})
+        out[name] = value
+    return out
+
+
+def with_headers(defaults: dict[str, str], extra: dict[str, str]) -> dict[str, str]:
+    """``defaults`` plus the additional headers; one of them replaces a default of the same
+    name, whatever its case (e.g. ``authorization`` the bearer key)."""
+    names = {k.lower() for k in extra}
+    return {**{k: v for k, v in defaults.items() if k.lower() not in names}, **extra}
 
 
 # host names that always mean "this machine" (container -> host) and the CGNAT range used by
@@ -142,6 +196,11 @@ class Settings(BaseSettings):
     ocr_base_url: str = ""
     ocr_api_key: SecretStr | None = None
     ocr_api_key_file: str | None = None
+    # additional HTTP headers for an openai/openai_compatible endpoint (secret, like the key):
+    # one "Name: value" per line or a JSON object; checked when used (a pydantic validator
+    # would put the value into its error message)
+    ocr_headers: SecretStr | None = None
+    ocr_headers_file: str | None = None
     ocr_supports_images: bool = True  # capability of an openai_compatible endpoint
     anthropic_ocr_effort: str = "low"  # output_config.effort for OCR calls ("" = model default)
     allow_cloud_ocr: bool = False
@@ -152,6 +211,8 @@ class Settings(BaseSettings):
     classify_base_url: str = ""
     classify_api_key: SecretStr | None = None
     classify_api_key_file: str | None = None
+    classify_headers: SecretStr | None = None
+    classify_headers_file: str | None = None
     classify_json_mode: Literal["schema", "object", "none"] = "schema"
     classify_max_chars: int = 24000
     classify_min_confidence: float = 0.6
@@ -231,6 +292,11 @@ class Settings(BaseSettings):
         if isinstance(value, SecretStr) and value.get_secret_value():
             return value.get_secret_value()
         return _read_secret_file(getattr(self, f"{name}_file", None))
+
+    def provider_headers(self, task: Literal["ocr", "classify"]) -> dict[str, str]:
+        """The additional HTTP headers for a task's endpoint (``*_headers`` or its file).
+        Raises ValueError (without values) when they are invalid. Never logged."""
+        return parse_headers(self.secret(f"{task}_headers"))
 
     def provider_is_cloud(self, provider: str, base_url: str) -> bool:
         if provider in CLOUD_PROVIDERS:

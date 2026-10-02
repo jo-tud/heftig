@@ -101,6 +101,61 @@ def test_cloud_detection_and_gating(tmp_path):
     assert d["classify"]["cloud"] and d["classify"]["blocked"] and "sk-x" not in json.dumps(d)
 
 
+def test_additional_headers_reach_every_request(monkeypatch, tmp_path):
+    from heftig import connections
+    from heftig.config import parse_headers
+
+    assert parse_headers("# comment\nx-a: 1\nUser-Agent: heftig/test") == {
+        "x-a": "1", "User-Agent": "heftig/test"}  # fmt: skip
+    assert parse_headers('{"x-a": "b: c"}') == {"x-a": "b: c"}
+    for bad in ("Bearer geheim", "Content-Type: text/plain", "x-a: \u00e4", '{"x": true}', "{"):
+        with pytest.raises(ValueError) as e:
+            parse_headers(bad)
+        assert "geheim" not in str(e.value)
+
+    seen = []
+
+    def handler(request):
+        seen.append((request.url.path, request.headers))
+        if request.url.path.endswith("/models"):
+            return httpx.Response(200, json={"data": [{"id": "glm"}]})
+        return _answer('{"ok": true}')
+
+    _mock_httpx(monkeypatch, handler)
+    s = Settings(_env_file=None, archive_dir=tmp_path, classify_provider="openai_compatible",
+                 classify_base_url="https://llm.example.com/v1", classify_model="glm",
+                 classify_api_key="sk-x", allow_cloud_classify=True,
+                 classify_headers="x-session: s1\nauthorization: Token t")  # fmt: skip
+    assert connections.test_ai(s) == "glm"
+    path, headers = seen[-1]
+    assert path == "/v1/chat/completions" and headers["x-session"] == "s1"
+    # an additional header replaces the default one, whatever its case
+    assert headers.get_list("authorization") == ["Token t"]
+    assert headers["content-type"] == "application/json"
+    registry.get_search_planner(s).complete_json("s", "u", {"type": "object"})
+    assert seen[-1][1]["x-session"] == "s1"
+    assert connections.list_models("openai_compatible", "https://llm.example.com/v1", None,
+                                   headers={"x-session": "s2"}) == ["glm"]  # fmt: skip
+    assert seen[-1][1]["x-session"] == "s2"
+    ocr = Settings(_env_file=None, archive_dir=tmp_path, ocr_provider="openai_compatible",
+                   ocr_base_url="http://localhost:1/v1", ocr_model="m",
+                   ocr_headers='{"x-ocr": "o"}')  # fmt: skip
+    assert registry.get_extractor(ocr)._c._headers["x-ocr"] == "o"
+    # the reachability check sends them too; values are never shown
+    monkeypatch.setattr(httpx, "get", lambda url, headers, **kw: seen.append((url, headers))
+                        or httpx.Response(200))  # fmt: skip
+    assert registry.probe_ai(s) and seen[-1][1]["x-session"] == "s1"
+    d = registry.describe(s)
+    assert d["classify"]["headers_configured"] and "s1" not in json.dumps(d)
+    # a broken headers file: the provider is unavailable, with no value in the message
+    f = tmp_path / "headers"
+    f.write_text("Bearer geheim\n")
+    broken = s.model_copy(update={"classify_headers": None, "classify_headers_file": str(f)})
+    with pytest.raises(ProviderUnavailable) as e:
+        registry.get_classifier(broken)
+    assert "geheim" not in str(e.value)
+
+
 def test_default_config_sends_nothing_to_the_cloud(tmp_path):
     s = Settings(_env_file=None, archive_dir=tmp_path)
     assert s.ocr_provider == "tesseract" and s.classify_provider == "rules"
