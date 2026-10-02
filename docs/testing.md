@@ -9,7 +9,7 @@ make lint          # ruff check + ruff format --check on src, tests, contrib, sc
                    # plus the translation check (scripts/i18n.py check de)
 ```
 
-The suite (about 470 tests) needs no network access, no accounts and no API keys. AI providers,
+The suite (about 500 tests) needs no network access, no accounts and no API keys. AI providers,
 OCR (except one test) and the IMAP server are replaced by fakes. Test documents are generated
 synthetically (`tests/helpers.py`, `tests/corpus.py`); all names, numbers and addresses in them
 are invented.

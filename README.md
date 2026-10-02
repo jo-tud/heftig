@@ -19,8 +19,8 @@ reads, sorts, finds and remembers where the paper is – and leaves out what a h
 need: roles, workflows, sharing, plugins. Where a decision was possible, it was made, so there is
 little to configure.
 
-**Easy to change.** About 22,000 lines of plain Python, server-rendered HTML and a little
-JavaScript, no build step, no front-end framework, and about 470 tests that run in a minute and
+**Easy to change.** About 24,000 lines of plain Python, server-rendered HTML and a little
+JavaScript, no build step, no front-end framework, and about 500 tests that run in a minute and
 a half without network access. That makes it a good fit for coding agents such as Claude Code or
 Codex: describe what you want different, let the agent change it and run the tests.
 [AGENTS.md](AGENTS.md) gives it the map and the rules that are easy to break. Heftig itself was
