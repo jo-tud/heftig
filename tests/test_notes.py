@@ -173,25 +173,41 @@ def test_attachments_live_next_to_originals_and_are_shared(archive):
 
 
 def test_note_autosave_adds_then_edits_the_same_note(web):
-    """The page saves a note when its field is left: the first save adds it, later ones change
-    that note (no second copy), an emptied note is deleted. The answer carries the revision,
-    which the other forms on the page need."""
+    """The page saves a note when its field is left. A new note comes with the id the page
+    chose, so the same save sent twice (a reload racing the save) stays one note; later saves
+    change it, an emptied note is deleted. The answer carries the revision, which the other
+    forms on the page need, and the note as the list shows it."""
     app, c, h, doc_id = web
     a = app.state.archive
     form = {"csrf_token": h["X-CSRF-Token"], "autosave": "1"}
-    r = c.post(f"/documents/{doc_id}/notes", data={**form, "action": "add", "text": "Widerspruch"})
-    data = r.json()
+    nid = "0123456789abcdef0123456789abcdef"
+    for _ in range(2):
+        r = c.post(f"/documents/{doc_id}/notes",
+                   data={**form, "action": "add", "note_id": nid, "text": "Widerspruch"})  # fmt: skip
+        data = r.json()
+        assert data["ok"] and data["note_id"] == nid
     m = docs.load_meta(a, doc_id)
-    assert data["ok"] and data["note_id"] == m.notes[0].id and data["revision"] == m.revision
+    assert [(n.id, n.text) for n in m.notes] == [(nid, "Widerspruch")]
+    assert data["revision"] == m.revision
+    assert f'value="{nid}"' in data["note_html"] and "Widerspruch" in data["note_html"]
     r = c.post(f"/documents/{doc_id}/notes",
-               data={**form, "action": "save", "note_id": data["note_id"], "text": "Widerspruch am 3.10."})  # fmt: skip
+               data={**form, "action": "add", "note_id": nid, "text": "Widerspruch am 3.10."})  # fmt: skip
     assert r.json()["ok"] and not r.json()["deleted"]
+    r = c.post(f"/documents/{doc_id}/notes",
+               data={**form, "action": "save", "note_id": nid, "text": "Widerspruch am 3.10."})  # fmt: skip
     assert [n.text for n in docs.load_meta(a, doc_id).notes] == ["Widerspruch am 3.10."]
+    # without an id (older page), an empty one, a malformed id
+    r = c.post(f"/documents/{doc_id}/notes", data={**form, "action": "add", "text": "zweite"})
+    assert r.json()["ok"] and len(docs.load_meta(a, doc_id).notes) == 2
     r = c.post(f"/documents/{doc_id}/notes", data={**form, "action": "add", "text": "  "})
     assert r.status_code == 400 and r.json()["error"]
     r = c.post(f"/documents/{doc_id}/notes",
-               data={**form, "action": "save", "note_id": data["note_id"], "text": ""})  # fmt: skip
-    assert r.json()["deleted"] and r.json()["note_id"] is None
-    assert docs.load_meta(a, doc_id).notes == []
+               data={**form, "action": "add", "note_id": "../x", "text": "x"})  # fmt: skip
+    assert r.status_code == 400
+    r = c.post(f"/documents/{doc_id}/notes",
+               data={**form, "action": "add", "note_id": nid, "text": ""})  # fmt: skip
+    assert r.json()["deleted"] and r.json()["note_id"] is None and r.json()["note_html"] == ""
+    assert [n.text for n in docs.load_meta(a, doc_id).notes] == ["zweite"]
     page = c.get(f"/documents/{doc_id}").text
-    assert 'class="note-add"' in page and "tagbox.js" in page and "data-tagbox" in page
+    assert 'class="note-add" autocomplete="off"' in page and "tagbox.js" in page
+    assert 'id="meta-form" autocomplete="off"' in page and "data-tagbox" in page

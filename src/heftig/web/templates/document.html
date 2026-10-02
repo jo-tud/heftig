@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% from "_macros.html" import status_badge, time, csrf_field, provider_line %}
 {% from "_review.html" import review_card, review_count, review_note, date_hint %}
+{% from "_notes.html" import note_article %}
 {% block title %}{{ m.title or m.original_filename }}{% endblock %}
 {% block content %}
 {% set rv %}{% if review %}<input type="hidden" name="review" value="1">{% endif %}{% endset %}
@@ -117,7 +118,7 @@
 
   <section class="card" aria-labelledby="meta-h">
     <h2 id="meta-h">{{ _("Metadata") }}</h2>
-    <form method="post" action="/documents/{{ m.id }}/edit" class="meta-form" id="meta-form">
+    <form method="post" action="/documents/{{ m.id }}/edit" class="meta-form" id="meta-form" autocomplete="off">
       {{ csrf_field(csrf) }}{{ rv }}<input type="hidden" name="revision" value="{{ m.revision }}">
       {% macro lockbox(field) -%}
         {% if m.field_locks.get(field) %}<label class="lock" title="{{ _("Locked: reprocessing won't overwrite this field. Uncheck to leave it to the AI again.") }}">
@@ -238,24 +239,13 @@
 
 <section class="card notes" aria-labelledby="notes-h">
   <h2 id="notes-h">{{ _("Notes & attachments") }}</h2>
-  {% for n in m.notes %}
-  <article class="note">
-    <p class="note-meta small muted">{{ time(n.at) }}{% if n.updated_at %} · {{ _("edited %(when)s", when=time(n.updated_at)) }}{% endif %}</p>
-    <div class="note-text" data-pv>{{ n.text }}</div>
-    <details class="note-edit"><summary class="small">{{ _("Edit") }}</summary>
-      <form method="post" action="/documents/{{ m.id }}/notes">{{ csrf_field(csrf) }}{{ rv }}
-        <input type="hidden" name="note_id" value="{{ n.id }}">
-        <textarea name="text" rows="4" aria-label="{{ _("Edit note") }}">{{ n.text }}</textarea>
-        <p class="buttons"><button name="action" value="save" class="primary">{{ _("Save") }}</button>
-          <button name="action" value="delete" class="secondary" formnovalidate>{{ _("Delete") }}</button></p>
-      </form>
-    </details>
-  </article>
+  {% for n in m.notes %}{{ note_article(m, n, csrf, rv) }}
   {% endfor %}
-  <form method="post" action="/documents/{{ m.id }}/notes" class="note-add">{{ csrf_field(csrf) }}{{ rv }}
+  <form method="post" action="/documents/{{ m.id }}/notes" class="note-add" autocomplete="off">{{ csrf_field(csrf) }}{{ rv }}
     <label class="sr-only" for="note-new">{{ _("New note") }}</label>
     <textarea id="note-new" name="text" rows="3" placeholder="{{ _("Your own note, e.g. “Objection filed on …”, “paid by bank transfer”") }}" required></textarea>
     <button name="action" value="add" class="primary">{{ _("Add note") }}</button>
+    <p class="hint autosave-hint">{{ _("A note is saved as soon as you leave its field.") }}</p>
   </form>
 
   <h3>{{ _("Attachments") }}</h3>

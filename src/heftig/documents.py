@@ -992,22 +992,31 @@ def remove_term_alias(archive: Archive, term_id: int, alias: str) -> None:
 MAX_NOTE_CHARS = 20000
 
 
-def add_note(archive: Archive, doc_id: str, text: str) -> DocumentMetadata:
+def add_note(
+    archive: Archive, doc_id: str, text: str, note_id: str | None = None
+) -> DocumentMetadata:
+    """A new note. ``note_id`` (chosen by the page) makes adding repeatable: a note with that
+    id already there is changed instead - a save sent twice never makes two notes."""
     import uuid as _uuid
 
     from .models import Note
 
-    text = text.replace("\r\n", "\n").strip()
-    if not text:
-        raise EditError(_("The note is empty."))
-    if len(text) > MAX_NOTE_CHARS:
-        raise EditError(_("Note too long (max. %(num)s characters).", num=MAX_NOTE_CHARS))
+    if note_id is not None and not re.fullmatch(r"[0-9a-f]{32}", note_id):
+        raise EditError(_("Note not found."))
     with write_tx(archive.conn):
         meta = load_meta(archive, doc_id)
-        meta.notes.append(Note(id=_uuid.uuid4().hex, at=now_iso(), text=text))
-        add_history(meta, HistoryEntry(task="note", at=now_iso(), status="added", by="user"))
-        persist(archive, meta)
-        return meta
+        exists = note_id is not None and any(n.id == note_id for n in meta.notes)
+        if not exists:
+            text = text.replace("\r\n", "\n").strip()
+            if not text:
+                raise EditError(_("The note is empty."))
+            if len(text) > MAX_NOTE_CHARS:
+                raise EditError(_("Note too long (max. %(num)s characters).", num=MAX_NOTE_CHARS))
+            meta.notes.append(Note(id=note_id or _uuid.uuid4().hex, at=now_iso(), text=text))
+            add_history(meta, HistoryEntry(task="note", at=now_iso(), status="added", by="user"))
+            persist(archive, meta)
+            return meta
+    return edit_note(archive, doc_id, note_id, text)
 
 
 def edit_note(archive: Archive, doc_id: str, note_id: str, text: str) -> DocumentMetadata:

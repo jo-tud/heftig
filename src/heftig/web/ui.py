@@ -1270,21 +1270,34 @@ def document_attachment(
 
 
 def _note_autosave(a, doc_id: str, form) -> JSONResponse:
-    """A note saved as soon as the user leaves it: a new one is added (the page then keeps
-    editing that note), an existing one changed - emptied, it is deleted."""
+    """A note saved as soon as the user leaves it (or pauses typing). A new note comes with
+    the id the page chose for it, so a save sent twice changes it instead of adding it
+    again; an emptied note is deleted. Answers with the note as the page shows it."""
+    from markupsafe import Markup
+
     note_id = _form_val(form, "note_id")
     text = str(form.get("text") or "")
     try:
-        if note_id:
-            meta = docs.edit_note(a, doc_id, note_id, text)
+        if _form_val(form, "action") == "add":
+            meta = docs.add_note(a, doc_id, text, note_id or None)
+            note_id = note_id or meta.notes[-1].id
         else:
-            meta = docs.add_note(a, doc_id, text)
-            note_id = meta.notes[-1].id
+            meta = docs.edit_note(a, doc_id, note_id, text)
     except docs.EditError as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
-    deleted = all(n.id != note_id for n in meta.notes)
-    return JSONResponse({"ok": True, "revision": meta.revision,
-                         "note_id": None if deleted else note_id, "deleted": deleted})  # fmt: skip
+    note = next((n for n in meta.notes if n.id == note_id), None)
+    html = ""
+    if note is not None:
+        m = meta.model_dump(mode="json")
+        rv = (
+            Markup('<input type="hidden" name="review" value="1">')
+            if str(form.get("review") or "") == "1"
+            else Markup("")
+        )
+        macro = _ENV.get_template("_notes.html").module.note_article
+        html = str(macro(m, note.model_dump(mode="json"), _form_val(form, "csrf_token"), rv))
+    return JSONResponse({"ok": True, "revision": meta.revision, "note_id": note_id if note else None,
+                         "deleted": note is None, "note_html": html})  # fmt: skip
 
 
 def _notes_sync(a, doc_id: str, form) -> Response:

@@ -1,0 +1,17 @@
+{% from "_macros.html" import csrf_field, time %}
+{# One note on the document page; also rendered on its own when the page added a note. #}
+
+{% macro note_article(m, n, csrf, rv) -%}
+<article class="note">
+  <p class="note-meta small muted">{{ time(n.at) }}{% if n.updated_at %} · {{ _("edited %(when)s", when=time(n.updated_at)) }}{% endif %}</p>
+  <div class="note-text" data-pv>{{ n.text }}</div>
+  <details class="note-edit"><summary class="small">{{ _("Edit") }}</summary>
+    <form method="post" action="/documents/{{ m.id }}/notes" autocomplete="off">{{ csrf_field(csrf) }}{{ rv }}
+      <input type="hidden" name="note_id" value="{{ n.id }}">
+      <textarea name="text" rows="4" aria-label="{{ _("Edit note") }}">{{ n.text }}</textarea>
+      <p class="buttons"><button name="action" value="save" class="primary">{{ _("Save") }}</button>
+        <button name="action" value="delete" class="secondary" formnovalidate>{{ _("Delete") }}</button></p>
+    </form>
+  </details>
+</article>
+{%- endmacro %}

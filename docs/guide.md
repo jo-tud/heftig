@@ -17,8 +17,9 @@ How the parts fit together in daily use. Setup and operation: [operations.md](op
    pick a value); *Saved · Undo* appears next to it, and *Undo* restores the previous value,
    its lock and the AI's suggestions. Nothing is saved while you type, and links and buttons
    on the page wait for a save still running; leaving the page otherwise (back button, closing
-   the tab) still saves the field you were in. Notes are saved the same way – a new note as soon
-   as you leave its field. Tags are shown as small chips: type a tag and press Enter or a comma
+   the tab, reloading) still saves the field you were in – a reload that is quicker than the save
+   waits for it. Notes are saved the same way, and after a pause in typing; a new note moves into
+   the list as soon as you leave its field (Ctrl+Enter also finishes it). Tags are shown as small chips: type a tag and press Enter or a comma
    to add it, × removes one. Every field you edit is locked – reprocessing
    never overwrites it. Suggestions of the AI are accepted or dismissed there (*Dismiss* only
    removes the suggestion; the field keeps its value), or on *Suggestions in bulk* (linked
