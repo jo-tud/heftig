@@ -40,7 +40,7 @@
   <input type="hidden" name="csrf_token" value="{{ csrf }}"><input type="hidden" name="target" value="{{ undo }}">
   <span>{{ undo_label or _("Moved to the trash.") }}</span>
   <button name="action" value="restore" class="primary">{{ _("Undo") }}</button>
-  <a href="/trash" class="small">{{ _("Trash") }}</a>
+  {% if undo.startswith("batch:combine-") %}<a href="/sources" class="small">{{ _("Source documents") }}</a>{% else %}<a href="/trash" class="small">{{ _("Trash") }}</a>{% endif %}
   {% if undo_paper %}<input type="hidden" name="back" value="{{ undo_back }}">
   <span class="undo-paper">{% if undo_paper.kept %}{% trans binder=undo_paper.binder, section=undo_paper.section, n=undo_paper.n %}The paper stays in binder <strong>{{ binder }}</strong> (section {{ section }}, position {{ n }} from the top) – its place keeps counting.{% endtrans %}
     <button name="action" value="paper_out" class="linklike small">{{ _("Taken out after all") }}</button>

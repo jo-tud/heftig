@@ -1249,6 +1249,10 @@ msgstr "Ein Dokument mit dieser Kennung existiert bereits."
 msgid "Filing: The filing position now belongs to “%(title)s” – please check where the paper is."
 msgstr "Ablage: Die Ablageposition gehört inzwischen zu „%(title)s“ – bitte prüfen, wo das Papier liegt."
 
+#: src/heftig/trash.py
+msgid "No longer among the source documents."
+msgstr "Nicht mehr unter den Ausgangsdokumenten."
+
 #: src/heftig/trash.py src/heftig/web/ui.py
 msgid "No longer in the trash."
 msgstr "Nicht (mehr) im Papierkorb."
@@ -1264,6 +1268,14 @@ msgstr "Die Originaldatei fehlt – nicht wiederherstellbar."
 #: src/heftig/trash.py
 msgid "The same file is back in the archive (“%(title)s”) – not restored."
 msgstr "Dieselbe Datei ist inzwischen wieder im Archiv („%(title)s“) – nicht wiederhergestellt."
+
+#: src/heftig/trash.py
+msgid "deleted from the source documents"
+msgstr "aus den Ausgangsdokumenten gelöscht"
+
+#: src/heftig/trash.py
+msgid "“%(title)s” kept as a source document (%(reason)s)"
+msgstr "„%(title)s“ als Ausgangsdokument aufbewahrt (%(reason)s)"
 
 #: src/heftig/trash.py
 msgid "“%(title)s” moved to the trash"
@@ -1289,7 +1301,7 @@ msgstr "Anhangdatei fehlt – `heftig check` ausführen."
 msgid "Delete permanently: pass ?confirm=<id>."
 msgstr "Endgültig löschen: ?confirm=<id> angeben."
 
-#: src/heftig/web/api.py src/heftig/web/app.py
+#: src/heftig/web/api.py src/heftig/web/app.py src/heftig/web/ui.py
 msgid "Document not found."
 msgstr "Dokument nicht gefunden."
 
@@ -1755,7 +1767,7 @@ msgstr "Markierung an"
 msgid "blocked"
 msgstr "gesperrt"
 
-#: src/heftig/web/templates/_notes.html src/heftig/web/templates/categories.html src/heftig/web/templates/scan.html
+#: src/heftig/web/templates/_notes.html src/heftig/web/templates/categories.html src/heftig/web/templates/scan.html src/heftig/web/templates/sources.html
 msgid "Delete"
 msgstr "Löschen"
 
@@ -1880,10 +1892,6 @@ msgstr "Im Ordner lassen"
 msgid "Main navigation"
 msgstr "Hauptnavigation"
 
-#: src/heftig/web/templates/base.html
-msgid "Moved to the trash."
-msgstr "In den Papierkorb verschoben."
-
 #: src/heftig/web/static/privacy.js src/heftig/web/templates/base.html
 msgid "Private: on"
 msgstr "Privat: an"
@@ -1891,6 +1899,10 @@ msgstr "Privat: an"
 #: src/heftig/web/templates/base.html
 msgid "Skip to content"
 msgstr "Zum Inhalt springen"
+
+#: src/heftig/web/templates/base.html src/heftig/web/templates/settings.html src/heftig/web/templates/sources.html
+msgid "Source documents"
+msgstr "Ausgangsdokumente"
 
 #: src/heftig/web/templates/base.html
 msgid "Take the paper out of binder <strong>%(binder)s</strong>: section %(section)s, position %(n)s from the top."
@@ -2235,7 +2247,7 @@ msgid_plural "%(num)d characters"
 msgstr[0] "%(num)d Zeichen"
 msgstr[1] "%(num)d Zeichen"
 
-#: src/heftig/web/static/scan.js src/heftig/web/templates/document.html src/heftig/web/templates/scan.html
+#: src/heftig/web/static/scan.js src/heftig/web/templates/document.html src/heftig/web/templates/scan.html src/heftig/web/templates/sources.html
 msgid "%(num)d page"
 msgid_plural "%(num)d pages"
 msgstr[0] "%(num)d Seite"
@@ -2745,6 +2757,10 @@ msgid "Text: %(status)s"
 msgstr "Text: %(status)s"
 
 #: src/heftig/web/templates/document.html
+msgid "The individual documents (source documents)"
+msgstr "Die einzelnen Dokumente (Ausgangsdokumente)"
+
+#: src/heftig/web/templates/document.html
 msgid "The sheet keeps its place; “Put back in its place” returns it there."
 msgstr "Das Blatt behält seinen Platz; „Wieder an seinen Platz“ legt es dorthin zurück."
 
@@ -2916,7 +2932,7 @@ msgstr "← Dokumente"
 msgid "← this document"
 msgstr "← dieses Dokument"
 
-#: src/heftig/web/templates/documents.html src/heftig/web/templates/inbox.html src/heftig/web/templates/trash.html
+#: src/heftig/web/templates/documents.html src/heftig/web/templates/inbox.html src/heftig/web/templates/sources.html src/heftig/web/templates/trash.html
 msgid "%(num)d document"
 msgid_plural "%(num)d documents"
 msgstr[0] "%(num)d Dokument"
@@ -3928,6 +3944,10 @@ msgstr[0] "Gelöschte Dokumente lassen sich %(num)d Tag lang wiederherstellen."
 msgstr[1] "Gelöschte Dokumente lassen sich %(num)d Tage lang wiederherstellen."
 
 #: src/heftig/web/templates/settings.html
+msgid "Documents that were combined into another one are kept for good, with their original file."
+msgstr "Dokumente, die zu einem anderen zusammengefügt wurden, bleiben dauerhaft erhalten – mit ihrer Originaldatei."
+
+#: src/heftig/web/templates/settings.html
 msgid "E-mail import"
 msgstr "E-Mail-Import"
 
@@ -4034,6 +4054,10 @@ msgstr "An – %(done)s von %(total)s Dokumenten vorbereitet."
 #: src/heftig/web/templates/settings.html
 msgid "On – the model is downloaded when the next documents are prepared."
 msgstr "An – das Modell wird geladen, sobald die nächsten Dokumente vorbereitet werden."
+
+#: src/heftig/web/templates/settings.html
+msgid "Open source documents"
+msgstr "Ausgangsdokumente öffnen"
 
 #: src/heftig/web/templates/settings.html
 msgid "Open trash"
@@ -4515,6 +4539,42 @@ msgstr "Suche nach Bedeutung verwenden?"
 msgid "Yes (recommended)"
 msgstr "Ja (empfohlen)"
 
+#: src/heftig/web/templates/sources.html
+msgid "Combined into"
+msgstr "Zusammengefügt zu"
+
+#: src/heftig/web/templates/sources.html
+msgid "Combined into a document that was deleted since"
+msgstr "Zusammengefügt zu einem inzwischen gelöschten Dokument"
+
+#: src/heftig/web/templates/sources.html
+msgid "Documents that were combined into another one. They are kept for good, with their original file, text and notes, but do not show up in the search. Undoing brings them back and moves the combined document to the trash."
+msgstr "Dokumente, die zu einem anderen zusammengefügt wurden. Sie bleiben dauerhaft erhalten – mit Originaldatei, Text und Notizen –, erscheinen aber nicht in der Suche. Rückgängig machen holt sie zurück und legt das zusammengefügte Dokument in den Papierkorb."
+
+#: src/heftig/web/templates/sources.html
+msgid "Download"
+msgstr "Herunterladen"
+
+#: src/heftig/web/templates/sources.html
+msgid "Move “%(title)s” to the trash? It will be deleted permanently after %(days)s days, with its original file."
+msgstr "„%(title)s“ in den Papierkorb legen? Nach %(days)s Tagen wird es mit seiner Originaldatei endgültig gelöscht."
+
+#: src/heftig/web/templates/sources.html
+msgid "No source documents yet. When documents are combined, the individual documents are kept here."
+msgstr "Noch keine Ausgangsdokumente. Werden Dokumente zusammengefügt, bleiben die einzelnen Dokumente hier erhalten."
+
+#: src/heftig/web/templates/sources.html
+msgid "Open original"
+msgstr "Original öffnen"
+
+#: src/heftig/web/templates/sources.html src/heftig/web/templates/trash.html
+msgid "Restore"
+msgstr "Wiederherstellen"
+
+#: src/heftig/web/templates/sources.html
+msgid "Undo combining"
+msgstr "Zusammenfügen rückgängig machen"
+
 #: src/heftig/web/templates/suggestions.html
 msgid "%(num)d document – deselect individual ones"
 msgid_plural "%(num)d documents – deselect individual ones"
@@ -4660,10 +4720,6 @@ msgstr "Papier bleibt in Ordner %(binder)s (Abschnitt %(section)s, Position %(n)
 #: src/heftig/web/templates/trash.html
 msgid "Paper: binder %(binder)s, section %(section)s, position %(n)s from the top – take it out."
 msgstr "Papier: Ordner %(binder)s, Abschnitt %(section)s, Position %(n)s von oben – herausnehmen."
-
-#: src/heftig/web/templates/trash.html
-msgid "Restore"
-msgstr "Wiederherstellen"
 
 #: src/heftig/web/templates/trash.html
 msgid "Restore all"
@@ -4874,8 +4930,8 @@ msgid "Classification"
 msgstr "Einordnung"
 
 #: src/heftig/web/ui.py
-msgid "Combined – the individual documents are in the trash."
-msgstr "Zusammengefügt – die Einzeldokumente liegen im Papierkorb."
+msgid "Combined – the individual documents are kept under Source documents."
+msgstr "Zusammengefügt – die einzelnen Dokumente werden unter Ausgangsdokumente aufbewahrt."
 
 #: src/heftig/web/ui.py
 msgid "Combined."
@@ -4990,6 +5046,10 @@ msgstr[1] "Zusammengeführt (%(num)d Dokumente aktualisiert)."
 #: src/heftig/web/ui.py
 msgid "Moved to binder %(name)s, on top of the current section."
 msgstr "In Ordner %(name)s umsortiert, oben auf den aktuellen Abschnitt."
+
+#: src/heftig/web/templates/base.html src/heftig/web/ui.py
+msgid "Moved to the trash."
+msgstr "In den Papierkorb verschoben."
 
 #: src/heftig/web/ui.py
 msgid "New filings go into the new binder from now on."
@@ -5233,6 +5293,10 @@ msgstr "hat %(items)s"
 #: src/heftig/web/ui.py
 msgid "imported"
 msgstr "importiert"
+
+#: src/heftig/web/ui.py
+msgid "kept as source document"
+msgstr "als Ausgangsdokument aufbewahrt"
 
 #: src/heftig/web/templates/document.html src/heftig/web/ui.py
 msgid "manual"

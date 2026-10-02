@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% from "_macros.html" import time, csrf_field %}
+{% block title %}{{ _("Source documents") }}{% endblock %}
+{% block content %}
+<nav class="crumbs"><a href="/settings">← {{ _("Settings") }}</a></nav>
+<h1>{{ _("Source documents") }}</h1>
+{% if message %}<p class="notice info" role="status">{{ message }}</p>{% endif %}
+<p class="hint">{{ _("Documents that were combined into another one. They are kept for good, with their original file, text and notes, but do not show up in the search. Undoing brings them back and moves the combined document to the trash.") }}</p>
+{% if groups %}
+<form method="post" action="/sources/action">
+  {{ csrf_field(csrf) }}
+  <ul class="plain trash-list">
+  {% for g in groups %}
+    <li id="{{ g.batch or g['items'][0].id }}">
+      <div class="trash-row"><span><strong>{% if g.targets %}{{ _("Combined into") }} {% for t in g.targets %}<a href="/documents/{{ t.id }}">“{{ t.title }}”</a>{% if not loop.last %}, {% endif %}{% endfor %}{% else %}{{ _("Combined into a document that was deleted since") }}{% endif %}</strong>
+        <span class="muted small">{{ time(g.replaced_at) }} · {{ ngettext("%(num)d document", "%(num)d documents", g['items'] | length) }}</span></span>
+        {% if g.targets and g.batch %}<button name="target" value="{{ g.batch }}" formaction="/sources/action?action=undo">{{ _("Undo combining") }}</button>{% endif %}</div>
+      <ul class="plain small sources-items">
+      {% for it in g['items'] %}
+        <li class="trash-row"><span>{{ it.title }}
+          <span class="muted">{{ ngettext("%(num)d page", "%(num)d pages", it.pages) }}{% if it.document_date %} · {{ it.document_date | date }}{% endif %}</span></span>
+          <span class="buttons"><a href="/sources/{{ it.id }}/original?inline=1" target="_blank" rel="noopener">{{ _("Open original") }}</a>
+            <a href="/sources/{{ it.id }}/original">{{ _("Download") }}</a>
+            {% if not g.targets %}<button name="target" value="{{ it.id }}" formaction="/sources/action?action=restore" class="secondary">{{ _("Restore") }}</button>{% endif %}
+            <button name="target" value="{{ it.id }}" formaction="/sources/action?action=delete" class="secondary" data-confirm-click="{{ _("Move “%(title)s” to the trash? It will be deleted permanently after %(days)s days, with its original file.", title=it.title, days=days) }}">{{ _("Delete") }}</button></span></li>
+      {% endfor %}
+      </ul>
+    </li>
+  {% endfor %}
+  </ul>
+</form>
+{% else %}
+<p class="muted">{{ _("No source documents yet. When documents are combined, the individual documents are kept here.") }}</p>
+{% endif %}
+{% endblock %}

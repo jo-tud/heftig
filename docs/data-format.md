@@ -16,6 +16,8 @@ archive/
   documents/<uuid>/preview.webp      thumbnail of page 1 (regenerable)
   documents/<uuid>/cache/            rendered pages, word boxes, OCR page cache (regenerable)
   trash/<uuid>/                      sidecar folders of deleted documents until they are purged
+  sources/<uuid>/                    sidecar folders of source documents (combined into another
+                                     document; kept for good, never purged)
   taxonomy.json                      correspondents, document types, tags + aliases (sidecar)
   saved_searches.json                saved searches of the search page (optional)
   binders.json                       the binders of the paper filing: name, started, full since
@@ -155,7 +157,8 @@ Fields marked * are additions to the minimal field list of the original specific
 | `ocr_all_pages`* | bool | The user asked for AI text recognition of every page, beyond `HEFTIG_OCR_AI_MAX_PAGES`. |
 | `page_rotation`* | object | Pages the user turned, degrees clockwise (`{"2": 180}`: 90, 180 or 270). Applied when showing and reading the page; the original file is never changed. |
 | `page_blank`* | object | The user's decision per page (`{"2": false, "5": true}`): `true` hides the page as blank, `false` always shows it – overrides `blank` in `text_pages.json`. |
-| `trashed_at`*, `trash_reason`*, `trash_batch`* | string or null | Set while the document is in the trash (`trash/<uuid>/`); documents deleted together (a bulk deletion, the parts of a combined document) share a batch and can be restored together. |
+| `trashed_at`*, `trash_reason`*, `trash_batch`* | string or null | Set while the document is in the trash (`trash/<uuid>/`); documents deleted together (a bulk deletion) share a batch and can be restored together. `trash_reason` and `trash_batch` are also set for a source document: the parts of one combined document share the batch `combine-<id of the combined document>`. |
+| `replaced_at`*, `replaced_by`* | string or null, list | Set while the document is kept as a source document (`sources/<uuid>/`): when it was combined, and into which document(s). Never purged; restoring clears them. |
 | `revision`* | int | Incremented on every write; used by `heftig repair` to decide whether the sidecar or the database is newer. |
 | `updated_at`* | timestamp | Last write. |
 
@@ -289,6 +292,7 @@ heftig-export-20260928-120000/
   metadata.jsonl           one metadata object per line, in ingest order
   originals/ab/<sha>.<ext> unchanged originals
   documents/<uuid>/        metadata.json, text.md, text_pages.json
+  sources/<uuid>/          the same for source documents (their originals are in originals/ too)
   taxonomy.json            correspondents, document types, tags with aliases
   saved_searches.json      saved searches (only if there are any; merged on import)
   binders.json             binders of the paper filing (merged on import; imported ones count as full)
@@ -312,13 +316,15 @@ heftig-export-20260928-120000/
   "app_version": "0.2.0",
   "created_at": "2026-09-28T12:00:00Z",
   "document_count": 10,
+  "source_document_count": 2,
   "files": [{"path": "metadata.jsonl", "sha256": "5059b9...", "size": 19497}]
 }
 ```
 
 `files` lists every file of the export except `manifest.json` itself. Document metadata, taxonomy
 and state are read in one database read transaction, so they are mutually consistent. Preview
-thumbnails are not exported (they are regenerated on import), nor are documents in the trash. In
+thumbnails are not exported (they are regenerated on import), nor are documents in the trash;
+source documents are, as they are kept for good. In
 `state/ingest_events.jsonl`, `source_details` is the raw JSON string as stored in the database.
 
 The export is also the input for migrations to other systems, see [paperless.md](paperless.md).
@@ -344,6 +350,10 @@ The export is also the input for migrations to other systems, see [paperless.md]
    | Different ID, same SHA-256 | conflict ("original already exists as document X") |
    | New | imported: original copied and re-verified, sidecar and text written as exported (`received_at`, locks, provenance, history unchanged), preview regenerated |
 
+   Source documents (`sources/`) are imported after the documents: folder, original and
+   attachments copied, skipped if a document with the same ID or original is already in the
+   target (live, in the trash or as a source document).
+
 6. Sequence numbers: IDs, `ingest_sequence` and `filing_sequence` are kept. Only if a number is
    already used in the target (which can only happen when importing into a non-empty archive) is
    it replaced by the next free number (higher than every number in use); every renumbering is
@@ -365,7 +375,7 @@ was still being processed is reported by `heftig check` as `unfinished_processin
 
 | Item | Version field | Current |
 |---|---|---|
-| Database schema | `PRAGMA user_version` | 12 (number of the last migration) |
+| Database schema | `PRAGMA user_version` | 13 (number of the last migration) |
 | `metadata.json` | `schema_version` | 1 |
 | `text_pages.json` | `schema_version` | 1 |
 | `taxonomy.json` | `schema_version` | 1 |

@@ -6,6 +6,7 @@ Export format (directory or ZIP), see docs/data-format.md::
     README.txt               short human-readable description
     originals/ab/<sha>.<ext> unchanged originals
     documents/<uuid>/        metadata.json, text.md, text_pages.json
+    sources/<uuid>/          the same for source documents (combined into another one)
     metadata.jsonl           one metadata object per line, in ingest order
     taxonomy.json            correspondents, document types, tags incl. aliases
     saved_searches.json      saved searches (optional)
@@ -52,6 +53,7 @@ EXPORT_README = """Heftig archive export
 
 originals/        byte-identical original files, named by SHA-256
 documents/<id>/   metadata.json (see metadata.schema.json), text.md, text_pages.json
+sources/<id>/     the same for source documents: combined into another document, kept
 metadata.jsonl    all metadata objects, one per line, in ingest order
 taxonomy.json     correspondents, document types and tags with aliases
 saved_searches.json  saved searches of the search page (optional)
@@ -395,6 +397,9 @@ def export_archive(
             rows = conn.execute(
                 "SELECT id, metadata_json, original_relpath FROM documents ORDER BY ingest_sequence"
             ).fetchall()
+            source_rows = conn.execute(
+                "SELECT id, metadata_json, original_relpath FROM trash WHERE kind='source'"
+            ).fetchall()
             taxonomy = tax.export_file(conn).model_dump()
             events = [dict(r) for r in conn.execute("SELECT * FROM ingest_events ORDER BY id")]
             imap_state = [dict(r) for r in conn.execute("SELECT * FROM imap_state")]
@@ -450,6 +455,30 @@ def export_archive(
                         shutil.copyfile(src, dst)
                 if progress:
                     progress(i / max(1, len(rows)))
+        sources_exported = 0
+        for r in source_rows:  # kept for good, so part of a complete export
+            meta = json.loads(r["metadata_json"])
+            src_orig = archive.paths.resolve(r["original_relpath"])
+            if not src_orig.exists():
+                missing.append({"id": r["id"], "original_relpath": r["original_relpath"]})
+                continue
+            dst_orig = work / r["original_relpath"]
+            if not dst_orig.exists():
+                dst_orig.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(src_orig, dst_orig)
+            sdir = work / "sources" / r["id"]
+            _write_json(sdir / "metadata.json", meta)
+            folder = archive.paths.sources / r["id"]
+            for name in ("text.md", "text_pages.json"):
+                if (folder / name).exists():
+                    shutil.copyfile(folder / name, sdir / name)
+            for att in meta.get("attachments") or []:
+                src = archive.paths.resolve(att["relpath"])
+                dst = work / att["relpath"]
+                if src.exists() and not dst.exists():
+                    dst.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copyfile(src, dst)
+            sources_exported += 1
         _write_json(work / "taxonomy.json", taxonomy)
         saved = saved_searches.load(archive.paths)
         if saved:
@@ -491,6 +520,7 @@ def export_archive(
             "app_version": __version__,
             "created_at": now_iso(),
             "document_count": exported,
+            "source_document_count": sources_exported,
             "missing_originals": missing,
             "files": files,
         }
@@ -632,6 +662,9 @@ def import_archive(archive: Archive, src: Path, progress=None) -> dict[str, Any]
             if progress:
                 progress(i / max(1, len(metas)))
 
+        if (root / "sources").is_dir():
+            report["sources"] = _import_sources(archive, root, report)
+
         state = root / "state"
         with write_tx(conn):
             seq = read_json(state / "sequences.json") if (state / "sequences.json").exists() else {}
@@ -684,6 +717,51 @@ def import_archive(archive: Archive, src: Path, progress=None) -> dict[str, Any]
     finally:
         if tmpdir:
             shutil.rmtree(tmpdir, ignore_errors=True)
+
+
+def _import_sources(archive: Archive, root: Path, report: dict) -> int:
+    """Source documents of the export: their folders into sources/, originals and attachments
+    into originals/; skipped if the document is already in this archive (in any form)."""
+    from . import trash
+
+    conn = archive.conn
+    n = 0
+    for d in sorted((root / "sources").iterdir()):
+        if not (d / "metadata.json").exists():
+            continue
+        meta = DocumentMetadata.model_validate(read_json(d / "metadata.json"))
+        known = conn.execute(
+            "SELECT 1 FROM documents WHERE id=? OR sha256=? UNION SELECT 1 FROM trash WHERE id=?",
+            (meta.id, meta.sha256, meta.id),
+        ).fetchone()
+        if known:
+            continue
+        files = [(meta.original_relpath, meta.sha256)]
+        files += [(a.relpath, a.sha256) for a in meta.attachments]
+        if (
+            any(sha256_file(root / rel) != sha for rel, sha in files if (root / rel).exists())
+            or not (root / meta.original_relpath).exists()
+        ):
+            report["conflicts"].append({"id": meta.id, "reason": N_("Original checksum wrong")})
+            continue
+        for rel, _sha in files:
+            src, dst = root / rel, archive.paths.resolve(rel)
+            if src.exists() and not dst.exists():
+                dst.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+                tmp = dst.with_name(f".{dst.name}.import")
+                shutil.copyfile(src, tmp)
+                os.chmod(tmp, 0o400)
+                os.replace(tmp, dst)
+        folder = archive.paths.sources / meta.id
+        folder.mkdir(parents=True, exist_ok=True, mode=0o700)
+        for name in ("text.md", "text_pages.json"):
+            if (d / name).exists():
+                shutil.copyfile(d / name, folder / name)
+        atomic_write_json(folder / "metadata.json", meta.model_dump(mode="json"))
+        with write_tx(conn):
+            trash.add_row(conn, meta.model_dump(mode="json"), trash.SOURCE)
+        n += 1
+    return n
 
 
 def _import_one(archive: Archive, root: Path, meta: DocumentMetadata, report: dict) -> None:
@@ -865,7 +943,7 @@ def backup(archive: Archive, dest_parent: Path) -> Path:
     try:
         backup_to(archive.conn, work / "index.sqlite")
         root = archive.paths.root
-        for sub in ("originals", "documents", "trash", "email", "quarantine"):
+        for sub in ("originals", "documents", "trash", "sources", "email", "quarantine"):
             src = root / sub
             if src.exists():
                 shutil.copytree(src, work / sub)

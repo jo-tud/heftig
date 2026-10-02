@@ -49,6 +49,11 @@
   <p>{{ ngettext("Deleted documents can be restored for %(num)d day.", "Deleted documents can be restored for %(num)d days.", s.trash_retention_days) }} <a href="/trash">{{ _("Open trash") }}</a></p>
 </section>
 
+<section class="card" aria-labelledby="sources-h">
+  <h2 id="sources-h">{{ _("Source documents") }}</h2>
+  <p>{{ _("Documents that were combined into another one are kept for good, with their original file.") }} <a href="/sources">{{ _("Open source documents") }}</a></p>
+</section>
+
 <section class="card" aria-labelledby="titles-h">
   <h2 id="titles-h">{{ _("Consistent titles") }}</h2>
   <p>{{ _("Get consistent titles suggested for similar documents (e.g. all account statements following the same pattern) and apply them after review.") }} <a href="/titles">{{ _("Go to overview") }}</a></p>

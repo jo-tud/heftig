@@ -453,6 +453,8 @@ html.privacy .viewer-wrap:not(.pv-open) .pv-reveal { position: absolute; inset: 
 .trash-list > li { padding: .5rem 0; }
 .trash-row { display: flex; flex-wrap: wrap; gap: .4rem 1rem; align-items: center; justify-content: space-between; }
 .trash-row > span:first-child { display: flex; flex-direction: column; min-width: 0; overflow-wrap: anywhere; }
+.sources-items { margin: .4rem 0 0 1rem; }
+.sources-items > li { padding: .25rem 0; }
 .bulk-link { color: var(--muted); }
 .bulk-link:hover { color: var(--err); }
 .bulk-list { max-height: 50vh; overflow: auto; margin: 0; padding-left: 2.2rem; }

@@ -62,6 +62,11 @@ class ArchivePaths:
         return self.root / "trash"
 
     @property
+    def sources(self) -> Path:
+        """Documents that were combined into another one: kept for good, never purged."""
+        return self.root / "sources"
+
+    @property
     def tmp(self) -> Path:
         return self.root / "tmp"
 
@@ -95,6 +100,7 @@ class ArchivePaths:
                 self.documents,
                 self.quarantine,
                 self.trash,
+                self.sources,
                 self.tmp,
                 self.email,
                 self.backup,

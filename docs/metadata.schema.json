@@ -808,6 +808,25 @@
       "default": null,
       "title": "Trash Batch"
     },
+    "replaced_at": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Replaced At"
+    },
+    "replaced_by": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Replaced By",
+      "type": "array"
+    },
     "notes": {
       "items": {
         "$ref": "#/$defs/Note"

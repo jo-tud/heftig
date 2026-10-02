@@ -17,6 +17,7 @@ from .. import taxonomy as tax
 from ..db import write_tx
 from ..i18n import _
 from ..ingest import ingest_stream
+from ..models import DocumentMetadata
 from ..processing import reprocess
 from ..providers.registry import describe
 from ..search import (
@@ -329,9 +330,12 @@ def api_document(request: Request, doc_id: str, p: Principal = Depends(require_u
     return document_detail(request, doc_id)
 
 
-def original_response(request: Request, doc_id: str, inline: bool) -> FileResponse:
+def original_response(
+    request: Request, doc_id: str, inline: bool, meta: DocumentMetadata | None = None
+) -> FileResponse:
+    """The original file; ``meta`` for a document outside the archive (a source document)."""
     a = get_archive(request)
-    meta = _load(request, doc_id)
+    meta = meta or _load(request, doc_id)
     path = a.paths.resolve(meta.original_relpath)
     if not path.exists():
         raise ApiError(410, "original_missing", _("Original file is missing – run `heftig check`."))
@@ -484,14 +488,42 @@ def api_trash_purge(
     return {"purged": doc_id}
 
 
+@router.get("/sources", tags=["documents"])
+def api_sources(request: Request, p: Principal = Depends(require_user)):
+    """Source documents: the documents that were combined into another one, kept for good."""
+    return {"groups": trash.sources_listing(get_archive(request))}
+
+
+@router.get("/sources/{doc_id}/original", tags=["documents"])
+def api_source_original(
+    request: Request, doc_id: str, inline: bool = False, p: Principal = Depends(require_user)
+):
+    try:
+        meta = trash.source_meta(get_archive(request), doc_id)
+    except docs.DocumentNotFound as e:
+        raise ApiError(404, "not_found", _("Document not found.")) from e
+    return original_response(request, doc_id, inline, meta=meta)
+
+
+@router.delete("/sources/{doc_id}", tags=["documents"])
+def api_source_delete(request: Request, doc_id: str, p: Principal = Depends(require_write)):
+    """Move a source document to the trash (purged after HEFTIG_TRASH_RETENTION_DAYS)."""
+    try:
+        trash.discard_source(get_archive(request), doc_id, by="api")
+    except trash.TrashError as e:
+        raise ApiError(404, "not_found", str(e)) from e
+    return {"trashed": doc_id}
+
+
 class CombineBody(BaseModel):
     ids: list[str] = Field(min_length=2, max_length=20)
 
 
 @router.post("/documents/combine", tags=["documents"], status_code=201)
 def api_combine(request: Request, body: CombineBody, p: Principal = Depends(require_write)):
-    """Combine documents (pages in this order) into a new one; the parts go to the trash
-    as batch ``combine-<new id>``. Undo: POST /api/documents/{new id}/uncombine."""
+    """Combine documents (pages in this order) into a new one; the parts are kept as source
+    documents (GET /api/sources, never purged), batch ``combine-<new id>``. Undo:
+    POST /api/documents/{new id}/uncombine."""
     from .. import combine
 
     for i in body.ids:
@@ -500,7 +532,8 @@ def api_combine(request: Request, body: CombineBody, p: Principal = Depends(requ
         meta = combine.combine(get_archive(request), body.ids, by="api")
     except combine.CombineError as e:
         raise ApiError(409, "not_combinable", str(e)) from e
-    return {"document_id": meta.id, "trash_batch": combine.batch_for(meta.id)}
+    batch = combine.batch_for(meta.id)
+    return {"document_id": meta.id, "batch": batch, "trash_batch": batch}  # trash_batch: older name
 
 
 @router.post("/documents/{doc_id}/uncombine", tags=["documents"])

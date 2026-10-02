@@ -56,9 +56,12 @@ def test_pages_text_and_user_data_are_combined(archive):
     assert "extract" not in kinds
     meta = docs.load_meta(archive, new.id)
     assert meta.title == "Mietvertrag Wohnung" and meta.text_status == "ok"
-    # the parts are in the Papierkorb as one batch; search finds only the new document
-    group = trash.listing(archive)[0]
-    assert group["batch"] == combine.batch_for(new.id) and len(group["items"]) == 3
+    # the parts are kept as source documents (not in the Papierkorb), in page order; search
+    # finds only the new document
+    assert trash.listing(archive) == []
+    group = trash.sources_listing(archive)[0]
+    assert group["batch"] == combine.batch_for(new.id) and group["targets"][0]["id"] == new.id
+    assert [it["id"] for it in group["items"]] == [a, b, tiff]
     assert ids(archive, "Mietvertrag") == [new.id]
 
 

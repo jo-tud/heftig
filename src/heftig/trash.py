@@ -8,6 +8,12 @@ exports and the MCP connection only ever see live documents.
 
 Purging - after ``trash_retention_days`` automatically, or explicitly - deletes the folder and
 the original / attachments that no other document (live or trashed) references.
+
+Source documents work the same way, but are never purged: the documents that were combined
+into another one move to ``sources/<id>/`` (metadata.json then carries ``replaced_at`` and
+``replaced_by``) and get a row in the same table with ``kind = 'source'``. They stay until the
+user restores them (undoing the combining) or deletes them on purpose - which moves them into
+the Papierkorb like any deleted document.
 """
 
 from __future__ import annotations
@@ -40,8 +46,17 @@ def new_batch() -> str:
     return secrets.token_hex(6)
 
 
-def _dir(archive: Archive, doc_id: str):
-    return archive.paths.trash / docs.files(archive, doc_id).dir.name
+TRASH, SOURCE = "trash", "source"
+
+
+def _dir(archive: Archive, doc_id: str, kind: str = TRASH):
+    base = archive.paths.sources if kind == SOURCE else archive.paths.trash
+    return base / docs.files(archive, doc_id).dir.name
+
+
+def _kind(conn, doc_id: str) -> str:
+    row = conn.execute("SELECT kind FROM trash WHERE id=?", (doc_id,)).fetchone()
+    return row[0] if row else TRASH
 
 
 def _merge_leftover(src, leftover) -> None:
@@ -63,12 +78,21 @@ def _move(src, dst) -> None:
 
 
 def trash_document(
-    archive: Archive, doc_id: str, reason: str = "", batch: str | None = None, by: str = "web"
+    archive: Archive,
+    doc_id: str,
+    reason: str = "",
+    batch: str | None = None,
+    by: str = "web",
+    replaced_by: list[str] | None = None,
 ) -> dict[str, Any]:
     """Database first, the folder move last (inside the transaction); if anything fails after
-    the move, the folder goes back, so a document is never half in the Papierkorb."""
+    the move, the folder goes back, so a document is never half in the Papierkorb.
+
+    With ``replaced_by`` (the documents it was combined into) the document is kept as a source
+    document instead: in sources/, never purged."""
     conn = archive.conn
-    src, dst = docs.files(archive, doc_id).dir, _dir(archive, doc_id)
+    kind = SOURCE if replaced_by else TRASH
+    src, dst = docs.files(archive, doc_id).dir, _dir(archive, doc_id, kind)
     moved = False
     original_sidecar: bytes | None = None
     try:
@@ -82,7 +106,12 @@ def trash_document(
             ).fetchone()
             if row is None:
                 raise docs.DocumentNotFound(doc_id)
-            meta.trashed_at = now_iso()
+            moved_at = now_iso()
+            if kind == SOURCE:
+                meta.replaced_at = moved_at
+                meta.replaced_by = list(replaced_by or [])
+            else:
+                meta.trashed_at = moved_at
             meta.trash_reason = (reason or "")[:300]
             meta.trash_batch = batch
             data = meta.model_dump(mode="json")
@@ -96,20 +125,25 @@ def trash_document(
             )
             conn.execute(
                 "INSERT OR REPLACE INTO trash(id, sha256, original_relpath, title, trashed_at, "
-                "reason, batch, metadata_json) VALUES(?,?,?,?,?,?,?,?)",
+                "reason, batch, metadata_json, kind) VALUES(?,?,?,?,?,?,?,?,?)",
                 (doc_id, row["sha256"], row["original_relpath"],
-                 row["title"] or row["original_filename"], meta.trashed_at, meta.trash_reason,
-                 batch, json.dumps(data, ensure_ascii=False)),
+                 row["title"] or row["original_filename"], moved_at, meta.trash_reason,
+                 batch, json.dumps(data, ensure_ascii=False), kind),
             )  # fmt: skip
             title = row["title"] or row["original_filename"]
-            message = (
-                N_("“%(title)s” moved to the trash (%(reason)s)")
-                % {"title": title, "reason": reason}
-                if reason
-                else N_("“%(title)s” moved to the trash") % {"title": title}
-            )
-            _event(conn, doc_id, row["sha256"], row["original_filename"], by, "deleted", message)
-            archive.paths.trash.mkdir(parents=True, exist_ok=True)
+            if kind == SOURCE:
+                message = N_("“%(title)s” kept as a source document (%(reason)s)") % {
+                    "title": title, "reason": reason or "-"
+                }  # fmt: skip
+            elif reason:
+                message = N_("“%(title)s” moved to the trash (%(reason)s)") % {
+                    "title": title, "reason": reason
+                }  # fmt: skip
+            else:
+                message = N_("“%(title)s” moved to the trash") % {"title": title}
+            result = "replaced" if kind == SOURCE else "deleted"
+            _event(conn, doc_id, row["sha256"], row["original_filename"], by, result, message)
+            dst.parent.mkdir(parents=True, exist_ok=True)
             if dst.exists():
                 _merge_leftover(src, dst)
             _move(src, dst)
@@ -159,8 +193,9 @@ def _conflicts(conn, meta: DocumentMetadata) -> list[str]:
 
 
 def restore(archive: Archive, doc_id: str) -> DocumentMetadata:
+    """Back into the archive - from the Papierkorb or from the source documents."""
     conn = archive.conn
-    src, dst = _dir(archive, doc_id), docs.files(archive, doc_id).dir
+    src, dst = _dir(archive, doc_id, _kind(conn, doc_id)), docs.files(archive, doc_id).dir
     moved = False
     original_sidecar: bytes | None = None
     try:
@@ -186,7 +221,8 @@ def restore(archive: Archive, doc_id: str) -> DocumentMetadata:
                 if (dst / "metadata.json").exists():
                     raise TrashError(_("A document with this ID already exists."))
                 shutil.rmtree(dst)  # only caches written after the deletion: regenerable
-            meta.trashed_at = meta.trash_reason = meta.trash_batch = None
+            meta.trashed_at = meta.trash_reason = meta.trash_batch = meta.replaced_at = None
+            meta.replaced_by = []
             for note in _conflicts(conn, meta):
                 if note not in meta.review_reasons:
                     meta.review_reasons.append(note)
@@ -255,7 +291,7 @@ def purge(archive: Archive, doc_id: str) -> None:
     conn = archive.conn
     with write_tx(conn):
         row = conn.execute("SELECT * FROM trash WHERE id=?", (doc_id,)).fetchone()
-        if row is None:
+        if row is None or row["kind"] != TRASH:  # a source document is never purged
             raise TrashError(_("Not in the trash."))
         meta = json.loads(row["metadata_json"])
         conn.execute("DELETE FROM trash WHERE id=?", (doc_id,))
@@ -269,9 +305,13 @@ def purge(archive: Archive, doc_id: str) -> None:
 
 
 def purge_expired(archive: Archive) -> int:
+    adopt_combined(archive)  # archives from before the source documents: first keep those
     cutoff = iso(utcnow() - timedelta(days=archive.settings.trash_retention_days))
     ids = [
-        r[0] for r in archive.conn.execute("SELECT id FROM trash WHERE trashed_at < ?", (cutoff,))
+        r[0]
+        for r in archive.conn.execute(
+            "SELECT id FROM trash WHERE kind='trash' AND trashed_at < ?", (cutoff,)
+        )
     ]
     for doc_id in ids:
         purge(archive, doc_id)
@@ -279,7 +319,8 @@ def purge_expired(archive: Archive) -> int:
 
 
 def empty(archive: Archive) -> int:
-    ids = [r[0] for r in archive.conn.execute("SELECT id FROM trash")]
+    adopt_combined(archive)
+    ids = [r[0] for r in archive.conn.execute("SELECT id FROM trash WHERE kind='trash'")]
     for doc_id in ids:
         purge(archive, doc_id)
     return len(ids)
@@ -301,7 +342,7 @@ def is_referenced(archive: Archive, relpath: str) -> bool:
 
 
 def referenced_files(archive: Archive) -> set[str]:
-    """Originals and attachments held by trashed documents (for the integrity check)."""
+    """Originals and attachments held by trashed and source documents (integrity check)."""
     out: set[str] = set()
     for rel, mj in archive.conn.execute("SELECT original_relpath, metadata_json FROM trash"):
         out.add(rel)
@@ -313,7 +354,9 @@ def listing(archive: Archive) -> list[dict[str, Any]]:
     """Trash grouped: one entry per bulk batch, single deletions on their own; newest first."""
     keep = archive.settings.trash_retention_days
     groups: dict[str, dict[str, Any]] = {}
-    for r in archive.conn.execute("SELECT * FROM trash ORDER BY trashed_at DESC, title"):
+    for r in archive.conn.execute(
+        "SELECT * FROM trash WHERE kind='trash' ORDER BY trashed_at DESC, title"
+    ):
         key = r["batch"] or r["id"]
         g = groups.setdefault(key, {"batch": r["batch"], "trashed_at": r["trashed_at"],
                                     "reason": r["reason"], "items": []})  # fmt: skip
@@ -325,28 +368,181 @@ def listing(archive: Archive) -> list[dict[str, Any]]:
 
 
 def rebuild(archive: Archive) -> int:
-    """Recreate the trash table from the trash folder (rebuild-db)."""
+    """Recreate the trash table from the trash and sources folders (rebuild-db)."""
     conn = archive.conn
     n = 0
     with write_tx(conn):
         conn.execute("DELETE FROM trash")
-        if not archive.paths.trash.exists():
-            return 0
-        for d in sorted(archive.paths.trash.iterdir()):
-            f = d / "metadata.json"
-            if not f.exists():
+        for kind, folder in ((TRASH, archive.paths.trash), (SOURCE, archive.paths.sources)):
+            if not folder.exists():
                 continue
-            data = read_json(f)
-            conn.execute(
-                "INSERT OR REPLACE INTO trash(id, sha256, original_relpath, title, trashed_at, "
-                "reason, batch, metadata_json) VALUES(?,?,?,?,?,?,?,?)",
-                (data["id"], data["sha256"], data["original_relpath"],
-                 data.get("title") or data.get("original_filename", ""),
-                 data.get("trashed_at") or now_iso(), data.get("trash_reason") or "",
-                 data.get("trash_batch"), json.dumps(data, ensure_ascii=False)),
-            )  # fmt: skip
-            n += 1
+            for d in sorted(folder.iterdir()):
+                f = d / "metadata.json"
+                if not f.exists():
+                    continue
+                add_row(conn, read_json(f), kind)
+                n += 1
     return n
+
+
+def add_row(conn, data: dict[str, Any], kind: str) -> None:
+    """The table row of a folder in trash/ or sources/ (from its metadata.json)."""
+    moved_at = data.get("replaced_at" if kind == SOURCE else "trashed_at")
+    conn.execute(
+        "INSERT OR REPLACE INTO trash(id, sha256, original_relpath, title, trashed_at, reason, "
+        "batch, metadata_json, kind) VALUES(?,?,?,?,?,?,?,?,?)",
+        (data["id"], data["sha256"], data["original_relpath"],
+         data.get("title") or data.get("original_filename", ""), moved_at or now_iso(),
+         data.get("trash_reason") or "", data.get("trash_batch"),
+         json.dumps(data, ensure_ascii=False), kind),
+    )  # fmt: skip
+
+
+# --- source documents --------------------------------------------------------------------
+
+
+def discard_source(archive: Archive, doc_id: str, by: str = "web") -> None:
+    """A source document deleted on purpose: into the Papierkorb (purged after the usual time).
+    The only way a source document can ever be purged."""
+    conn = archive.conn
+    src, dst = _dir(archive, doc_id, SOURCE), _dir(archive, doc_id, TRASH)
+    moved = False
+    original_sidecar: bytes | None = None
+    try:
+        with write_tx(conn):
+            row = conn.execute(
+                "SELECT * FROM trash WHERE id=? AND kind='source'", (doc_id,)
+            ).fetchone()
+            if row is None or not (src / "metadata.json").exists():
+                raise TrashError(_("No longer among the source documents."))
+            original_sidecar = (src / "metadata.json").read_bytes()
+            meta = DocumentMetadata.model_validate(read_json(src / "metadata.json"))
+            meta.trashed_at = now_iso()
+            meta.trash_reason = N_("deleted from the source documents")
+            meta.trash_batch = meta.replaced_at = None  # replaced_by stays: where it went
+            data = meta.model_dump(mode="json")
+            conn.execute(
+                "UPDATE trash SET kind='trash', trashed_at=?, reason=?, batch=NULL, "
+                "metadata_json=? WHERE id=?",
+                (meta.trashed_at, meta.trash_reason, json.dumps(data, ensure_ascii=False), doc_id),
+            )
+            title = row["title"]
+            _event(conn, doc_id, row["sha256"], meta.original_filename, by, "deleted",
+                   N_("“%(title)s” moved to the trash") % {"title": title})  # fmt: skip
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            if dst.exists():
+                _merge_leftover(src, dst)
+            _move(src, dst)
+            moved = True
+            atomic_write_json(dst / "metadata.json", data)
+    except BaseException:
+        if moved:
+            _move_back(dst, src)
+            if original_sidecar is not None:
+                atomic_write_bytes(src / "metadata.json", original_sidecar)
+        raise
+
+
+def sources_listing(archive: Archive) -> list[dict[str, Any]]:
+    """Source documents grouped by what they were combined into; newest first. ``target`` is
+    the combined document while it is in the archive (else None: deleted meanwhile)."""
+    conn = archive.conn
+    groups: dict[str, dict[str, Any]] = {}
+    for r in conn.execute("SELECT * FROM trash WHERE kind='source' ORDER BY trashed_at DESC"):
+        meta = json.loads(r["metadata_json"])
+        key = r["batch"] or r["id"]
+        g = groups.setdefault(key, {"batch": r["batch"], "replaced_at": r["trashed_at"],
+                                    "reason": r["reason"], "replaced_by": meta.get("replaced_by") or [],
+                                    "items": []})  # fmt: skip
+        g["items"].append(
+            {"id": r["id"], "title": r["title"], "pages": meta.get("page_count") or 1,
+             "document_date": meta.get("document_date"),
+             "filename": meta.get("original_filename") or ""}
+        )  # fmt: skip
+    for g in groups.values():
+        g["targets"], order = [], []
+        for i in g["replaced_by"]:
+            t = conn.execute(
+                "SELECT id, title, original_filename, metadata_json FROM documents WHERE id=?", (i,)
+            ).fetchone()
+            if t is None:
+                continue
+            g["targets"].append({"id": t["id"], "title": t["title"] or t["original_filename"]})
+            details = json.loads(t["metadata_json"]).get("source_details") or {}
+            order += [c.get("id") for c in details.get("combined_from") or []]
+        # in the order of their pages in the combined document
+        g["items"].sort(key=lambda it: order.index(it["id"]) if it["id"] in order else len(order))
+    return list(groups.values())
+
+
+def source_meta(archive: Archive, doc_id: str) -> DocumentMetadata:
+    row = archive.conn.execute(
+        "SELECT metadata_json FROM trash WHERE id=? AND kind='source'", (doc_id,)
+    ).fetchone()
+    if row is None:
+        raise docs.DocumentNotFound(doc_id)
+    return DocumentMetadata.model_validate_json(row[0])
+
+
+SOURCES_ADOPTED_KEY = "sources_adopted"
+
+
+def adopt_combined(archive: Archive) -> int:
+    """Once, for archives from before the source documents: the parts of combined documents
+    that are still in the Papierkorb (batch combine-<id>, the combined document still in the
+    archive) become source documents instead of being purged."""
+    from .combine import BATCH_PREFIX
+    from .db import get_meta, set_meta
+
+    conn = archive.conn
+    if get_meta(conn, SOURCES_ADOPTED_KEY):
+        return 0
+    n = 0
+    rows = conn.execute(
+        "SELECT id, batch, trashed_at FROM trash WHERE kind='trash' AND batch LIKE ?",
+        (BATCH_PREFIX + "%",),
+    ).fetchall()
+    for r in rows:
+        combined = r["batch"][len(BATCH_PREFIX) :]
+        if not conn.execute("SELECT 1 FROM documents WHERE id=?", (combined,)).fetchone():
+            continue  # the combined document is gone too: the parts stay ordinary trash
+        try:
+            _to_source(archive, r["id"], combined, r["trashed_at"])
+            n += 1
+        except Exception:  # noqa: BLE001 - one damaged folder must not stop the others
+            log.exception("could not keep %s as a source document", r["id"])
+    with write_tx(conn):
+        set_meta(conn, SOURCES_ADOPTED_KEY, now_iso())
+    return n
+
+
+def _to_source(archive: Archive, doc_id: str, combined_id: str, moved_at: str) -> None:
+    conn = archive.conn
+    src, dst = _dir(archive, doc_id, TRASH), _dir(archive, doc_id, SOURCE)
+    moved = False
+    original_sidecar: bytes | None = None
+    try:
+        with write_tx(conn):
+            original_sidecar = (src / "metadata.json").read_bytes()
+            meta = DocumentMetadata.model_validate(read_json(src / "metadata.json"))
+            meta.replaced_at, meta.replaced_by, meta.trashed_at = moved_at, [combined_id], None
+            data = meta.model_dump(mode="json")
+            conn.execute(
+                "UPDATE trash SET kind='source', metadata_json=? WHERE id=?",
+                (json.dumps(data, ensure_ascii=False), doc_id),
+            )
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            if dst.exists():
+                _merge_leftover(src, dst)
+            _move(src, dst)
+            moved = True
+            atomic_write_json(dst / "metadata.json", data)
+    except BaseException:
+        if moved:
+            _move_back(dst, src)
+            if original_sidecar is not None:
+                atomic_write_bytes(src / "metadata.json", original_sidecar)
+        raise
 
 
 def _event(conn, doc_id, sha, filename, source, result, message) -> None:
