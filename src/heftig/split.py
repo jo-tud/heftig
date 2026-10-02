@@ -7,14 +7,20 @@ page. Like combining, nothing is changed in place - originals are never modified
 - each part is a new archived PDF; PDF (and e-mail) pages are copied as they are (text layer
   included), image frames become PDF pages with their JPEG data;
 - the recognised text is carried over page by page - no second (paid) text recognition;
-- every part is a new document: classified from scratch on its own text (title, date,
-  sender, type, tags, summary, fields - nothing of the original's, no locks); it keeps only
-  where it came from (source, arrival, paper, scan session, where the paper is);
+- cut into several parts, every part is a new document: classified from scratch on its own
+  text (title, date, sender, type, tags, summary, fields - nothing of the original's, no
+  locks, as those described all of it); it keeps only where it came from (source, arrival,
+  paper, scan session, where the paper is);
+- only rearranged (one part: pages turned, moved or left out), it is the same document: it
+  keeps the original's fields and their locks, the classification respects them;
 - the user's own additions - notes, attachments - and the filing position go to the first
   part; the paper of the others lies with it;
 - pages the user turned keep their turn (as ``page_rotation``, like any turned page);
-- the original moves to the Papierkorb as batch ``split-<original id>``. Undoing restores it
-  and moves the parts to the Papierkorb.
+- the original moves to the Papierkorb as batch ``split-<original id>``, but is kept there
+  (not purged) as long as one of its parts exists, live or in the Papierkorb; every part
+  names the original file in ``split_from.originals``, so the file itself stays as long as a
+  part does (``trash.is_referenced``). Undoing restores it and moves the parts (also those of
+  a part that was split again) to the Papierkorb.
 """
 
 from __future__ import annotations
@@ -22,6 +28,9 @@ from __future__ import annotations
 import hashlib
 import io
 import logging
+import threading
+from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import Any
 
 import pypdfium2 as pdfium
@@ -42,6 +51,16 @@ BATCH_PREFIX = "split-"
 TURNS = (0, 90, 180, 270)
 # provenance of the original that does not describe a part
 _NOT_CARRIED = ("action", "combined_from", "split_from")
+# what a document that was only rearranged keeps of the original (a split part: none of it)
+_SAME_DOCUMENT = (
+    "title", "document_date", "document_date_status", "document_date_reason", "correspondent",
+    "document_type", "tags", "summary", "custom_fields", "field_locks", "field_sources",
+    "tag_overrides", "keep_original", "keep_original_reason", "keep_original_source",
+    "not_duplicate_of",
+)  # fmt: skip
+# documents being split right now (a second request for the same one is refused)
+_BUSY: set[str] = set()
+_BUSY_LOCK = threading.Lock()
 
 
 class SplitError(ValueError):
@@ -148,6 +167,20 @@ def _provenance(orig: DocumentMetadata) -> dict[str, Any]:
     return {k: v for k, v in orig.source_details.items() if k not in _NOT_CARRIED}
 
 
+def _split_from(
+    orig: DocumentMetadata, title: str, pages: list[int], num: int, total: int
+) -> dict[str, Any]:
+    """Where a part came from. ``originals``: the original's file and, if the original was
+    itself a part, the files before it - they are kept as long as this part exists."""
+    return {
+        "id": orig.id, "title": title, "pages": pages, "part": num, "parts": total,
+        "filename": orig.original_filename, "mime_type": orig.mime_type,
+        "originals": list(
+            dict.fromkeys([orig.original_relpath, *docs.split_originals(orig.source_details)])
+        ),
+    }  # fmt: skip
+
+
 def _carry_over(
     archive: Archive,
     meta: DocumentMetadata,
@@ -169,8 +202,11 @@ def _carry_over(
     meta.source_details = {
         **_provenance(orig),
         "action": "split",
-        "split_from": {"id": orig.id, "title": title, "pages": pages, "part": num, "parts": total},
+        "split_from": _split_from(orig, title, pages, num, total),
     }
+    if total == 1:  # only rearranged: still the same document, with what the user decided
+        for f in _SAME_DOCUMENT:
+            setattr(meta, f, getattr(orig, f))
     if num == 1:  # what the user added stays with the first part; the rest is classified anew
         meta.notes = list(orig.notes)
         meta.attachments = list(orig.attachments)
@@ -179,9 +215,9 @@ def _carry_over(
             meta.paper_discarded_at = orig.paper_discarded_at
     elif orig.filed_at:  # the sheets lie with the first part: nothing to file
         meta.paper_location = (
-            N_("Binder %(name)s, with “%(title)s”") % {"name": orig.filing_binder, "title": title}
+            N_("Binder %(name)s, with part 1") % {"name": orig.filing_binder}
             if orig.filing_binder
-            else N_("With “%(title)s”") % {"title": title}
+            else N_("With part 1")
         )
     else:
         meta.paper_location = orig.paper_location
@@ -234,7 +270,35 @@ def split(
 ) -> list[DocumentMetadata]:
     """New documents from the original's pages (1-based, in this order, one list per part;
     pages in no part are left out), pages turned as in ``turns`` (absolute, page -> degrees;
-    missing: as they are now). The original goes to the Papierkorb."""
+    missing: as they are now). The original goes to the Papierkorb (kept there as long as one
+    of the parts exists)."""
+    with _one_at_a_time(doc_id):
+        return _split(archive, doc_id, parts, turns, by)
+
+
+@contextmanager
+def _one_at_a_time(doc_id: str) -> Iterator[None]:
+    """Two tabs or a repeated request: the second split of the same document is refused while
+    the first runs. (Across processes, the second one fails when it trashes the original -
+    and discards its parts.)"""
+    with _BUSY_LOCK:
+        if doc_id in _BUSY:
+            raise SplitError(_("The document is being split right now – please wait a moment."))
+        _BUSY.add(doc_id)
+    try:
+        yield
+    finally:
+        with _BUSY_LOCK:
+            _BUSY.discard(doc_id)
+
+
+def _split(
+    archive: Archive,
+    doc_id: str,
+    parts: list[list[int]],
+    turns: dict[int, int] | None,
+    by: str,
+) -> list[DocumentMetadata]:
     orig, parts, turns = check(archive, doc_id, parts, turns)
     pdfs = build_pdfs(archive, orig, parts)
     shas = [hashlib.sha256(b).hexdigest() for b in pdfs]
@@ -271,16 +335,21 @@ def split(
             if result.status != "created" or result.doc_id is None:
                 raise SplitError(translate_text(result.message) or _("Splitting not possible."))
             created.append(result.doc_id)
+        # the original only goes once all parts are safely archived
+        reason = (
+            N_("split into %(num)s documents") % {"num": total}
+            if total > 1
+            else N_("pages rearranged in a new document")
+        )
+        try:
+            trash.trash_document(archive, orig.id, reason=reason, batch=batch_for(orig.id), by=by)
+        except docs.DocumentNotFound:  # split (or deleted) meanwhile by another request
+            raise SplitError(
+                _("The document was changed meanwhile – please open it again.")
+            ) from None
     except BaseException:
         _discard(archive, created)
         raise
-    # the original only goes once all parts are safely archived
-    reason = (
-        N_("split into %(num)s documents") % {"num": total}
-        if total > 1
-        else N_("pages rearranged in a new document")
-    )
-    trash.trash_document(archive, orig.id, reason=reason, batch=batch_for(orig.id), by=by)
     if orig.filed_at:
         take_filing(archive, created[0], orig)
     return [docs.load_meta(archive, i) for i in created]
@@ -308,15 +377,30 @@ def parts_of(archive: Archive, orig_id: str) -> list[dict[str, Any]]:
     return [dict(r) for r in rows]
 
 
+def descendants(archive: Archive, orig_id: str) -> list[str]:
+    """The live documents made from ``orig_id``: its parts, and the parts of a part that was
+    split again (that part is in the Papierkorb as batch ``split-<part id>``)."""
+    out = [r["id"] for r in parts_of(archive, orig_id)]
+    resplit = archive.conn.execute(
+        "SELECT id FROM trash WHERE batch = ? || id "
+        "AND json_extract(metadata_json, '$.source_details.split_from.id') = ? "
+        "ORDER BY json_extract(metadata_json, '$.source_details.split_from.part')",
+        (BATCH_PREFIX, orig_id),
+    ).fetchall()
+    for (part_id,) in resplit:
+        out += descendants(archive, part_id)
+    return out
+
+
 def undo(archive: Archive, orig_id: str) -> dict[str, Any]:
-    """Restore the original; its parts go to the Papierkorb (first: the first part holds the
-    original's filing position)."""
+    """Restore the original; what was made from it goes to the Papierkorb (first: the first
+    part holds the original's filing position)."""
     batch = trash.new_batch()
     moved = []
-    for r in parts_of(archive, orig_id):
+    for part_id in descendants(archive, orig_id):
         try:
-            trash.trash_document(archive, r["id"], reason=N_("Splitting undone"), batch=batch)
-            moved.append(r["id"])
+            trash.trash_document(archive, part_id, reason=N_("Splitting undone"), batch=batch)
+            moved.append(part_id)
         except docs.DocumentNotFound:
             pass  # deleted meanwhile
     r = trash.restore_batch(archive, batch_for(orig_id))

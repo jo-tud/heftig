@@ -361,6 +361,28 @@ def original_response(
     )
 
 
+def split_original_response(request: Request, doc_id: str) -> FileResponse:
+    """The file this document was split from, as it was received - always as a download (the
+    original itself may be in the trash, where it is kept as long as its parts exist)."""
+    a = get_archive(request)
+    meta = _load(request, doc_id)
+    rels = docs.split_originals(meta.source_details)
+    if not rels:
+        raise ApiError(404, "not_found", _("This document was not split from another one."))
+    path = a.paths.resolve(rels[0])
+    if not path.exists():
+        raise ApiError(410, "original_missing", _("Original file is missing – run `heftig check`."))
+    sf = meta.source_details["split_from"]
+    mime = str(sf.get("mime_type") or "application/octet-stream")
+    return FileResponse(
+        path,
+        media_type=mime,
+        filename=str(sf.get("filename") or path.name),
+        content_disposition_type="attachment",
+        headers={"X-Content-Type-Options": "nosniff", "Cache-Control": "private, no-store"},
+    )
+
+
 def mail_attachment_response(request: Request, doc_id: str, index: int) -> Response:
     """One attachment of an archived e-mail, taken from the original - always as a download."""
     from urllib.parse import quote
@@ -561,7 +583,9 @@ def api_split(
     each new document in order - pages in no part are left out; ``rotation`` turns pages
     (page -> 0/90/180/270 degrees clockwise, absolute; missing pages keep their turn). Each
     part is classified as a new document; notes, attachments and the filing position go to
-    the first. The original goes to the trash as batch ``split-<id>``.
+    the first; a document that is only rearranged (one part) keeps its fields and their
+    locks. The original goes to the trash as batch ``split-<id>`` and is kept there as long as
+    one of its parts exists (GET /api/documents/{part id}/split-original downloads its file).
     Undo: POST /api/documents/{id}/unsplit."""
     from .. import split
 
@@ -571,6 +595,12 @@ def api_split(
     except split.SplitError as e:
         raise ApiError(409, "not_splittable", str(e)) from e
     return {"document_ids": [m.id for m in metas], "trash_batch": split.batch_for(doc_id)}
+
+
+@router.get("/documents/{doc_id}/split-original", tags=["documents"])
+def api_split_original(request: Request, doc_id: str, p: Principal = Depends(require_user)):
+    """The original file this document was split from (unchanged, as received)."""
+    return split_original_response(request, doc_id)
 
 
 @router.post("/documents/{doc_id}/unsplit", tags=["documents"])
