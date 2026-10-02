@@ -57,7 +57,9 @@ class IngestEvent(BaseModel):
 class HistoryEntry(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    task: Literal["extract", "classify", "edit", "filing", "import", "merge", "note", "attachment"]
+    task: Literal[
+        "extract", "classify", "edit", "filing", "import", "merge", "split", "note", "attachment"
+    ]
     at: str
     status: str
     provider: str = ""

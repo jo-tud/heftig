@@ -515,6 +515,43 @@ def api_uncombine(request: Request, doc_id: str, p: Principal = Depends(require_
     return {"restored": r["ids"]}
 
 
+class SplitBody(BaseModel):
+    parts: list[list[int]] = Field(min_length=1, max_length=500)
+    rotation: dict[int, int] = Field(default_factory=dict)
+
+
+@router.post("/documents/{doc_id}/split", tags=["documents"], status_code=201)
+def api_split(
+    request: Request, doc_id: str, body: SplitBody, p: Principal = Depends(require_write)
+):
+    """New documents from this document's pages: ``parts`` lists the page numbers (1-based) of
+    each new document in order - pages in no part are left out; ``rotation`` turns pages
+    (page -> 0/90/180/270 degrees clockwise, absolute; missing pages keep their turn). The
+    first part keeps the metadata. The original goes to the trash as batch
+    ``split-<id>``. Undo: POST /api/documents/{id}/unsplit."""
+    from .. import split
+
+    _load(request, doc_id)
+    try:
+        metas = split.split(get_archive(request), doc_id, body.parts, body.rotation, by="api")
+    except split.SplitError as e:
+        raise ApiError(409, "not_splittable", str(e)) from e
+    return {"document_ids": [m.id for m in metas], "trash_batch": split.batch_for(doc_id)}
+
+
+@router.post("/documents/{doc_id}/unsplit", tags=["documents"])
+def api_unsplit(request: Request, doc_id: str, p: Principal = Depends(require_write)):
+    """Undo a split: the original (``doc_id``) comes back, its parts go to the trash."""
+    from .. import split
+
+    r = split.undo(get_archive(request), doc_id)
+    if not r["restored"]:
+        raise ApiError(
+            409, "not_restorable", "; ".join(sorted(set(r["failed"]))) or _("Nothing to do.")
+        )
+    return {"restored": r["ids"]}
+
+
 class FilingBody(BaseModel):
     action: Literal["file", "unfile"] = "file"
 

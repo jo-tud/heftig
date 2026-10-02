@@ -33,6 +33,7 @@ from .. import (
     senders,
     sessions,
     settings_store,
+    split,
     synonyms,
     trash,
 )
@@ -210,6 +211,8 @@ def render(request: Request, name: str, *, http_status: int = 200, **ctx: Any) -
         ctx["undo"] = undo[:80]
         if undo.startswith("batch:" + combine.BATCH_PREFIX):
             ctx["undo_label"] = _("Combined – the individual documents are in the trash.")
+        elif undo.startswith("batch:" + split.BATCH_PREFIX):
+            ctx["undo_label"] = _("Saved as new documents – the original is in the trash.")
         elif undo.startswith("doc:"):
             row = request.app.state.archive.conn.execute(
                 "SELECT title FROM trash WHERE id=?", (undo[4:],)
@@ -483,6 +486,12 @@ def _trash_sync(a, form, query_action: str) -> RedirectResponse:
                 raise trash.TrashError("; ".join(sorted(set(r["failed"]))) or _("Nothing to do."))
             return redirect(f"/documents/{r['ids'][0]}?" + urlencode(
                 {"msg": _("Combining undone – the individual documents are back.")}))  # fmt: skip
+        if action == "restore" and target.startswith("batch:" + split.BATCH_PREFIX):
+            r = split.undo(a, target[6 + len(split.BATCH_PREFIX) :])
+            if not r["ids"]:
+                raise trash.TrashError("; ".join(sorted(set(r["failed"]))) or _("Nothing to do."))
+            return redirect(f"/documents/{r['ids'][0]}?" + urlencode(
+                {"msg": _("Undone – the original document is back.")}))  # fmt: skip
         if action == "restore" and target.startswith("batch:"):
             r = trash.restore_batch(a, target[6:])
             msg = ngettext(
@@ -642,6 +651,14 @@ def _page_sizes(a, m: dict) -> list[tuple[float, float]]:
     sizes = sizes or [(595.0, 842.0)] * (m.get("page_count") or 1)
     turned = {int(k): v for k, v in (m.get("page_rotation") or {}).items()}
     return [(h, w) if turned.get(n) in (90, 270) else (w, h) for n, (w, h) in enumerate(sizes, 1)]
+
+
+def _split_parts(a, m: dict) -> list[dict[str, Any]]:
+    """The other documents split from the same original (for "Split from")."""
+    src = (m.get("source_details") or {}).get("split_from")
+    if not isinstance(src, dict) or not src.get("id"):
+        return []
+    return [r for r in split.parts_of(a, str(src["id"])) if r["id"] != m["id"]]
 
 
 # --- AI search: a request in plain words becomes filters -------------------------------------
@@ -831,6 +848,7 @@ def document_page(request: Request, doc_id: str, p: Principal = Depends(require_
         duplicates=open_pairs(a.conn, doc_id),
         page_sizes=_page_sizes(a, detail["metadata"]),
         mail_parts=_mail_parts(a, detail["metadata"]),
+        split_parts=_split_parts(a, detail["metadata"]),
         saved=request.query_params.get("saved"),
         message=request.query_params.get("msg"),
         q=q if hit_terms else "",
@@ -1654,6 +1672,69 @@ async def combine_action(request: Request, p: Principal = Depends(require_write)
     form = await request.form()
     ids = [str(v) for v in form.getlist("ids")][:20]
     return await run_in_threadpool(_combine_sync, get_archive(request), ids)
+
+
+# --- splitting a document / rearranging its pages ----------------------------------------
+
+
+@router.get("/documents/{doc_id}/split")
+def split_page(request: Request, doc_id: str, p: Principal = Depends(require_user)):
+    """The pages as tiles: cut between them, move them (drag, or keys), turn, remove."""
+    a = get_archive(request)
+    m = docs.load_meta(a, doc_id)
+    count = m.page_count or 1
+    busy = a.conn.execute(
+        "SELECT 1 FROM jobs WHERE status IN ('queued','processing') AND doc_id=?", (doc_id,)
+    ).fetchone()
+    blank = set(docs.blank_pages(docs.load_text_pages(a, doc_id), m.page_blank))
+    pages = [
+        {"n": n, "turn": docs.rotation(m, n), "blank": n in blank} for n in range(1, count + 1)
+    ]
+    return render(
+        request, "split.html", nav="documents", m=m, pages=pages,
+        problem=_("The document is still being processed – please wait a moment.")
+        if busy else None,
+        message=request.query_params.get("msg"),
+    )  # fmt: skip
+
+
+def parse_layout(layout: str) -> tuple[list[list[int]], dict[int, int]]:
+    """``1,2r90|4`` (parts separated by ``|``, pages by ``,``, ``r`` + degrees for a turned
+    page) -> parts and the turn of every listed page. ValueError if unreadable."""
+    parts: list[list[int]] = []
+    turns: dict[int, int] = {}
+    for chunk in layout.strip().split("|"):
+        part = []
+        for item in filter(None, chunk.split(",")):
+            num, _r, turn = item.strip().partition("r")
+            n = int(num)
+            part.append(n)
+            turns[n] = int(turn or 0)
+        parts.append(part)
+    return parts, turns
+
+
+def _split_sync(a, doc_id: str, layout: str) -> RedirectResponse:
+    back = f"/documents/{doc_id}/split?"
+    try:
+        parts, turns = parse_layout(layout[:20000])
+    except ValueError:
+        return redirect(back + urlencode({"msg": _("The page layout could not be read.")}))
+    try:
+        new = split.split(a, doc_id, parts, turns)
+    except split.SplitError as e:
+        return redirect(back + urlencode({"msg": str(e)}))
+    return redirect(
+        f"/documents/{new[0].id}?" + urlencode({"undo": f"batch:{split.batch_for(doc_id)}"})
+    )
+
+
+@router.post("/documents/{doc_id}/split")
+async def split_action(request: Request, doc_id: str, p: Principal = Depends(require_write)):
+    form = await request.form()
+    return await run_in_threadpool(
+        _split_sync, get_archive(request), doc_id, _form_val(form, "layout")
+    )
 
 
 # --- upload ------------------------------------------------------------------------------
