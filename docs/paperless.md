@@ -9,7 +9,7 @@ Paperless equivalent, and Paperless recomputes some values itself.
 
 | Heftig | Paperless-ngx | Notes |
 |---|---|---|
-| original file (`originals/...`) | uploaded document (original) | Byte-identical upload. Paperless keeps the original and additionally creates its own archived PDF/A version. Paperless identifies originals by MD5 (`checksum`) and rejects duplicates. |
+| original file (`originals/...`) | uploaded document (original) | Byte-identical upload. Paperless keeps the original and additionally creates its own archived PDF/A version. Paperless identifies originals by MD5 (`checksum`) and rejects duplicates. An archived e-mail is uploaded as its `.eml` file; Paperless reads e-mails only with its Tika and Gotenberg integration switched on. |
 | `title` | `title` | Paperless allows at most 128 characters; the script truncates. An empty Heftig title becomes the file name without extension. |
 | `correspondent` | `correspondent` | Looked up by name, created if missing. |
 | `document_type` | `document_type` | Looked up by name, created if missing. |

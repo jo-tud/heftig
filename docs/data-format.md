@@ -119,12 +119,12 @@ Fields marked * are additions to the minimal field list of the original specific
 | `original_relpath` | string | Path of the original relative to the archive root, `originals/<aa>/<sha256>.<ext>`. |
 | `mime_type` | string | Detected type: `application/pdf`, `image/jpeg`, `image/png`, `image/tiff`, `message/rfc822` (an e-mail). |
 | `size_bytes`* | int | Size of the original. |
-| `page_count`* | int or null | Pages (PDF) or frames (TIFF); set on ingest, confirmed by extraction. |
-| `source` | enum | First arrival: `scanner` (consume folder), `folder` (`heftig ingest`), `web`, `api`, `email`, `import` (e.g. adopted by `heftig repair`). |
+| `page_count`* | int or null | Pages (PDF), frames (TIFF) or, for an e-mail, its own pages plus its attachments' pages; set on ingest, confirmed by extraction. |
+| `source` | enum | First arrival: `scanner` (consume folder), `folder` (folder for digital files, `heftig ingest`), `web`, `api`, `email`, `import` (e.g. adopted by `heftig repair`). |
 | `source_details` | object | Sparse provenance of the first arrival. Consume: `path` (relative to the consume folder). Web/API: `client`, `kind` (`digital`/`paper`). E-mail: `import_ref` (shared by all attachments of one message), `message_id`, `from` (address only), `subject`, `message_date` (the mail's Date header, provenance only), `mailbox`, `uid`, `uidvalidity`, `attachment`, optionally `eml`; `mail_keyword` when the e-mail itself was archived because of the keyword in its subject (left out of the title). Combined documents: `action: "combine"` and `combined_from` (`[{id, title, pages}]` of the parts in page order; the parts are in the trash as batch `combine-<id>`). Never credentials. |
 | `received_at` | timestamp | First successful arrival. Set by the server, never changed (not by reprocessing, duplicates or import). |
 | `ingest_sequence` | int | Unique, strictly increasing arrival counter; numbers of deleted documents are not reused. |
-| `paper`* | bool | The document exists on paper and can be filed. True for `scanner`, for uploads marked as paper, and once filed. |
+| `paper`* | bool | The document exists on paper and can be filed. True for `scanner` (never for an e-mail), for uploads marked as paper, and once filed. |
 | `document_date` | date or null | Date printed on the document. |
 | `document_date_status`* | enum | `unknown`, `ai` (found in the text, confident), `ai_uncertain` (found, low confidence; flagged for review), `user`, `none_found` (classifier found no date), `as_of` (no letter date: the date the document is made up to, e.g. "per 30.09.2021", found by a local rule), `mail` (an e-mail: when it was sent; the classifier does not replace it), `import` (reserved). |
 | `document_date_reason`* | string or null | Human-readable reason, e.g. the quoted evidence or why a proposal was not applied. |
@@ -191,12 +191,12 @@ Ihre Rechnung für September 2026
 }
 ```
 
-`method` is `embedded` (PDF text layer), `ocr`, `none` (no text; `error` explains why) or `user`
-(reserved for user-edited text). `blank` marks a page without ink (e.g. the empty back of a duplex
-scan): not sent to a paid OCR and hidden in the page viewer, unless `page_blank` in
-`metadata.json` says otherwise. `turn` is how the page was turned (`page_rotation`) when its
-image was read. `user_confirmed: true` makes re-extraction keep the text; V1 has
-no UI for editing text yet.
+`method` is `embedded` (PDF text layer; for an e-mail's own pages its text, with provider
+`email`), `ocr`, `none` (no text; `error` explains why) or `user` (reserved for user-edited
+text). `blank` marks a page without ink (e.g. the empty back of a duplex scan): not sent to a
+paid OCR and hidden in the page viewer, unless `page_blank` in `metadata.json` says otherwise.
+`turn` is how the page was turned (`page_rotation`) when its image was read.
+`user_confirmed: true` makes re-extraction keep the text; V1 has no UI for editing text yet.
 
 ## saved_searches.json
 
@@ -365,7 +365,7 @@ was still being processed is reported by `heftig check` as `unfinished_processin
 
 | Item | Version field | Current |
 |---|---|---|
-| Database schema | `PRAGMA user_version` | 11 (number of the last migration) |
+| Database schema | `PRAGMA user_version` | 12 (number of the last migration) |
 | `metadata.json` | `schema_version` | 1 |
 | `text_pages.json` | `schema_version` | 1 |
 | `taxonomy.json` | `schema_version` | 1 |

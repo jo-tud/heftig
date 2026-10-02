@@ -114,7 +114,8 @@ sudo mkdir -p /mnt/scans
   may delete imported files.
 - `_netdev` waits for the network; `nofail` lets the machine boot when the share is unreachable;
   `x-systemd.automount` mounts on first access. If the share is unreachable, Heftig shows the
-  consume folder as not reachable in the inbox and retries at every poll.
+  consume folder as not reachable in the inbox and retries at every poll; mail, processing and
+  everything else the worker does go on meanwhile.
 
 Then point Heftig at the mount:
 
@@ -321,7 +322,8 @@ HEFTIG_IMAP_ALLOWED_SENDERS=ich@example.org,partnerin@example.org,@meine-bank.ex
   in the inbox.
 - **Unsupported attachments** (Word, ZIP, calendar invites, ...) are not archived; each one is
   recorded as a rejected ingest event with its type, visible in the inbox. A message without
-  any supported file is reported as well. Nothing is dropped silently.
+  any supported file is reported as well. Nothing is dropped silently. (An e-mail archived with
+  the keyword below keeps all its attachments; they can be downloaded from its document page.)
 - Attachments larger than `HEFTIG_IMAP_MAX_ATTACHMENT_MB` (50 MB) are rejected with a message;
   the general `HEFTIG_MAX_UPLOAD_MB` limit also applies.
 

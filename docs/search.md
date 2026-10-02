@@ -420,13 +420,14 @@ recognised phrase instead of combining with it.
 ## Facets and timeline
 
 `search(..., with_facets=True)` (UI always, API with `facets=true`) returns counts over the
-current results: correspondents, document types, tags, sources and documents per month of the
-document date (plus the number without a date). Groups that combine with OR - correspondent,
-type, source, date and tags in "any" mode - are counted without their own filter, so the other
-values of the group stay visible with the number of documents they would add. Tags in "all" mode
-narrow the result and are counted within it. Every facet value is a plain link that toggles the
-parameter, so the filter column works without JavaScript; on narrow screens it opens as a bottom
-sheet (search.js). The timeline shows years, and months after choosing one year.
+current results: correspondents, document types, tags, sources, the addresses documents were
+e-mailed from and documents per month of the document date (plus the number without a date).
+Groups that combine with OR - correspondent, type, source, e-mail sender, date and tags in "any"
+mode - are counted without their own filter, so the other values of the group stay visible with
+the number of documents they would add. Tags in "all" mode narrow the result and are counted
+within it. Every facet value is a plain link that toggles the parameter, so the filter column
+works without JavaScript; on narrow screens it opens as a bottom sheet (search.js). The timeline
+shows years, and months after choosing one year.
 
 `tag_mode=any` switches the tag filter from "all tags" to "at least one".
 
@@ -574,13 +575,14 @@ Every document the search by meaning counted as near (and that passes the filter
 reason "Meaning" - also one the words found too, so the reason shows where the meaning took
 part, not that the words missed it. A document found only by meaning has no other reason.
 
-**Words only.** After a search with words, the search page shows a switch next to the sort:
-*Words + meaning* | *Words only* - to compare the results with and without the meaning. It
-appears only when the search by meaning could take part (switched on, the model there,
-documents embedded, the query has search words). *Words only* sets `meaning=0` in the URL (API:
-`meaning=false`); a new search in the search box keeps the choice, like the other filters, and
-a saved search remembers it. Without the meaning, the chosen sort applies again (with it, the
-results are always by relevance). Suggestions while typing use the words only.
+**Words only.** After a search with words, the search page shows a switch at the start of the
+line with the number of results: *Words + meaning* | *Words only* - to compare the results with
+and without the meaning. It appears only when the search by meaning could take part (switched
+on, the model there, documents embedded, the query has search words). *Words only* sets
+`meaning=0` in the URL (API: `meaning=false`); a new search in the search box keeps the choice,
+like the other filters, and a saved search remembers it. Without the meaning, the chosen sort
+applies again (with it, the results are always by relevance). Suggestions while typing use the
+words only.
 
 **Measured** (benchmark with the built-in model; `uv run python scripts/search_bench.py
 --meaning`):
