@@ -149,6 +149,37 @@ def test_eml_from_the_folder_is_one_document_with_its_attachments(archive):
     assert source == "pdf" and any(w[0] == "Mietvertrag" for w in words)
 
 
+def test_uploaded_or_dropped_mail_knows_its_sender(archive):
+    """Like a mail from the mailbox: who sent it, the subject, when - from its own headers."""
+    from heftig.search import SearchParams, search
+
+    raw = eml(sender="=?utf-8?q?Anna_M=C3=BCller?= <Anna@Example.org>")
+    up = ingest_bytes(archive, raw, "Mietvertrag.eml", source="web").doc_id
+    dropped = ingest_bytes(archive, eml(subject="Nebenkosten", sender="hv@example.org"),
+                           "n.eml", source="folder").doc_id  # fmt: skip
+    pdf = ingest_bytes(archive, text_pdf(["From: someone@example.org"]), "x.pdf").doc_id
+    d = docs.load_meta(archive, up).source_details
+    assert d["from"] == "Anna@Example.org" and d["subject"] == "Mietvertrag Lindenstraße"
+    assert d["message_date"].startswith("Wed, 01 Oct 2025") and d["message_id"].endswith(">")
+    assert docs.load_meta(archive, dropped).source_details["from"] == "hv@example.org"
+    assert "from" not in docs.load_meta(archive, pdf).source_details
+    res = search(archive.conn, SearchParams(email_from=["anna@example.org"]))
+    assert [i["id"] for i in res.items] == [up]
+
+
+def test_given_mail_details_are_not_replaced(archive):
+    import io
+
+    from heftig.ingest import ingest_stream
+
+    raw = eml(sender="anna@example.org")
+    r = ingest_stream(archive, io.BytesIO(raw), "m.eml", "email",
+                      {"from": "jo@example.org", "subject": "Fwd: Mietvertrag #mail"})  # fmt: skip
+    d = docs.load_meta(archive, r.doc_id).source_details
+    assert d["from"] == "jo@example.org" and d["subject"] == "Fwd: Mietvertrag #mail"
+    assert d["message_date"].startswith("Wed, 01 Oct 2025")  # only what was missing is added
+
+
 def test_scanned_attachment_is_read_with_ocr(archive):
     scan = image_bytes(text_image("Quittung"), "JPEG")
     res = ingest_bytes(archive, eml(attachments=[("quittung.jpg", "image/jpeg", scan)]), "q.eml")
@@ -293,6 +324,7 @@ def test_upload_page_and_attachment_download(tmp_path):
         page = client.get(f"/documents/{doc_id}")
         assert page.status_code == 200
         assert "Anhänge der E-Mail" in page.text and "notiz.docx" in page.text
+        assert "Per E-Mail von" in page.text and "anna@example.org" in page.text  # uploaded too
         r = client.get(f"/documents/{doc_id}/mail-attachments/0")
         assert r.status_code == 200 and r.content == docx
         assert r.headers["content-type"] == "application/octet-stream"

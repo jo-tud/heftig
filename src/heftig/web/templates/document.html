@@ -39,7 +39,7 @@
   <p class="meta">
     <span id="doc-status">{{ status_badge(m.status) }}</span>
     <span>{% if m.page_count %}{{ ngettext("%(num)d page", "%(num)d pages", m.page_count) }}{% if blank_pages %} ({{ ngettext("%(num)d blank", "%(num)d blank", blank_pages | length) }}){% endif %}{% else %}{{ _("? pages") }}{% endif %}</span>
-    {% set mail_from = m.source_details.get('from') if m.source == 'email' else none %}
+    {% set mail_from = m.source_details.get('from') if m.source == 'email' or m.mime_type == 'message/rfc822' else none %}
     {% if mail_from %}{% set who = sender_names.get(mail_from | lower) %}
     {% set sender_link %}<a href="/?email_from={{ mail_from | urlencode }}" title="{{ _("All documents from this address") }}">{{ who or mail_from }}</a>{% if who %} <span class="muted">&lt;{{ mail_from }}&gt;</span>{% endif %}{% endset %}
     <span>{% if m.source_details.get('subject') %}{% trans sender=sender_link, subject=m.source_details.subject %}E-mail from {{ sender }} · “{{ subject }}”{% endtrans %}{% else %}{% trans sender=sender_link %}E-mail from {{ sender }}{% endtrans %}{% endif %}{% if not who %} · <a href="/settings/senders">{{ _("give a name") }}</a>{% endif %}</span>
