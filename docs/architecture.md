@@ -349,6 +349,7 @@ in its version (a hash of the rendered offline page) and the files that page nee
 exactly `/offline` (templates/offline.html: no user data) with its versioned stylesheet, script
 and icon, and answers top-level page loads from the network, falling back to the offline page on
 a network error or a 502/503/504 from a reverse proxy. Everything else (API, `/health`, `/ready`,
-uploads, downloads, frames) passes by untouched; nothing from the archive is cached. A new
+uploads, downloads, frames) passes by untouched - opened as a page, it is answered from the
+preloaded request as it is (no second request); nothing from the archive is cached. A new
 language or a changed offline page changes the worker's script, so browsers install the new one
 and drop the old cache.

@@ -40,8 +40,12 @@ self.addEventListener("fetch", (event) => {
     return;
   }
   if (req.mode !== "navigate" || req.destination !== "document") return;
-  // answers meant for programs (health checks report a failure as 503) stay as they are
-  if (/^\/(api|static)\//.test(url.pathname) || ["/health", "/ready"].includes(url.pathname)) return;
+  // answers meant for programs (health checks report a failure as 503) stay as they are - but
+  // still taken from the preloaded request, else the browser cancels it and asks a second time
+  if (/^\/(api|static)\//.test(url.pathname) || ["/health", "/ready"].includes(url.pathname)) {
+    event.respondWith((async () => (await event.preloadResponse) || fetch(req))());
+    return;
+  }
   event.respondWith((async () => {
     try {
       const r = (await event.preloadResponse) || (await fetch(req));
