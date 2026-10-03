@@ -2617,6 +2617,10 @@ msgid "Filing"
 msgstr "Ablage"
 
 #: src/heftig/web/templates/document.html
+msgid "Forwarded by"
+msgstr "Weitergeleitet von"
+
+#: src/heftig/web/templates/document.html
 msgid "Full screen"
 msgstr "Vollbild"
 

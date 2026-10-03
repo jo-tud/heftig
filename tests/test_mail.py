@@ -246,6 +246,10 @@ def test_keyword_archives_an_inline_forward_with_its_attachments(imap_archive):
     assert meta.document_date == "2025-09-02"
     assert meta.page_count == 2  # the mail and the attached PDF in one document
     assert a.conn.execute("SELECT COUNT(*) FROM documents").fetchone()[0] == 1
+    # who sent it: the forwarded message's sender, not the one who forwarded it
+    d = meta.source_details
+    assert (d["from"], d["forwarded_by"]) == ("info@fit.example", "jo@example.org")
+    assert d["subject"] == "Kündigungsbestätigung" and d["message_date"].startswith("Tue, 2 Sep")
     # polled again: nothing new
     again = process_message(a, raw, account="acc", fallback_key="7:1")
     assert [r["status"] for r in again] == ["already_imported"]
@@ -269,6 +273,19 @@ def test_keyword_archives_the_mail_forwarded_as_attachment(imap_archive):
     assert meta.title == "Zählerstand Strom"
     assert "Stadtwerke <service@stadtwerke.example>" in docs.get_text(a, meta.id)
     assert "siehe Anhang" not in docs.get_text(a, meta.id)
+    # its provenance is the attached message's own, the forward only as forwarded_by
+    d = meta.source_details
+    assert (d["from"], d["forwarded_by"]) == ("service@stadtwerke.example", "jo@example.org")
+    assert d["subject"] == "Zählerstand Strom" and d["message_id"] != "<outer@example.org>"
+    assert d["mail_keyword"] == "#mail"
+
+
+def test_keyword_on_an_own_mail_keeps_its_sender(imap_archive):
+    a = imap_archive
+    raw = eml(subject="Zusage Kita #mail", body="Wir nehmen den Platz.\n", sender="jo@example.org")
+    res = process_message(a, raw, account="acc", fallback_key="7:9")
+    d = docs.load_meta(a, res[0]["document_id"]).source_details
+    assert d["from"] == "jo@example.org" and "forwarded_by" not in d
 
 
 def test_without_keyword_only_attachments_are_imported(imap_archive):
