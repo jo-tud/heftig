@@ -12,7 +12,7 @@ from heftig import documents as docs
 from heftig.search import SearchParams, search
 
 from .conftest import ingest_bytes, make_settings, process_all
-from .helpers import image_bytes, multipage_tiff, text_image, text_pdf
+from .helpers import image_bytes, multipage_tiff, record_pdf_save_and_close, text_image, text_pdf
 
 PASSWORD = "richtig-langes-passwort"
 
@@ -63,6 +63,16 @@ def test_pages_text_and_user_data_are_combined(archive):
     assert group["batch"] == combine.batch_for(new.id) and group["targets"][0]["id"] == new.id
     assert [it["id"] for it in group["items"]] == [a, b, tiff]
     assert ids(archive, "Mietvertrag") == [new.id]
+
+
+def test_parts_stay_open_until_the_combined_pdf_is_saved(archive, monkeypatch):
+    """See test_mail: closing a source before saving can crash pdfium."""
+    a = ingest_bytes(archive, text_pdf(["Teil eins"]), "a.pdf").doc_id
+    b = ingest_bytes(archive, text_pdf(["Teil zwei"]), "b.pdf").doc_id
+    process_all(archive)
+    events = record_pdf_save_and_close(monkeypatch)
+    combine.build_pdf(archive, [docs.load_meta(archive, a), docs.load_meta(archive, b)])
+    assert events[0] == "save" and events.count("close") >= 3
 
 
 def test_undo_restores_the_parts(archive):

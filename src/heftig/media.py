@@ -164,15 +164,16 @@ def compose_mail(raw: bytes) -> bytes:
     own, _ = render(parse(raw), mail_labels())
     with PDFIUM_LOCK:
         pdf = pdfium.PdfDocument(own)
+        # imported pages can still refer to their source document until the result is saved:
+        # closing a source earlier crashes pdfium for some PDFs (e.g. filled-in forms)
+        sources: list[pdfium.PdfDocument] = []
         try:
             for _n, kind, data in shown_attachments(raw):
                 try:
                     if kind == "application/pdf":
                         src = pdfium.PdfDocument(data)
-                        try:
-                            pdf.import_pages(src)
-                        finally:
-                            src.close()
+                        sources.append(src)
+                        pdf.import_pages(src)
                     else:
                         for jpeg, wpt, hpt in image_pdf_pages(data, kind):
                             page = pdf.new_page(wpt, hpt)
@@ -189,6 +190,8 @@ def compose_mail(raw: bytes) -> bytes:
             return buf.getvalue()
         finally:
             pdf.close()
+            for src in sources:
+                src.close()
 
 
 def mail_pdf(path: Path) -> Path | bytes:

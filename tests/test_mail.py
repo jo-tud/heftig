@@ -13,7 +13,7 @@ from heftig.media import MAIL, inspect_file, render_page
 from heftig.wordboxes import page_words
 
 from .conftest import ingest_bytes, make_settings, process_all
-from .helpers import image_bytes, text_image, text_pdf
+from .helpers import image_bytes, record_pdf_save_and_close, text_image, text_pdf
 
 
 def eml(
@@ -186,6 +186,18 @@ def test_scanned_attachment_is_read_with_ocr(archive):
     process_all(archive)
     tp = docs.load_text_pages(archive, res.doc_id)
     assert [p.method for p in tp.pages] == ["embedded", "ocr"]
+
+
+def test_attachments_stay_open_until_the_mail_pdf_is_saved(monkeypatch):
+    """Imported pages can still refer to their source document: closing it before the mail's PDF
+    is saved crashed pdfium (the whole worker) for some PDFs, e.g. filled-in forms."""
+    from heftig.media import compose_mail
+
+    raw = eml(attachments=[("a.pdf", "application/pdf", text_pdf(["Anlage eins"])),
+                           ("b.pdf", "application/pdf", text_pdf(["Anlage zwei"]))])  # fmt: skip
+    events = record_pdf_save_and_close(monkeypatch)
+    compose_mail(raw)
+    assert events[0] == "save" and events.count("close") >= 3
 
 
 def test_mail_date_is_not_replaced_by_the_classifier(archive):

@@ -68,3 +68,23 @@ def multipage_tiff(pages: list[str]) -> bytes:
     buf = io.BytesIO()
     imgs[0].save(buf, format="TIFF", save_all=True, append_images=imgs[1:])
     return buf.getvalue()
+
+
+def record_pdf_save_and_close(monkeypatch) -> list[str]:
+    """Record the order of pdfium's document saves and closes ("save", "close")."""
+    import pypdfium2 as pdfium
+
+    events: list[str] = []
+    save, close = pdfium.PdfDocument.save, pdfium.PdfDocument.close
+
+    def recording_save(self, *a, **kw):
+        events.append("save")
+        return save(self, *a, **kw)
+
+    def recording_close(self, *a, **kw):
+        events.append("close")
+        return close(self, *a, **kw)
+
+    monkeypatch.setattr(pdfium.PdfDocument, "save", recording_save)
+    monkeypatch.setattr(pdfium.PdfDocument, "close", recording_close)
+    return events

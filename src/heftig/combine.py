@@ -63,15 +63,16 @@ def add_image_page(pdf: pdfium.PdfDocument, jpeg: bytes, wpt: float, hpt: float)
 def build_pdf(archive: Archive, metas: list[DocumentMetadata]) -> bytes:
     with PDFIUM_LOCK:
         pdf = pdfium.PdfDocument.new()
+        # closed only after saving: imported pages can still refer to their source (see
+        # media.compose_mail)
+        sources: list[pdfium.PdfDocument] = []
         try:
             for m in metas:
                 path = archive.paths.resolve(m.original_relpath)
                 if m.mime_type in PAGED:
                     src = open_pdf(path, m.mime_type)
-                    try:
-                        pdf.import_pages(src)
-                    finally:
-                        src.close()
+                    sources.append(src)
+                    pdf.import_pages(src)
                     continue
                 for data, wpt, hpt in image_pdf_pages(path, m.mime_type):
                     add_image_page(pdf, data, wpt, hpt)
@@ -80,6 +81,8 @@ def build_pdf(archive: Archive, metas: list[DocumentMetadata]) -> bytes:
             return buf.getvalue()
         finally:
             pdf.close()
+            for src in sources:
+                src.close()
 
 
 # --- carrying data over ------------------------------------------------------------------
