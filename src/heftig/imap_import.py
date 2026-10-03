@@ -311,17 +311,38 @@ def _archive_mails(
 ) -> list[dict[str, Any]]:
     """The keyword is in the subject: archive the e-mail itself as a document - the e-mails
     attached to it (forwarded as attachment), or else this message (forwarded inline: the
-    forwarded header block gives title and date, the attachments are part of it)."""
+    forwarded header block gives title, date and sender, the attachments are part of it). Its
+    provenance is that of the archived message; who forwarded it is kept as ``forwarded_by``."""
     keyword = archive.settings.imap_mail_keyword.strip()
     attached = [p for p in mail.attachment_parts(msg) if p.get_content_type() == "message/rfc822"]
+    # who sent it, its subject and date: those of the archived message, not of the forward
+    forwarder = {"forwarded_by": base.get("from"), "mail_keyword": keyword}
     if attached:
-        items = [(mail.payload(p), mail.part_filename(p, n + 1)) for n, p in enumerate(attached)]
+        # left empty: ingesting the attached message fills them in from its own headers
+        own = dict.fromkeys(("from", "subject", "message_date", "message_id"))
+        details = {**base, **own, **forwarder}
+        items = [(mail.payload(p), mail.part_filename(p, n + 1), details)
+                 for n, p in enumerate(attached)]  # fmt: skip
     else:
         subject = mail.clean_subject(mail.remove_keyword(base.get("subject") or "", keyword))
-        items = [(raw, f"{display_filename(subject)[:120] or 'e-mail'}.eml")]
+        details = {**base, **forwarder}
+        fwd = mail.parse(raw).forwarded
+        if fwd is not None:  # forwarded inline: the header block of the forwarded message
+            sender = parseaddr(fwd.sender)[1]
+            if "@" in sender:
+                details["from"] = sender[:200]
+            else:
+                details.pop("forwarded_by")  # no address in the block: the forward stays the sender
+            if fwd.subject:
+                details["subject"] = fwd.subject[:200]
+            if fwd.date_text:
+                details["message_date"] = fwd.date_text[:100]
+        else:
+            details.pop("forwarded_by")  # the keyword on an e-mail of one's own: it is the sender
+        items = [(raw, f"{display_filename(subject)[:120] or 'e-mail'}.eml", details)]
     conn = archive.conn
     results: list[dict[str, Any]] = []
-    for data, name in items:
+    for data, name, details in items:
         sha = hashlib.sha256(data).hexdigest()
         done = conn.execute(
             "SELECT result FROM imap_items WHERE account=? AND message_key=? AND part_sha256=?",
@@ -331,8 +352,7 @@ def _archive_mails(
             results.append({"filename": name, "status": "already_imported", "result": done[0]})
             continue
         res = ingest_stream(
-            archive, io.BytesIO(data), name, "email", {**base, "mail_keyword": keyword},
-            paper=False, import_ref=import_ref,
+            archive, io.BytesIO(data), name, "email", details, paper=False, import_ref=import_ref,
         )  # fmt: skip
         with write_tx(conn):
             conn.execute(
