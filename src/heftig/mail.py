@@ -133,6 +133,25 @@ def _header(msg: Message, name: str) -> str:
     return " ".join(str(value or "").split())
 
 
+def header_details(path: Path) -> dict[str, str]:
+    """Sender address, subject, date and Message-ID of a stored e-mail - what a mail from the
+    mailbox carries in ``source_details`` (only the header section is read)."""
+    from email.parser import BytesHeaderParser
+
+    try:
+        with open(path, "rb") as f:
+            msg = BytesHeaderParser(policy=policy.default).parse(f)
+    except Exception:  # noqa: BLE001 - provenance only: never stops an import
+        return {}
+    details = {
+        "from": parseaddr(_header(msg, "From"))[1][:200],
+        "subject": _header(msg, "Subject")[:200],
+        "message_date": _header(msg, "Date")[:100],
+        "message_id": _header(msg, "Message-ID")[:300],
+    }
+    return {k: v for k, v in details.items() if v}
+
+
 def _addresses(msg: Message, name: str) -> str:
     raw = _header(msg, name)
     try:

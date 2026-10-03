@@ -153,6 +153,12 @@ def ingest_stream(
             )  # fmt: skip
         if info.mime_type == MAIL:
             paper = False  # an e-mail is never a sheet of paper
+            from . import mail
+
+            # uploaded or dropped into a folder: who sent it, like a mail from the mailbox
+            for key, value in mail.header_details(tmp).items():
+                if not details.get(key):
+                    details[key] = value
         return _commit(
             archive, tmp, sha, size, info, name, source, details, paper, import_ref, stages,
             on_create,
