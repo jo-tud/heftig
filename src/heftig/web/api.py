@@ -609,7 +609,10 @@ def api_unsplit(request: Request, doc_id: str, p: Principal = Depends(require_wr
 
 
 class FilingBody(BaseModel):
-    action: Literal["file", "unfile"] = "file"
+    """``file``/``unfile``: filed now / undone; ``paper``: there is a sheet to file (it joins
+    the paper still to file); ``digital``: there is none (only while it is not filed)."""
+
+    action: Literal["file", "unfile", "paper", "digital"] = "file"
 
 
 @router.post("/documents/{doc_id}/filing", tags=["documents"])
@@ -618,7 +621,15 @@ def api_filing(
 ):
     _load(request, doc_id)
     a = get_archive(request)
-    meta = docs.mark_filed(a, doc_id) if body.action == "file" else docs.unmark_filed(a, doc_id)
+    try:
+        if body.action in ("paper", "digital"):
+            meta = docs.set_paper(a, doc_id, body.action == "paper")
+        elif body.action == "file":
+            meta = docs.mark_filed(a, doc_id)
+        else:
+            meta = docs.unmark_filed(a, doc_id)
+    except docs.EditError as e:
+        raise ApiError(409, "conflict", str(e)) from e
     pos = docs.filing_position(a, meta)
     return {
         "metadata": meta.model_dump(mode="json"),

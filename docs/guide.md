@@ -26,7 +26,9 @@ How the parts fit together in daily use. Setup and operation: [operations.md](op
    in bulk* (linked from the inbox) for many documents at once.
 5. **File the paper** and click *Filed just now* on its page (or *Filed now* in the inbox list) –
    or let Heftig do it for every scan (*Settings → Scanner and phone → I file every scanned letter
-   right away*).
+   right away*). A document that came in digitally but has a sheet of paper – a letter you
+   photographed and sent to the archive mailbox – joins the paper still to file with *More … →
+   Paper – still to file* on its page (*Digital only* takes it back).
 
 Nothing is ever lost by a click: deleted documents go to the trash for 30 days, combining,
 splitting and bulk deletion can be undone, and documents that were combined into another one are
@@ -185,7 +187,8 @@ does not replace that date. Three ways in:
 
 - **Drag it out of the mail program** – Thunderbird, Evolution, KMail, Apple Mail and Outlook on
   the web save a mail as an `.eml` file – into the folder for digital files or the scanner folder
-  (it is never marked as paper), or upload it with *Add*.
+  (it is not marked as paper; *More … → Paper – still to file* does that), or upload it with
+  *Add*.
 - **Forward it to the archive mailbox** with the keyword (`#mail`, *Settings → E-mail import*) in
   the subject – inline or as attachment. Without the keyword only the attachments are imported,
   as before.

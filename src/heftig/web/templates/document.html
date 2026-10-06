@@ -30,6 +30,7 @@
         <a role="menuitem" href="/combine?ids={{ m.id }}" title="{{ _("e.g. separately scanned pages of a letter, or the signed version") }}">{{ _("Combine with another document …") }}</a>
         {% if (m.page_count or 1) > 1 %}<a role="menuitem" href="/documents/{{ m.id }}/split" title="{{ _("e.g. two letters in one scan: cut between the pages, move, turn or remove pages") }}">{{ _("Split or arrange pages …") }}</a>{% endif %}
         {% if not m.paper and not pos %}<form method="post" action="/documents/{{ m.id }}/action">{{ csrf_field(csrf) }}{{ rv }}
+          <button role="menuitem" name="action" value="paper" class="linklike" title="{{ _("There is a sheet of paper to file, e.g. a letter photographed and sent by e-mail") }}">{{ _("Paper – still to file") }}</button>
           <button role="menuitem" name="action" value="file" class="linklike">{{ _("Mark as filed") }}</button></form>{% endif %}
         <form method="post" action="/documents/{{ m.id }}/action">{{ csrf_field(csrf) }}{{ rv }}<input type="hidden" name="back" value="{{ back }}">
           <button role="menuitem" name="action" value="delete" class="linklike danger-text" title="{{ ngettext("Goes to the trash (can be restored for %(num)s day)", "Goes to the trash (can be restored for %(num)s days)", trash_days) }}">{{ _("Move to trash") }}</button></form>
@@ -218,6 +219,7 @@
       <form method="post" action="/documents/{{ m.id }}/action" class="buttons">{{ csrf_field(csrf) }}{{ rv }}
         <button name="action" value="file" class="primary">{{ _("Filed just now") }}</button> <span class="small muted">{{ _("into binder %(name)s", name=current_binder) }}</span>
         <button name="action" value="paper_discarded" class="secondary" title="{{ _("Handed over, sent away or thrown out – nothing to file") }}">{{ _("Not kept") }}</button>
+        <button name="action" value="digital" class="linklike small" title="{{ _("There never was a sheet of paper for it – it leaves the paper still to file") }}">{{ _("Digital only") }}</button>
       </form>
       <details><summary class="small">{{ _("Somewhere else …") }}</summary>
         <form method="post" action="/documents/{{ m.id }}/action" class="inline-form">{{ csrf_field(csrf) }}{{ rv }}

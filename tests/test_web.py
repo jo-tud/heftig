@@ -9,7 +9,7 @@ from heftig import auth
 from heftig import documents as docs
 from heftig.web.app import create_app
 
-from .conftest import make_settings, process_all
+from .conftest import ingest_bytes, make_settings, process_all
 from .helpers import image_bytes, text_image, text_pdf
 
 PASSWORD = "richtig-langes-passwort"
@@ -587,6 +587,46 @@ def test_paper_not_kept_leaves_the_filing_list(client, app):
     meta = docs.load_meta(app.state.archive, doc_id)
     assert meta.paper_discarded_at and meta.filing_sequence is None
     assert "Papier nicht aufbewahrt" in client.get(f"/documents/{doc_id}").text
+
+
+def test_digital_document_can_become_paper_to_file(client, app):
+    """A letter photographed and e-mailed: its paper is filed later with the other sheets."""
+    csrf = login(client)
+    doc_id = upload(client, csrf, text_pdf(["Bescheid Grundsteuer"]), "foto.pdf").json()["results"][0]["document_id"]  # fmt: skip
+    process_all(app.state.archive)
+    assert f'value="notkept_{doc_id}"' not in client.get("/inbox").text  # digital: nothing to file
+    page = client.get(f"/documents/{doc_id}").text
+    assert 'value="paper"' in page and "Papier – noch abzuheften" in page
+    r = client.post(f"/documents/{doc_id}/action", data={"csrf_token": csrf, "action": "paper"},
+                    follow_redirects=False)  # fmt: skip
+    assert r.status_code == 303
+    meta = docs.load_meta(app.state.archive, doc_id)
+    assert meta.paper and meta.filing_sequence is None
+    assert meta.processing_history[-1].status == "paper"
+    assert f'value="file_{doc_id}"' in client.get("/inbox").text  # in the paper still to file
+    page = client.get(f"/documents/{doc_id}").text
+    assert "wo liegt das Papier?" in page and 'value="digital"' in page
+    # a mis-click: back to digital only
+    client.post(f"/documents/{doc_id}/action", data={"csrf_token": csrf, "action": "digital"})
+    assert not docs.load_meta(app.state.archive, doc_id).paper
+    assert f'value="file_{doc_id}"' not in client.get("/inbox").text
+    # via the API; once filed, it cannot become digital only
+    h = {"X-CSRF-Token": csrf}
+    r = client.post(f"/api/documents/{doc_id}/filing", json={"action": "paper"}, headers=h)
+    assert r.status_code == 200 and r.json()["metadata"]["paper"]
+    client.post(f"/api/documents/{doc_id}/filing", json={"action": "file"}, headers=h)
+    r = client.post(f"/api/documents/{doc_id}/filing", json={"action": "digital"}, headers=h)
+    assert r.status_code == 409 and docs.load_meta(app.state.archive, doc_id).paper
+
+
+def test_an_e_mail_can_be_paper_too(app):
+    """An e-mail is never paper on arrival - but it may hold a photographed letter."""
+    from .test_mail import eml
+
+    a = app.state.archive
+    doc_id = ingest_bytes(a, eml(), "m.eml", source="email").doc_id
+    assert not docs.load_meta(a, doc_id).paper
+    assert docs.set_paper(a, doc_id, True).paper
 
 
 def test_trash_in_the_review_goes_on_to_the_next(client, app):
