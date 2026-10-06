@@ -152,7 +152,7 @@ def ingest_stream(
                 import_ref=import_ref,
             )  # fmt: skip
         if info.mime_type == MAIL:
-            paper = False  # an e-mail is never a sheet of paper
+            paper = bool(paper)  # an e-mail is no sheet of paper - unless one is said to exist
             from . import mail
 
             # uploaded or dropped into a folder: who sent it, like a mail from the mailbox

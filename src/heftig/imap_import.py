@@ -214,8 +214,12 @@ def process_message(
     if s.imap_archive_eml:
         atomic_write_bytes(archive.paths.email / f"{import_ref}.eml", raw)
         base["eml"] = f"email/{import_ref}.eml"
+    # a photographed letter: there is paper to file for what this e-mail brings
+    paper = mail.has_keyword(base["subject"] or "", s.imap_paper_keyword)
+    if paper:
+        base["paper_keyword"] = s.imap_paper_keyword.strip()
     if mail.has_keyword(base["subject"] or "", s.imap_mail_keyword):
-        return _archive_mails(archive, msg, raw, account, message_key, import_ref, base)
+        return _archive_mails(archive, msg, raw, account, message_key, import_ref, base, paper)
 
     results: list[dict[str, Any]] = []
     candidates = 0
@@ -276,7 +280,7 @@ def process_message(
             candidates += 1
             res = ingest_stream(
                 archive, io.BytesIO(payload), name or f"attachment.{ctype.split('/')[-1]}", "email",
-                details, paper=False, import_ref=import_ref,
+                details, paper=paper, import_ref=import_ref,
             )  # fmt: skip
         with write_tx(conn):
             conn.execute(
@@ -308,6 +312,7 @@ def _archive_mails(
     message_key: str,
     import_ref: str,
     base: dict[str, Any],
+    paper: bool = False,
 ) -> list[dict[str, Any]]:
     """The keyword is in the subject: archive the e-mail itself as a document - the e-mails
     attached to it (forwarded as attachment), or else this message (forwarded inline: the
@@ -352,7 +357,7 @@ def _archive_mails(
             results.append({"filename": name, "status": "already_imported", "result": done[0]})
             continue
         res = ingest_stream(
-            archive, io.BytesIO(data), name, "email", details, paper=False, import_ref=import_ref,
+            archive, io.BytesIO(data), name, "email", details, paper=paper, import_ref=import_ref,
         )  # fmt: skip
         with write_tx(conn):
             conn.execute(

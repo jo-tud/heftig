@@ -34,6 +34,11 @@
     <p class="hint">{{ _("An e-mail whose subject contains this word is archived as a document of its own: the forwarded e-mail with its text and attachments (forwarded as attachment or inline). Without it, only the attachments are imported. Empty: off.") }}</p>
   </fieldset>
   <fieldset {% if locked %}disabled{% endif %}>
+    <legend>{{ _("Paper sent as a photo") }}</legend>
+    <label>{{ _("Keyword in the subject") }} <input name="imap_paper_keyword" value="{{ form.imap_paper_keyword }}" spellcheck="false" placeholder="#paper"></label>
+    <p class="hint">{{ _("For a letter you photographed and e-mailed: with this word in the subject, what the e-mail brings is marked as paper and joins the paper still to file. Empty: off.") }}</p>
+  </fieldset>
+  <fieldset {% if locked %}disabled{% endif %}>
     <legend>{{ _("After import") }}</legend>
     <label class="choice"><input type="radio" name="after" value="seen" {% if form.after == 'seen' %}checked{% endif %}> <span>{{ _("Mark the e-mail as read") }}</span></label>
     <label class="choice"><input type="radio" name="after" value="move" {% if form.after == 'move' %}checked{% endif %}> <span>{{ _("Move it to the folder") }} <input name="imap_move_to" value="{{ form.imap_move_to }}" spellcheck="false" aria-label="{{ _('Folder') }}"></span></label>

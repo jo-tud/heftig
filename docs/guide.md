@@ -28,7 +28,8 @@ How the parts fit together in daily use. Setup and operation: [operations.md](op
    or let Heftig do it for every scan (*Settings → Scanner and phone → I file every scanned letter
    right away*). A document that came in digitally but has a sheet of paper – a letter you
    photographed and sent to the archive mailbox – joins the paper still to file with *More … →
-   Paper – still to file* on its page (*Digital only* takes it back).
+   Paper – still to file* on its page (*Digital only* takes it back), or right away with `#paper`
+   in the e-mail's subject ([scanner-imap.md](scanner-imap.md#paper-sent-as-a-photo-keyword)).
 
 Nothing is ever lost by a click: deleted documents go to the trash for 30 days, combining,
 splitting and bulk deletion can be undone, and documents that were combined into another one are

@@ -1666,6 +1666,10 @@ msgid "The setup code is not correct."
 msgstr "Der Einrichtungscode stimmt nicht."
 
 #: src/heftig/web/setup.py
+msgid "The two keywords must differ."
+msgstr "Die beiden Schlüsselwörter müssen sich unterscheiden."
+
+#: src/heftig/web/setup.py
 msgid "The two passwords are not the same."
 msgstr "Die beiden Passwörter sind nicht gleich."
 
@@ -4694,6 +4698,10 @@ msgid "Folder to collect from"
 msgstr "Ordner, aus dem abgeholt wird"
 
 #: src/heftig/web/templates/setup_mail.html
+msgid "For a letter you photographed and e-mailed: with this word in the subject, what the e-mail brings is marked as paper and joins the paper still to file. Empty: off."
+msgstr "Für einen Brief, den du fotografiert und gemailt hast: Mit diesem Wort im Betreff wird, was die E-Mail bringt, als Papier markiert und erscheint unter „Papier noch abzuheften“. Leer: aus."
+
+#: src/heftig/web/templates/setup_mail.html
 msgid "Heftig can collect the attachments (PDFs, photos) of e-mails from a mailbox: forward an invoice, or let your scanner send its scans there. Best is an address used only for this, e.g. a new free mailbox or an alias."
 msgstr "Heftig kann die Anhänge (PDFs, Fotos) von E-Mails aus einem Postfach abholen: eine Rechnung weiterleiten, oder den Scanner seine Scans dorthin schicken lassen. Am besten eine Adresse nur dafür, z. B. ein neues kostenloses Postfach oder ein Alias."
 
@@ -4716,6 +4724,10 @@ msgstr "E-Mail als gelesen markieren"
 #: src/heftig/web/templates/setup_mail.html
 msgid "Move it to the folder"
 msgstr "In den Ordner verschieben"
+
+#: src/heftig/web/templates/setup_mail.html
+msgid "Paper sent as a photo"
+msgstr "Papier als Foto geschickt"
 
 #: src/heftig/web/templates/setup_mail.html
 msgid "Port"
