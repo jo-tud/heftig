@@ -383,6 +383,31 @@ def test_renderings_are_cached_and_pruned(archive):
     assert cached[0].exists()
 
 
+def test_paper_keyword_puts_the_photos_in_the_paper_to_file(imap_archive):
+    """A letter photographed with the phone and e-mailed: its sheet is filed with the others."""
+    a = imap_archive
+    photo = ("brief.jpg", "image/jpeg", image_bytes(text_image("Grundsteuerbescheid 2026"), "JPEG"))
+    raw = eml(subject="Brief Finanzamt #paper", sender="jo@example.org", attachments=[photo])
+    res = process_message(a, raw, account="acc", fallback_key="8:1")
+    meta = docs.load_meta(a, res[0]["document_id"])
+    assert meta.paper and meta.filing_sequence is None and meta.source == "email"
+    assert meta.source_details["paper_keyword"] == "#paper"
+    # without it: digital, as before
+    plain = eml(subject="Rechnung", attachments=[("r.pdf", "application/pdf", text_pdf(["R"]))])
+    res = process_message(a, plain, account="acc", fallback_key="8:2")
+    assert not docs.load_meta(a, res[0]["document_id"]).paper
+
+
+def test_paper_keyword_with_the_mail_keyword(imap_archive):
+    a = imap_archive
+    raw = eml(subject="Mahnung #mail #Paper", body="Bitte zahlen.\n", sender="jo@example.org")
+    res = process_message(a, raw, account="acc", fallback_key="8:3")
+    process_all(a)
+    meta = docs.load_meta(a, res[0]["document_id"])
+    assert meta.mime_type == MAIL and meta.paper  # the e-mail itself, with paper to file
+    assert meta.title == "Mahnung"  # neither keyword in the title
+
+
 def test_keyword_setting_is_one_word():
     from heftig.web.setup import mail_changes
 
@@ -391,3 +416,7 @@ def test_keyword_setting_is_one_word():
     assert changes["imap_mail_keyword"] == "#archiv" and error is None
     assert mail_changes({**form, "imap_mail_keyword": ""})[0]["imap_mail_keyword"] == ""
     assert mail_changes({**form, "imap_mail_keyword": "zwei Wörter"})[1]
+    changes, error = mail_changes({**form, "imap_paper_keyword": " #papier "})
+    assert changes["imap_paper_keyword"] == "#papier" and error is None
+    assert mail_changes({**form, "imap_paper_keyword": "zwei Wörter"})[1]
+    assert mail_changes({**form, "imap_mail_keyword": "#x", "imap_paper_keyword": "#X"})[1]

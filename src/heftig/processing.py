@@ -505,8 +505,10 @@ def _apply_mail_fields(meta: DocumentMetadata, mail) -> None:
     from .mail import remove_keyword
     from .titles import normalize_title
 
-    keyword = str(meta.source_details.get("mail_keyword") or "")
-    title = normalize_title(remove_keyword(mail.title_subject, keyword))
+    subject = mail.title_subject
+    for key in ("mail_keyword", "paper_keyword"):
+        subject = remove_keyword(subject, str(meta.source_details.get(key) or ""))
+    title = normalize_title(subject)
     if title and not meta.locked("title") and meta.field_sources.get("title") == "rule":
         meta.title = title[:200]
     sent = mail.document_date

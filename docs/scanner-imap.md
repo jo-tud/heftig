@@ -349,6 +349,17 @@ itself becomes a document (text and attachments in one, see
 The same works without a mailbox: drag the mail out of the mail program as `.eml` file into the
 folder for digital files (or the scanner folder), or upload it.
 
+### Paper sent as a photo (keyword)
+
+Documents from the mailbox are digital: they are not in the paper still to file. For a letter you
+photographed with the phone and e-mailed – the sheet goes into the envelope with the other paper
+– put the paper keyword in the subject: `#paper` unless changed on *Settings → E-mail import* or
+with `HEFTIG_IMAP_PAPER_KEYWORD` (empty switches it off). Every document the e-mail brings (its
+attachments, or the e-mail itself with `#mail` too) is then marked as paper and joins the paper
+still to file, and is filed with the rest. The keyword is matched like `#mail` and left out of
+the title. Forgot it? *More … → Paper – still to file* on the document page does the same
+afterwards.
+
 ### Marking, idempotency and errors
 
 - A message is marked as seen (or moved to `HEFTIG_IMAP_MOVE_TO`) only **after** all its parts

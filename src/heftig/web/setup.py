@@ -58,7 +58,7 @@ AI_KEYS = {
 }  # fmt: skip
 MAIL_KEYS = {
     "imap_host", "imap_port", "imap_user", "imap_password", "imap_mailbox", "imap_move_to",
-    "imap_delete_after_import", "imap_allowed_senders", "imap_mail_keyword",
+    "imap_delete_after_import", "imap_allowed_senders", "imap_mail_keyword", "imap_paper_keyword",
 }  # fmt: skip
 # additional HTTP headers of an OpenAI-compatible server: given by the environment they stay
 # as they are, without locking the rest of the page
@@ -396,6 +396,7 @@ def _mail_view(request: Request, **kw: Any) -> Any:
         "imap_mailbox": s.imap_mailbox, "imap_move_to": s.imap_move_to, "after": after,
         "imap_allowed_senders": s.imap_allowed_senders.replace(",", "\n"),
         "imap_mail_keyword": s.imap_mail_keyword,
+        "imap_paper_keyword": s.imap_paper_keyword,
     }  # fmt: skip
     presets = {d: connections.imap_preset("x@" + d) for d in connections.IMAP_PRESETS}
     ctx = _ctx(request, "mail", form=form, has_password=store.has_secret(s, "imap_password"),
@@ -436,14 +437,19 @@ def mail_changes(form: dict[str, Any]) -> tuple[dict[str, Any], str | None]:
     if after == "move" and not move_to:
         return {}, _("Please enter the folder the e-mails are moved to.")
     keyword = str(form.get("imap_mail_keyword") or "").strip()
-    if len(keyword.split()) > 1 or len(keyword) > 40:
-        return {}, _("The keyword must be a single word (e.g. #mail).")
+    paper_keyword = str(form.get("imap_paper_keyword") or "").strip()
+    for word in (keyword, paper_keyword):
+        if len(word.split()) > 1 or len(word) > 40:
+            return {}, _("The keyword must be a single word (e.g. #mail).")
+    if keyword and keyword.lower() == paper_keyword.lower():
+        return {}, _("The two keywords must differ.")
     return {
         "imap_host": host, "imap_port": port, "imap_user": user,
         "imap_password": str(form.get("imap_password") or ""),
         "imap_mailbox": str(form.get("imap_mailbox") or "").strip() or "INBOX",
         "imap_move_to": move_to, "imap_delete_after_import": after == "delete",
         "imap_allowed_senders": ",".join(senders), "imap_mail_keyword": keyword,
+        "imap_paper_keyword": paper_keyword,
     }, None  # fmt: skip
 
 
@@ -452,7 +458,7 @@ def _mail_submit(request: Request, form: dict[str, Any]) -> Any:
     changes, error = mail_changes(form)
     view = {k: form.get(k, "") for k in ("imap_user", "imap_host", "imap_port", "imap_mailbox",
                                          "imap_move_to", "after", "imap_allowed_senders",
-                                         "imap_mail_keyword")}  # fmt: skip
+                                         "imap_mail_keyword", "imap_paper_keyword")}  # fmt: skip
     if error:
         return _mail_view(request, form=view, error=error)
     cur = a.settings

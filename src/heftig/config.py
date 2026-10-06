@@ -251,6 +251,9 @@ class Settings(BaseSettings):
     # this word in the subject: the e-mail itself is archived (a forwarded one: the forwarded
     # message), as one document with its attachments - instead of only its attachments
     imap_mail_keyword: str = "#mail"
+    # this word in the subject: there is a sheet of paper for what the e-mail brings (a letter
+    # photographed with the phone) - its documents join the paper still to file
+    imap_paper_keyword: str = "#paper"
     # who may send documents: comma list of addresses and/or "@domain" - empty = everyone (the
     # address is then effectively public input). Mail from others is refused and recorded.
     imap_allowed_senders: str = ""
