@@ -1275,6 +1275,12 @@ def _action_sync(a, doc_id: str, form) -> RedirectResponse:
     elif action == "paper_reset":
         docs.set_paper_state(a, doc_id)
         msg = _("Undone.")
+    elif action in ("paper", "digital"):
+        try:
+            docs.set_paper(a, doc_id, action == "paper")
+        except docs.EditError as e:
+            return redirect(_doc_url(doc_id, form, msg=str(e)))
+        msg = _("Added to the paper still to file.") if action == "paper" else _("Digital only.")
     elif action in ("reprocess_extract", "reprocess_classify", "reprocess_all"):
         stages = {"reprocess_extract": ["extract"], "reprocess_classify": ["classify"],
                   "reprocess_all": ["extract", "classify"]}[action]  # fmt: skip

@@ -689,6 +689,29 @@ def set_paper_state(
         return meta
 
 
+def set_paper(archive: Archive, doc_id: str, paper: bool, by: str = "user") -> DocumentMetadata:
+    """There is a sheet of paper to file (e.g. a photo of a letter that came by e-mail): it
+    joins the paper still to file. ``paper=False`` takes that back - only while the sheet is
+    neither filed nor noted elsewhere."""
+    with write_tx(archive.conn):
+        meta = load_meta(archive, doc_id)
+        if meta.paper == paper:
+            return meta
+        if not paper and (
+            meta.filing_sequence is not None or meta.paper_location or meta.paper_discarded_at
+        ):
+            raise EditError(_("The paper is already filed or noted elsewhere – undo that first."))
+        meta.paper = paper
+        add_history(
+            meta,
+            HistoryEntry(
+                task="filing", at=now_iso(), status="paper" if paper else "digital", by=by
+            ),  # type: ignore[arg-type]
+        )
+        persist(archive, meta)
+        return meta
+
+
 def set_keep_original(archive: Archive, doc_id: str, keep: bool) -> DocumentMetadata:
     with write_tx(archive.conn):
         meta = load_meta(archive, doc_id)

@@ -427,6 +427,10 @@ msgid "The note is empty."
 msgstr "Die Notiz ist leer."
 
 #: src/heftig/documents.py
+msgid "The paper is already filed or noted elsewhere – undo that first."
+msgstr "Das Papier ist schon abgeheftet oder anderswo vermerkt – bitte erst das rückgängig machen."
+
+#: src/heftig/documents.py
 msgid "The paper is not filed."
 msgstr "Das Papier ist nicht abgeheftet."
 
@@ -2569,6 +2573,10 @@ msgid "Currency"
 msgstr "Währung"
 
 #: src/heftig/web/templates/document.html
+msgid "Digital only"
+msgstr "Nur digital"
+
+#: src/heftig/web/templates/document.html
 msgid "Document view"
 msgstr "Dokumentansicht"
 
@@ -2842,6 +2850,10 @@ msgid "Paper not kept (handed over, sent away or thrown out) – noted on %(when
 msgstr "Papier nicht aufbewahrt (abgegeben, verschickt oder weggeworfen) – vermerkt am %(when)s."
 
 #: src/heftig/web/templates/document.html
+msgid "Paper – still to file"
+msgstr "Papier – noch abzuheften"
+
+#: src/heftig/web/templates/document.html
 msgid "Part %(num)s of %(total)s:"
 msgstr "Teil %(num)s von %(total)s:"
 
@@ -2993,6 +3005,14 @@ msgstr "Die einzelnen Dokumente (Ausgangsdokumente)"
 #: src/heftig/web/templates/document.html
 msgid "The sheet keeps its place; “Put back in its place” returns it there."
 msgstr "Das Blatt behält seinen Platz; „Wieder an seinen Platz“ legt es dorthin zurück."
+
+#: src/heftig/web/templates/document.html
+msgid "There is a sheet of paper to file, e.g. a letter photographed and sent by e-mail"
+msgstr "Es gibt ein Blatt Papier zum Abheften, z. B. einen Brief, der fotografiert und per E-Mail geschickt wurde"
+
+#: src/heftig/web/templates/document.html
+msgid "There never was a sheet of paper for it – it leaves the paper still to file"
+msgstr "Dazu gab es nie ein Blatt Papier – es verschwindet aus „Papier noch abzuheften“"
 
 #: src/heftig/web/templates/document.html
 msgid "Trash → next"
@@ -5234,6 +5254,10 @@ msgid "Accepted from quarantine."
 msgstr "Aus der Quarantäne übernommen."
 
 #: src/heftig/web/ui.py
+msgid "Added to the paper still to file."
+msgstr "Steht jetzt unter „Papier noch abzuheften“."
+
+#: src/heftig/web/ui.py
 msgid "Alias added."
 msgstr "Alias hinzugefügt."
 
@@ -5306,6 +5330,10 @@ msgstr[1] "Gelöscht (%(num)d Dokumente aktualisiert)."
 #: src/heftig/web/ui.py
 msgid "Deleted permanently."
 msgstr "Endgültig gelöscht."
+
+#: src/heftig/web/ui.py
+msgid "Digital only."
+msgstr "Nur digital."
 
 #: src/heftig/web/ui.py
 msgid "Dismissed for %(num)d document."
