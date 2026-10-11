@@ -506,6 +506,7 @@ load):
 | granite-embedding-311m-multilingual-r2, int8 | 0.843 | 0.621 | - | 0.634 | 0.3 | Apache-2.0 |
 | gte-multilingual-base, int8 | 0.833 | 0.660 | 0.944 | 0.669 | 0.7 | Apache-2.0 |
 | multilingual-e5-small, int8 | 0.834 | 0.725 | - | 0.588 | 2.5 | MIT |
+| EmbeddingGemma 2 (text), int8 | 0.857 | 0.667 | 0.966 | 0.631 | 0.2 | Apache-2.0 |
 
 - LegalQuAD: 200 questions on long German legal texts; GermanQuAD: 2,204 questions on
   Wikipedia passages ([deepset](https://www.deepset.ai/germanquad)); both as published in MTEB.
@@ -515,6 +516,12 @@ load):
   measured to the end - Qwen3-Embedding, harrier-oss and pplx-embed with 0.6 billion
   parameters managed less than one piece per second, bge-m3 is the size of Arctic L;
   jina-embeddings-v5 is non-commercial.
+- EmbeddingGemma 2 (October 2026; Apache-2.0, unlike its predecessor) ranks worse than the
+  built-in model on everything but GermanQuAD - measured in the same run, Arctic M had Munich
+  0.894, LegalQuAD 0.781, GermanQuAD 0.961, FiQA 0.691. Neither full precision (Munich 0.854,
+  the same vectors as Google's reference) nor its question-answering prompt (0.852) helped. It
+  is also slower: the published 8-bit ONNX version takes five times as long per piece, 16 times
+  as long per query; even a well-quantised int8 version would be 1.5 times slower.
 - A separate model for English would have gained 2-5 points on FiQA only for a second
   download, twice the memory and a language guess for every short query; not done.
 - Cutting the text differently gained more than any other model: large and small pieces
